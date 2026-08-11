@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Thanh toán Viện phí & Hóa đơn | ClinicAI</title>
+
+  <!-- Bootstrap 5 CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- Google Font: Inter -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <!-- FontAwesome Icons -->
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+
+  <style>
+    :root {
+      --primary-color: #1A73E8;
+      --primary-dark: #1557B0;
+      --teal-color: #20C997;
+      --bg-color: #F8F9FA;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: var(--bg-color);
+      color: #212529;
+    }
+
+    /* Navbar */
+    .navbar-custom {
+      background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%);
+      box-shadow: 0 4px 16px rgba(26,115,232,0.25);
+    }
+
+    /* Cards & Containers */
+    .card-custom {
+      border: 1px solid #DEE2E6;
+      border-radius: 12px;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.04);
+      background-color: #ffffff;
+      transition: all 0.2s ease-in-out;
+    }
+
+    .card-header-custom {
+      background-color: #ffffff;
+      border-bottom: 1px solid #E9ECEF;
+      padding: 16px 20px;
+      font-weight: 700;
+      color: #334155;
+    }
+
+    /* Buttons */
+    .btn-primary-custom {
+      background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%);
+      border: none;
+      color: #ffffff;
+      font-weight: 600;
+      padding: 10px 20px;
+      border-radius: 8px;
+      transition: all 0.2s;
+    }
+    .btn-primary-custom:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(26,115,232,0.35);
+      color: #ffffff;
+    }
+
+    .btn-success-custom {
+      background: linear-gradient(135deg, var(--teal-color) 0%, #17A27C 100%);
+      border: none;
+      color: #ffffff;
+      font-weight: 600;
+      padding: 12px 24px;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(32,201,151,0.25);
+      transition: all 0.2s;
+    }
+    .btn-success-custom:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 16px rgba(32,201,151,0.35);
+      color: #ffffff;
+    }
+
+    /* Table */
+    .table-custom th {
+      background-color: #F1F5F9;
+      color: #475569;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      font-weight: 700;
+      border-bottom: 2px solid #CBD5E1;
+    }
+
+    .table-custom td {
+      vertical-align: middle;
+      font-size: 14px;
+    }
+
+    .payment-option-card {
+      border: 2px solid #E2E8F0;
+      border-radius: 10px;
+      padding: 14px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .payment-option-card:hover {
+      border-color: var(--primary-color);
+      background-color: #F0F7FF;
+    }
+    .payment-option-card.selected {
+      border-color: var(--primary-color);
+      background-color: #E8F0FE;
+    }
+
+    /* Toast notification */
+    .toast-container-custom {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      z-index: 1060;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Toast Notification Container -->
+  <div class="toast-container-custom" id="toastContainer"></div>
+
+  <!-- Navbar -->
+  <nav class="navbar navbar-expand-lg navbar-dark navbar-custom px-4 py-2">
+    <div class="container-fluid">
+      <a class="navbar-brand d-flex align-items-center gap-2" href="#">
+        <div class="bg-white bg-opacity-25 rounded-3 p-2 d-flex align-items-center justify-content-center" style="width:38px; height:38px;">
+          <i class="fa-solid fa-hospital-user text-white fs-5"></i>
+        </div>
+        <div>
+          <span class="fw-bold fs-6 d-block leading-none">ClinicAI</span>
+          <small class="text-white-50" style="font-size:11px;">Quản lý Thanh toán & Viện phí</small>
+        </div>
+      </a>
+      <div class="ms-auto d-flex align-items-center gap-3">
+        <a href="danh_sach_benh_nhan.html" class="btn btn-sm btn-outline-light"><i class="fa-solid fa-users me-1"></i> Bệnh nhân</a>
+        <a href="lap_phieu_kham.html" class="btn btn-sm btn-outline-light"><i class="fa-solid fa-stethoscope me-1"></i> Lập phiếu khám</a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Container -->
+  <div class="container-fluid px-4 py-4">
+
+    <!-- Page Header -->
+    <div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
+      <div>
+        <h3 class="fw-bold mb-1"><i class="fa-solid fa-file-invoice-dollar text-primary me-2"></i>Thanh toán Viện phí & Hóa đơn</h3>
+        <p class="text-muted small mb-0">Quản lý danh sách chờ thu tiền, thu phí dịch vụ khám & tiền thuốc từ Bệnh nhân</p>
+      </div>
+      <div>
+        <button class="btn btn-outline-secondary btn-sm rounded-3 me-2" onclick="loadAllData()">
+          <i class="fa-solid fa-arrows-rotate me-1" id="reloadIcon"></i> Tải lại dữ liệu
+        </button>
+      </div>
+    </div>
+
+    <!-- Main Row Layout -->
+    <div class="row g-4">
+
+      <!-- CỘT TRÁI: Bảng phiếu khám chờ thanh toán (60%) -->
+      <div class="col-lg-7">
+        <div class="card card-custom">
+          <div class="card-header-custom d-flex align-items-center justify-content-between">
+            <span class="d-flex align-items-center gap-2">
+              <i class="fa-solid fa-clock-rotate-left text-warning fs-5"></i>
+              Danh sách Phiếu khám chờ Thanh toán
+            </span>
+            <span class="badge bg-warning text-dark rounded-pill" id="pendingCountBadge">0 phiếu chờ</span>
+          </div>
+          <div class="card-body p-0">
+            <div class="table-responsive">
+              <table class="table table-hover table-custom mb-0" id="tableChoThanhToan">
+                <thead>
+                  <tr>
+                    <th class="ps-3">Mã phiếu</th>
+                    <th>Họ và Tên Bệnh nhân</th>
+                    <th>Tiền khám</th>
+                    <th>Tiền thuốc</th>
+                    <th>Tổng tiền</th>
+                    <th class="text-center">Thao tác</th>
+                  </tr>
+                </thead>
+                <tbody id="bodyChoThanhToan">
+                  <!-- JS sẽ chèn dòng dữ liệu vào đây -->
+                </tbody>
+              </table>
+            </div>
+            <!-- Loading & Empty state -->
+            <div id="pendingState" class="text-center py-4 text-muted">
+              <i class="fa-solid fa-circle-notch fa-spin fs-4 text-primary mb-2 d-block"></i>
+              <span>Đang tải danh sách chờ thanh toán từ API...</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- BẢNG LỊCH SỬ HÓA ĐƠN ĐÃ THANH TOÁN -->
+        <div class="card card-custom mt-4">
+          <div class="card-header-custom d-flex align-items-center justify-content-between">
+            <span class="d-flex align-items-center gap-2">
+              <i class="fa-solid fa-receipt text-success fs-5"></i>
+              Lịch sử Hóa đơn đã Thanh toán (Doanh thu)
+            </span>
+            <span class="badge bg-success rounded-pill" id="historyCountBadge">0 hóa đơn</span>
+          </div>
+          <div class="card-body p-0">
+            <div class="table-responsive">
+              <table class="table table-hover table-custom mb-0">
+                <thead>
+                  <tr>
+                    <th class="ps-3">Mã HD</th>
+                    <th>Họ tên Bệnh nhân</th>
+                    <th>Hình thức TT</th>
+                    <th>Tổng thu</th>
+                    <th>Trạng thái</th>
+                  </tr>
+                </thead>
+                <tbody id="bodyLichSuHoaDon">
+                  <!-- Dữ liệu hóa đơn từ API -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- CỘT PHẢI: Form Xác nhận Thanh toán (40%) -->
+      <div class="col-lg-5">
+        <div class="card card-custom sticky-top" style="top: 80px;">
+          <div class="card-header-custom bg-primary text-white rounded-top-3 d-flex align-items-center gap-2">
+            <i class="fa-solid fa-cash-register fs-5"></i>
+            <span>Chi tiết & Xác nhận Thanh toán</span>
+          </div>
+          <div class="card-body p-4">
+
+            <!-- Thông tin phiếu được chọn -->
+            <div id="noSelectionNotice" class="alert alert-info border-0 rounded-3 mb-3 d-flex align-items-center gap-2">
+              <i class="fa-solid fa-circle-info fs-5"></i>
+              <div>Vui lòng chọn một phiếu khám ở danh sách bên trái để thực hiện thu tiền.</div>
+            </div>
+
+            <form id="formThanhToan" style="display: none;" onsubmit="handleConfirmPayment(event)">
+              <input type="hidden" id="inputPhieuKhamId" />
+
+              <!-- Thông tin Bệnh nhân -->
+              <div class="p-3 bg-light rounded-3 mb-3 border">
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                  <span class="text-muted small">Bệnh nhân:</span>
+                  <strong class="text-primary fs-6" id="displayTenBenhNhan">---</strong>
+                </div>
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                  <span class="text-muted small">Mã BHYT:</span>
+                  <span class="badge bg-primary-subtle text-primary fw-bold" id="displayMaBHYT">Không có</span>
+                </div>
+                <div class="d-flex justify-content-between align-items-center">
+                  <span class="text-muted small">Chẩn đoán:</span>
+                  <span class="small text-dark fw-medium text-end" id="displayChanDoan">---</span>
+                </div>
+              </div>
+
+              <!-- Chi tiết Tiền -->
+              <div class="border-bottom pb-3 mb-3">
+                <div class="d-flex justify-content-between mb-2">
+                  <span class="text-muted">Phí dịch vụ khám:</span>
+                  <span class="fw-semibold" id="displayTienKham">100,000 đ</span>
+                </div>
+                <div class="d-flex justify-content-between mb-2">
+                  <span class="text-muted">Tiền thuốc (Chi tiết đơn):</span>
+                  <span class="fw-semibold text-danger" id="displayTienThuoc">0 đ</span>
+                </div>
+                <div id="boxChiTietThuoc" class="small bg-white p-2 border rounded-2 mb-2 text-muted" style="max-height: 100px; overflow-y: auto;">
+                  <!-- Liệt kê từng loại thuốc -->
+                </div>
+                <div class="d-flex justify-content-between pt-2 border-top">
+                  <strong class="fs-5 text-dark">TỔNG THU:</strong>
+                  <strong class="fs-4 text-success" id="displayTongTien">0 đ</strong>
+                </div>
+              </div>
+
+              <!-- Chọn Hình thức Thanh toán -->
+              <div class="mb-4">
+                <label for="selectHinhThucTT" class="form-label fw-bold small text-uppercase text-secondary">
+                  Hình thức thanh toán <span class="text-danger">*</span>
+                </label>
+                <select id="selectHinhThucTT" class="form-select form-select-lg border-2 border-primary-subtle text-dark fw-semibold" style="font-size: 15px;">
+                  <option value="tien_mat" selected>💵 Tiền mặt (tien_mat)</option>
+                  <option value="chuyen_khoan">🏦 Chuyển khoản ngân hàng (chuyen_khoan)</option>
+                  <option value="qr">📱 Quét mã QR Code (qr)</option>
+                </select>
+              </div>
+
+              <!-- Nút xác nhận -->
+              <button type="submit" class="btn btn-success-custom w-100 py-3 fs-6 d-flex align-items-center justify-content-center gap-2" id="btnConfirmPayment">
+                <i class="fa-solid fa-circle-check fs-5"></i>
+                <span>Xác Nhận Đã Thu Tiền</span>
+              </button>
+            </form>
+
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+  <!-- Bootstrap 5 JS Bundle -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+  <!-- JAVASCRIPT LOGIC FETCH API -->
+  <script>
+    const API_HOA_DON_URL = "http://localhost:8000/api/v1/hoa-dons/";
+    let currentSelectedPhieu = null;
+
+    document.addEventListener("DOMContentLoaded", () => {
+      loadAllData();
+    });
+
+    function loadAllData() {
+      fetchPendingPayments();
+      fetchInvoiceHistory();
+    }
+
+    /**
+     * 1. Lấy danh sách phiếu khám chờ thanh toán (GET /api/v1/hoa-dons/cho-thanh-toan)
+     */
+    async function fetchPendingPayments() {
+      const tbody = document.getElementById("bodyChoThanhToan");
+      const stateDiv = document.getElementById("pendingState");
+      const reloadIcon = document.getElementById("reloadIcon");
+
+      if (reloadIcon) reloadIcon.classList.add("fa-spin");
+      tbody.innerHTML = "";
+      stateDiv.style.display = "block";
+      stateDiv.innerHTML = `<i class="fa-solid fa-circle-notch fa-spin fs-4 text-primary mb-2 d-block"></i><span>Đang tải danh sách chờ thanh toán...</span>`;
+
+      try {
+        const response = await fetch(`${API_HOA_DON_URL}cho-thanh-toan`);
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+        const data = await response.json();
+
+        document.getElementById("pendingCountBadge").innerText = `${data.length} phiếu chờ`;
+
+        if (data.length === 0) {
+          stateDiv.innerHTML = `<i class="fa-solid fa-circle-check fs-3 text-success mb-2 d-block"></i><span>Tất cả phiếu khám đã được thanh toán!</span>`;
+          return;
+        }
+
+        stateDiv.style.display = "none";
+
+        data.forEach(item => {
+          const tr = document.createElement("tr");
+          tr.innerHTML = `
+            <td class="ps-3 fw-bold text-primary">#PK-${item.phieu_kham_id}</td>
+            <td>
+              <div class="fw-bold">${escapeHtml(item.ho_ten)}</div>
+              <small class="text-muted">BHYT: ${item.ma_bhyt ? escapeHtml(item.ma_bhyt) : 'Không'}</small>
+            </td>
+            <td>${formatCurrency(item.tien_kham)}</td>
+            <td class="text-danger">${formatCurrency(item.tien_thuoc)}</td>
+            <td class="fw-bold text-success">${formatCurrency(item.tong_tien)}</td>
+            <td class="text-center">
+              <button class="btn btn-sm btn-primary-custom" onclick="selectPhieuKham(${item.phieu_kham_id}, '${escapeJsString(item.ho_ten)}', '${escapeJsString(item.ma_bhyt || '')}', '${escapeJsString(item.chan_doan || '')}', ${item.tien_kham}, ${item.tien_thuoc}, ${item.tong_tien}, ${JSON.stringify(item.chi_tiet_thuoc).replace(/"/g, '&quot;')})">
+                <i class="fa-solid fa-receipt me-1"></i> Thu tiền
+              </button>
+            </td>
+          `;
+          tbody.appendChild(tr);
+        });
+
+      } catch (error) {
+        console.error("Lỗi khi nạp dữ liệu chờ thanh toán:", error);
+        stateDiv.innerHTML = `<i class="fa-solid fa-circle-exclamation fs-4 text-danger mb-2 d-block"></i><span class="text-danger">Không thể tải dữ liệu từ server</span>`;
+      } finally {
+        if (reloadIcon) reloadIcon.classList.remove("fa-spin");
+      }
+    }
+
+    /**
+     * 2. Lấy danh sách lịch sử hóa đơn đã thanh toán (GET /api/v1/hoa-dons/)
+     */
+    async function fetchInvoiceHistory() {
+      const tbody = document.getElementById("bodyLichSuHoaDon");
+      tbody.innerHTML = "";
+
+      try {
+        const response = await fetch(API_HOA_DON_URL);
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+        const invoices = await response.json();
+
+        document.getElementById("historyCountBadge").innerText = `${invoices.length} hóa đơn`;
+
+        if (invoices.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="5" class="text-center text-muted py-3">Chưa có hóa đơn nào được xác nhận</td></tr>`;
+          return;
+        }
+
+        invoices.forEach(inv => {
+          const tr = document.createElement("tr");
+          const hinhThucText = inv.hinh_thuc_tt === "chuyen_khoan" ? "Chuyển khoản / QR" : "Tiền mặt";
+          tr.innerHTML = `
+            <td class="ps-3 fw-bold text-secondary">#HD-${inv.id}</td>
+            <td>${escapeHtml(inv.benh_nhan_ho_ten)}</td>
+            <td><span class="badge bg-light text-dark border">${hinhThucText}</span></td>
+            <td class="fw-bold text-success">${formatCurrency(inv.tong_tien)}</td>
+            <td><span class="badge bg-success-subtle text-success border border-success-subtle"><i class="fa-solid fa-check me-1"></i>Đã thanh toán</span></td>
+          `;
+          tbody.appendChild(tr);
+        });
+
+      } catch (error) {
+        console.error("Lỗi khi tải lịch sử hóa đơn:", error);
+      }
+    }
+
+    /**
+     * Chọn 1 phiếu khám từ bảng danh sách chờ để chuẩn bị thu tiền
+     */
+    function selectPhieuKham(id, hoTen, maBHYT, chanDoan, tienKham, tienThuoc, tongTien, chiTietThuoc) {
+      currentSelectedPhieu = { id, hoTen, maBHYT, chanDoan, tienKham, tienThuoc, tongTien, chiTietThuoc };
+
+      document.getElementById("noSelectionNotice").style.display = "none";
+      document.getElementById("formThanhToan").style.display = "block";
+
+      document.getElementById("inputPhieuKhamId").value = id;
+      document.getElementById("displayTenBenhNhan").innerText = hoTen;
+      document.getElementById("displayMaBHYT").innerText = maBHYT || "Không có";
+      document.getElementById("displayChanDoan").innerText = chanDoan || "Chưa ghi nhận";
+      document.getElementById("displayTienKham").innerText = formatCurrency(tienKham);
+      document.getElementById("displayTienThuoc").innerText = formatCurrency(tienThuoc);
+      document.getElementById("displayTongTien").innerText = formatCurrency(tongTien);
+
+      // Chi tiết đơn thuốc
+      const boxThuoc = document.getElementById("boxChiTietThuoc");
+      if (chiTietThuoc && chiTietThuoc.length > 0) {
+        boxThuoc.innerHTML = chiTietThuoc.map(t => 
+          `<div class="d-flex justify-content-between"><span>• ${escapeHtml(t.ten_thuoc)} (x${t.so_luong})</span><span>${formatCurrency(t.thanh_tien)}</span></div>`
+        ).join("");
+      } else {
+        boxThuoc.innerHTML = `<span class="italic">Không kê đơn thuốc</span>`;
+      }
+    }
+
+    /**
+     * Chọn hình thức thanh toán (Tiền mặt / Chuyển khoản)
+     */
+    function selectPaymentMethod(method) {
+      document.getElementById("inputHinhThucTT").value = method;
+      const optMat = document.getElementById("optTienMat");
+      const optCk = document.getElementById("optChuyenKhoan");
+
+      if (method === "tien_mat") {
+        optMat.classList.add("selected");
+        optCk.classList.remove("selected");
+      } else {
+        optCk.classList.add("selected");
+        optMat.classList.remove("selected");
+      }
+    }
+
+    /**
+     * 3. Gửi sự kiện fetch POST /api/v1/hoa-dons/ để xác nhận thanh toán
+     */
+    async function handleConfirmPayment(event) {
+      event.preventDefault();
+
+      if (!currentSelectedPhieu) {
+        showToast("Vui lòng chọn một phiếu khám để thanh toán!", "warning");
+        return;
+      }
+
+      const phieuKhamId = parseInt(document.getElementById("inputPhieuKhamId").value);
+      const hinhThucTT = document.getElementById("selectHinhThucTT").value;
+      const btn = document.getElementById("btnConfirmPayment");
+
+      const payload = {
+        phieu_kham_id: phieuKhamId,
+        hinh_thuc_tt: hinhThucTT,
+        tong_tien: currentSelectedPhieu.tong_tien,
+        trang_thai: "da_thanh_toan"
+      };
+
+      btn.disabled = true;
+      btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin me-1"></i> Đang xác nhận...`;
+
+      try {
+        const response = await fetch(API_HOA_DON_URL, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Accept": "application/json"
+          },
+          body: JSON.stringify(payload)
+        });
+
+        if (!response.ok) {
+          const err = await response.json().catch(() => ({}));
+          throw new Error(err.detail || `Lỗi HTTP ${response.status}`);
+        }
+
+        const resData = await response.json();
+        console.log("Xác nhận thanh toán hóa đơn thành công:", resData);
+
+        showToast("🎉 Thanh toán viện phí & tạo hóa đơn thành công!", "success");
+
+        // An form thanh toan
+        document.getElementById("formThanhToan").style.display = "none";
+        document.getElementById("noSelectionNotice").style.display = "flex";
+        currentSelectedPhieu = null;
+
+        // Cap nhat lai ca 2 bang
+        loadAllData();
+
+      } catch (error) {
+        console.error("Lỗi xác nhận thanh toán:", error);
+        showToast(`Lỗi xác nhận thanh toán: ${error.message}`, "danger");
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = `<i class="fa-solid fa-check-circle fs-5 me-1"></i> XÁC NHẬN THANH TOÁN`;
+      }
+    }
+
+    // Utility Helpers
+    function formatCurrency(val) {
+      return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(val || 0);
+    }
+
+    function escapeHtml(text) {
+      if (!text) return "";
+      return String(text).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+    }
+
+    function escapeJsString(str) {
+      if (!str) return "";
+      return String(str).replace(/'/g, "\\'").replace(/"/g, '\\"');
+    }
+
+    function showToast(msg, type = "success") {
+      const container = document.getElementById("toastContainer");
+      const toast = document.createElement("div");
+      const bgClass = type === "success" ? "bg-success" : (type === "warning" ? "bg-warning text-dark" : "bg-danger");
+      toast.className = `toast align-items-center text-white ${bgClass} border-0 show mb-2 shadow`;
+      toast.setAttribute("role", "alert");
+      toast.innerHTML = `
+        <div class="d-flex">
+          <div class="toast-body font-semibold">
+            <i class="fa-solid ${type === 'success' ? 'fa-circle-check' : 'fa-circle-exclamation'} me-2"></i>${msg}
+          </div>
+          <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+        </div>
+      `;
+      container.appendChild(toast);
+      setTimeout(() => toast.remove(), 4000);
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Đặt Lịch Khám Bệnh | ClinicAI</title>
+
+  <!-- Bootstrap 5 CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- Google Font: Inter -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <!-- FontAwesome Icons -->
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+
+  <style>
+    :root {
+      --primary-color: #1A73E8;
+      --primary-dark: #1557B0;
+      --bg-color: #F8F9FA;
+    }
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: var(--bg-color);
+      color: #212529;
+    }
+    .navbar-custom {
+      background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%);
+      box-shadow: 0 4px 16px rgba(26,115,232,0.25);
+    }
+    .card-custom {
+      border: 1px solid #DEE2E6;
+      border-radius: 12px;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.04);
+      background-color: #ffffff;
+    }
+    .card-header-custom {
+      background-color: #ffffff;
+      border-bottom: 1px solid #E9ECEF;
+      padding: 16px 20px;
+      font-weight: 700;
+      color: #334155;
+    }
+    .btn-primary-custom {
+      background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%);
+      border: none;
+      color: #ffffff;
+      font-weight: 600;
+      padding: 12px 24px;
+      border-radius: 8px;
+      transition: all 0.2s;
+    }
+    .btn-primary-custom:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(26,115,232,0.35);
+      color: #ffffff;
+    }
+    .toast-container-custom {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      z-index: 1060;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Toast Notification Container -->
+  <div class="toast-container-custom" id="toastContainer"></div>
+
+  <!-- Navbar -->
+  <nav class="navbar navbar-expand-lg navbar-dark navbar-custom px-4 py-2">
+    <div class="container-fluid">
+      <a class="navbar-brand d-flex align-items-center gap-2" href="index.html">
+        <div class="bg-white bg-opacity-25 rounded-3 p-2 d-flex align-items-center justify-content-center" style="width:38px; height:38px;">
+          <i class="fa-solid fa-hospital-user text-white fs-5"></i>
+        </div>
+        <div>
+          <span class="fw-bold fs-6 d-block leading-none">ClinicAI</span>
+          <small class="text-white-50" style="font-size:11px;">Quản lý Đặt lịch khám</small>
+        </div>
+      </a>
+      <div class="ms-auto d-flex align-items-center gap-2">
+        <a href="patient_management.html" class="btn btn-sm btn-outline-light"><i class="fa-solid fa-user-plus me-1"></i> Bệnh nhân</a>
+        <a href="lap_phieu_kham.html" class="btn btn-sm btn-outline-light"><i class="fa-solid fa-stethoscope me-1"></i> Lập phiếu khám</a>
+        <a href="thanh_toan.html" class="btn btn-sm btn-outline-light"><i class="fa-solid fa-file-invoice-dollar me-1"></i> Thanh toán</a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Content Container -->
+  <div class="container-fluid px-4 py-4">
+
+    <!-- Header -->
+    <div class="d-flex align-items-center justify-content-between mb-4">
+      <div>
+        <h3 class="fw-bold mb-1"><i class="fa-solid fa-calendar-check text-primary me-2"></i>Form Đặt Lịch Khám Bệnh</h3>
+        <p class="text-muted small mb-0">Tiếp nhận và xếp lịch hẹn khám bệnh cho Lễ tân và Bệnh nhân</p>
+      </div>
+    </div>
+
+    <div class="row g-4">
+
+      <!-- CỘT TRÁI: Form Đặt lịch khám (50%) -->
+      <div class="col-lg-5">
+        <div class="card card-custom">
+          <div class="card-header-custom d-flex align-items-center gap-2">
+            <i class="fa-solid fa-calendar-plus text-primary fs-5"></i>
+            <span>Thông tin Đặt lịch khám Mới</span>
+          </div>
+          <div class="card-body p-4">
+
+            <form id="formDatLich" onsubmit="handleConfirmBooking(event)">
+              
+              <!-- 1. Chọn bệnh nhân -->
+              <div class="mb-3">
+                <label for="benh_nhan_id" class="form-label fw-bold small text-secondary">
+                  Chọn Bệnh Nhân <span class="text-danger">*</span>
+                </label>
+                <div class="input-group">
+                  <span class="input-group-text bg-light"><i class="fa-solid fa-user-injured text-primary"></i></span>
+                  <select id="benh_nhan_id" class="form-select border-start-0" required>
+                    <option value="">-- Đang tải danh sách bệnh nhân... --</option>
+                  </select>
+                </div>
+              </div>
+
+              <!-- 2. Bác sĩ / Khoa khám -->
+              <div class="mb-3">
+                <label for="bac_si_id" class="form-label fw-bold small text-secondary">
+                  Bác sĩ / Khoa phụ trách
+                </label>
+                <div class="input-group">
+                  <span class="input-group-text bg-light"><i class="fa-solid fa-user-doctor text-primary"></i></span>
+                  <select id="bac_si_id" class="form-select border-start-0">
+                    <option value="1">BS. Nguyễn Minh Tuấn - Khoa Nội tổng hợp</option>
+                    <option value="2">BS. Trần Thị Mai - Khoa Nhi</option>
+                    <option value="3">BS. Lê Hoàng Nam - Khoa Tim mạch</option>
+                  </select>
+                </div>
+              </div>
+
+              <!-- 3. Ngày khám & Giờ khám dự kiến -->
+              <div class="row g-2 mb-3">
+                <div class="col-6">
+                  <label for="ngay_kham" class="form-label fw-bold small text-secondary">
+                    Ngày khám <span class="text-danger">*</span>
+                  </label>
+                  <input type="date" id="ngay_kham" class="form-control" required />
+                </div>
+                <div class="col-6">
+                  <label for="gio_kham" class="form-label fw-bold small text-secondary">
+                    Giờ khám dự kiến <span class="text-danger">*</span>
+                  </label>
+                  <input type="time" id="gio_kham" class="form-control" required />
+                </div>
+              </div>
+
+              <!-- 4. Lý do khám / Triệu chứng ban đầu -->
+              <div class="mb-4">
+                <label for="ly_do_kham" class="form-label fw-bold small text-secondary">
+                  Lý do khám / Triệu chứng ban đầu
+                </label>
+                <textarea id="ly_do_kham" rows="3" class="form-control" placeholder="Mô tả sơ bộ triệu chứng hoặc lý do khám..."></textarea>
+              </div>
+
+              <!-- Nút xác nhận đặt lịch -->
+              <button type="submit" id="btnBooking" class="btn btn-primary-custom w-100 d-flex align-items-center justify-content-center gap-2">
+                <i class="fa-solid fa-check-circle fs-5"></i>
+                <span>Xác nhận Đặt lịch</span>
+              </button>
+
+            </form>
+
+          </div>
+        </div>
+      </div>
+
+      <!-- CỘT PHẢI: Danh sách lịch khám đã đăng ký (70%) -->
+      <div class="col-lg-7">
+        <div class="card card-custom">
+          <div class="card-header-custom d-flex align-items-center justify-content-between">
+            <span class="d-flex align-items-center gap-2">
+              <i class="fa-solid fa-list-check text-success fs-5"></i>
+              Danh sách Lịch khám đã Đăng ký
+            </span>
+            <button class="btn btn-sm btn-outline-secondary rounded-3" onclick="fetchAppointments()">
+              <i class="fa-solid fa-arrows-rotate me-1" id="reloadIcon"></i> Tải lại
+            </button>
+          </div>
+          <div class="card-body p-0">
+            <div class="table-responsive">
+              <table class="table table-hover mb-0">
+                <thead class="table-light">
+                  <tr>
+                    <th class="ps-3">Mã Lịch</th>
+                    <th>Tên Bệnh Nhân</th>
+                    <th>Thời gian khám</th>
+                    <th>Lý do khám</th>
+                    <th>Trạng thái</th>
+                  </tr>
+                </thead>
+                <tbody id="bodyLichKham">
+                  <!-- Render từ JS -->
+                </tbody>
+              </table>
+            </div>
+            <div id="loadingState" class="text-center py-4 text-muted">
+              <i class="fa-solid fa-circle-notch fa-spin fs-4 text-primary mb-2 d-block"></i>
+              <span>Đang tải danh sách lịch khám...</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+  <!-- Bootstrap 5 JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+  <!-- JAVASCRIPT FETCH API INTEGRATION -->
+  <script>
+    const API_BENH_NHAN_URL = "http://localhost:8000/api/v1/benh-nhans/";
+    const API_LICH_KHAM_URL = "http://localhost:8000/api/v1/lich-khams/";
+
+    document.addEventListener("DOMContentLoaded", () => {
+      // Set ngày hiện tại mặc định
+      const today = new Date().toISOString().split('T')[0];
+      document.getElementById("ngay_kham").value = today;
+      document.getElementById("gio_kham").value = "09:00";
+
+      loadPatientsSelect();
+      fetchAppointments();
+    });
+
+    /**
+     * Tự động load danh sách Bệnh nhân vào <select id="benh_nhan_id">
+     */
+    async function loadPatientsSelect() {
+      const selectElem = document.getElementById("benh_nhan_id");
+      try {
+        const response = await fetch(API_BENH_NHAN_URL);
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const patients = await response.json();
+
+        selectElem.innerHTML = `<option value="">-- Chọn bệnh nhân --</option>`;
+        patients.forEach(p => {
+          const opt = document.createElement("option");
+          opt.value = p.id;
+          opt.textContent = `${p.ho_ten} ${p.ma_bhyt ? '[BHYT: ' + p.ma_bhyt + ']' : ''}`;
+          selectElem.appendChild(opt);
+        });
+      } catch (error) {
+        console.error("Lỗi tải danh sách bệnh nhân:", error);
+        selectElem.innerHTML = `<option value="">-- Lỗi tải bệnh nhân từ server --</option>`;
+      }
+    }
+
+    /**
+     * Lấy danh sách lịch khám
+     */
+    async function fetchAppointments() {
+      const tbody = document.getElementById("bodyLichKham");
+      const loadingState = document.getElementById("loadingState");
+      const reloadIcon = document.getElementById("reloadIcon");
+
+      if (reloadIcon) reloadIcon.classList.add("fa-spin");
+      tbody.innerHTML = "";
+      loadingState.style.display = "block";
+
+      try {
+        const response = await fetch(API_LICH_KHAM_URL);
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const data = await response.json();
+
+        if (data.length === 0) {
+          loadingState.innerHTML = `<span class="text-muted">Chưa có lịch khám nào được đăng ký</span>`;
+          return;
+        }
+
+        loadingState.style.display = "none";
+        data.forEach(item => {
+          const tr = document.createElement("tr");
+          let statusBadge = '<span class="badge bg-warning text-dark">Chờ khám</span>';
+          if (item.trang_thai === "hoan_thanh") statusBadge = '<span class="badge bg-success">Hoàn thành</span>';
+          else if (item.trang_thai === "dang_kham") statusBadge = '<span class="badge bg-primary">Đang khám</span>';
+
+          tr.innerHTML = `
+            <td class="ps-3 fw-bold text-primary">#LK-${item.id}</td>
+            <td class="fw-semibold">${escapeHtml(item.ho_ten)}</td>
+            <td><i class="fa-regular fa-clock me-1 text-muted"></i>${item.thoi_gian}</td>
+            <td class="small text-muted">${escapeHtml(item.ly_do_kham || 'Khám tổng quát')}</td>
+            <td>${statusBadge}</td>
+          `;
+          tbody.appendChild(tr);
+        });
+      } catch (error) {
+        console.error("Lỗi tải lịch khám:", error);
+        loadingState.innerHTML = `<span class="text-danger">Không thể tải dữ liệu từ server</span>`;
+      } finally {
+        if (reloadIcon) reloadIcon.classList.remove("fa-spin");
+      }
+    }
+
+    /**
+     * Gửi request POST /api/v1/lich-khams/ để tạo lịch hẹn
+     */
+    async function handleConfirmBooking(event) {
+      event.preventDefault();
+
+      const benhNhanId = document.getElementById("benh_nhan_id").value;
+      const bacSiId = document.getElementById("bac_si_id").value;
+      const ngayKham = document.getElementById("ngay_kham").value;
+      const gioKham = document.getElementById("gio_kham").value;
+      const lyDoKham = document.getElementById("ly_do_kham").value.trim();
+
+      if (!benhNhanId) {
+        showToast("Vui lòng chọn Bệnh nhân!", "warning");
+        return;
+      }
+
+      // Đóng gói ISO Datetime: YYYY-MM-DDTHH:MM:SS
+      const thoiGianISO = `${ngayKham}T${gioKham}:00`;
+
+      const payload = {
+        benh_nhan_id: parseInt(benhNhanId),
+        bac_si_id: bacSiId ? parseInt(bacSiId) : null,
+        thoi_gian: thoiGianISO,
+        ly_do_kham: lyDoKham || "Khám bệnh",
+        trang_thai: "cho_kham"
+      };
+
+      const btn = document.getElementById("btnBooking");
+      btn.disabled = true;
+      btn.innerHTML = `<i class="fa-solid fa-circle-notch fa-spin"></i> Đang lưu...`;
+
+      try {
+        const response = await fetch(API_LICH_KHAM_URL, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Accept": "application/json"
+          },
+          body: JSON.stringify(payload)
+        });
+
+        if (!response.ok) {
+          const errData = await response.json().catch(() => ({}));
+          throw new Error(errData.detail || `Lỗi HTTP ${response.status}`);
+        }
+
+        const result = await response.json();
+        showToast("🎉 Đặt lịch khám thành công!", "success");
+
+        document.getElementById("formDatLich").reset();
+        const today = new Date().toISOString().split('T')[0];
+        document.getElementById("ngay_kham").value = today;
+        document.getElementById("gio_kham").value = "09:00";
+
+        fetchAppointments();
+
+      } catch (error) {
+        console.error("Lỗi đặt lịch khám:", error);
+        showToast(`Lỗi đặt lịch: ${error.message}`, "danger");
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = `<i class="fa-solid fa-check-circle fs-5 me-1"></i> Xác nhận Đặt lịch`;
+      }
+    }
+
+    function escapeHtml(text) {
+      if (!text) return "";
+      return String(text).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+    }
+
+    function showToast(msg, type = "success") {
+      const container = document.getElementById("toastContainer");
+      const toast = document.createElement("div");
+      const bgClass = type === "success" ? "bg-success" : (type === "warning" ? "bg-warning text-dark" : "bg-danger");
+      toast.className = `toast align-items-center text-white ${bgClass} border-0 show mb-2 shadow`;
+      toast.setAttribute("role", "alert");
+      toast.innerHTML = `
+        <div class="d-flex">
+          <div class="toast-body font-semibold">
+            <i class="fa-solid ${type === 'success' ? 'fa-circle-check' : 'fa-circle-exclamation'} me-2"></i>${msg}
+          </div>
+          <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+        </div>
+      `;
+      container.appendChild(toast);
+      setTimeout(() => toast.remove(), 4000);
+    }
+  </script>
+</body>
+</html>
