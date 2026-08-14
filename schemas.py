@@ -65,29 +65,53 @@ class UserResponse(UserBase):
     id: int
 
 
+class UserProfileResponse(OrmBase):
+    """Schema chi tiết hồ sơ nhân sự/người dùng cho Admin view profile."""
+    user_id:         int
+    username:        str
+    role:            str
+    email:           Optional[str] = None
+    trang_thai:      bool
+    ho_ten:          Optional[str] = None
+    so_dien_thoai:   Optional[str] = None
+    hoc_vi:          Optional[str] = None
+    chuc_vu:         Optional[str] = None
+    chuyen_khoa:     Optional[str] = None
+    phong_kham:      Optional[str] = None
+    lich_lam_viec:   Optional[str] = None
+
+
 # ════════════════════════════════════════════════════════════════════════════════
 #  2. BENH NHAN SCHEMAS
 # ════════════════════════════════════════════════════════════════════════════════
 
 class BenhNhanBase(OrmBase):
     """Các trường cơ bản của hồ sơ bệnh nhân."""
-    ho_ten:       str
-    ngay_sinh:    Optional[date] = None
-    ma_bhyt:      Optional[str]  = None
-    tien_su_benh: Optional[str]  = None
+    ho_ten:        str
+    ngay_sinh:     Optional[date] = None
+    gio_tinh:      Optional[str]  = None
+    so_dien_thoai: Optional[str]  = None
+    cccd:          Optional[str]  = None
+    dia_chi:       Optional[str]  = None
+    ma_bhyt:       Optional[str]  = None
+    tien_su_benh:  Optional[str]  = None
 
 
 class BenhNhanCreate(BenhNhanBase):
     """Schema tạo mới hồ sơ bệnh nhân (Lễ tân sử dụng)."""
-    user_id: Optional[int] = None  # Bệnh nhân có thể chưa có tài khoản hệ thống
+    user_id: Optional[int] = None
 
 
 class BenhNhanUpdate(OrmBase):
     """Schema cập nhật hồ sơ bệnh nhân — tất cả field đều Optional."""
-    ho_ten:       Optional[str]  = None
-    ngay_sinh:    Optional[date] = None
-    ma_bhyt:      Optional[str]  = None
-    tien_su_benh: Optional[str]  = None
+    ho_ten:        Optional[str]  = None
+    ngay_sinh:     Optional[date] = None
+    gio_tinh:      Optional[str]  = None
+    so_dien_thoai: Optional[str]  = None
+    cccd:          Optional[str]  = None
+    dia_chi:       Optional[str]  = None
+    ma_bhyt:       Optional[str]  = None
+    tien_su_benh:  Optional[str]  = None
 
 
 class BenhNhanResponse(BenhNhanBase):
@@ -105,16 +129,18 @@ class BenhNhanDetailResponse(BenhNhanResponse):
 #  3. LICH KHAM SCHEMAS
 # ════════════════════════════════════════════════════════════════════════════════
 
-VALID_TRANG_THAI_LICH = {"cho_kham", "dang_kham", "hoan_thanh", "huy"}
+VALID_TRANG_THAI_LICH = {"cho_xac_nhan", "da_dat_lich", "cho_kham", "dang_kham", "hoan_thanh", "huy"}
 
 
 class LichKhamBase(OrmBase):
     """Các trường cơ bản của lịch khám."""
-    benh_nhan_id: int
-    bac_si_id:    Optional[int]  = None
-    thoi_gian:    datetime
-    trang_thai:   str = "cho_kham"
-    ly_do_kham:   Optional[str]  = None
+    benh_nhan_id:   int
+    bac_si_id:      Optional[int] = None
+    chuyen_khoa_id: Optional[int] = None
+    stt:            Optional[int] = None
+    thoi_gian:      datetime
+    trang_thai:     str = "cho_xac_nhan"
+    ly_do_kham:     Optional[str] = None
 
     @field_validator("trang_thai")
     @classmethod
@@ -131,10 +157,12 @@ class LichKhamCreate(LichKhamBase):
 
 class LichKhamUpdate(OrmBase):
     """Schema cập nhật lịch khám — tất cả field đều Optional."""
-    bac_si_id:  Optional[int]      = None
-    thoi_gian:  Optional[datetime] = None
-    trang_thai: Optional[str]      = None
-    ly_do_kham: Optional[str]      = None
+    bac_si_id:      Optional[int]      = None
+    chuyen_khoa_id: Optional[int]      = None
+    thoi_gian:      Optional[datetime] = None
+    trang_thai:     Optional[str]      = None
+    ly_do_kham:     Optional[str]      = None
+    stt:            Optional[int]      = None
 
     @field_validator("trang_thai")
     @classmethod

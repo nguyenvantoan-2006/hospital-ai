@@ -58,6 +58,10 @@ class BenhNhan(Base):
     user_id      = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     ho_ten       = Column(String(100), nullable=False)
     ngay_sinh    = Column(Date, nullable=True)
+    gio_tinh     = Column(String(10), nullable=True) # Nam/Nữ/Khác
+    so_dien_thoai = Column(String(20), nullable=True, index=True)
+    cccd         = Column(String(20), unique=True, nullable=True, index=True)
+    dia_chi      = Column(String(255), nullable=True)
     ma_bhyt      = Column(String(20), unique=True, nullable=True)
     tien_su_benh = Column(Text, nullable=True)  # Mô tả tự do, dùng Text
 
@@ -86,12 +90,14 @@ class BenhNhan(Base):
 class LichKham(Base):
     __tablename__ = "lich_khams"
 
-    id           = Column(Integer, primary_key=True, index=True)
-    benh_nhan_id = Column(Integer, ForeignKey("benh_nhans.id", ondelete="CASCADE"), nullable=False)
-    bac_si_id    = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
-    thoi_gian    = Column(DateTime, nullable=False)
-    trang_thai   = Column(String(30), default="cho_kham", nullable=False)
-    ly_do_kham   = Column(Text, nullable=True)
+    id              = Column(Integer, primary_key=True, index=True)
+    benh_nhan_id    = Column(Integer, ForeignKey("benh_nhans.id", ondelete="CASCADE"), nullable=False)
+    bac_si_id       = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    chuyen_khoa_id  = Column(Integer, ForeignKey("chuyen_khoa.id", ondelete="SET NULL"), nullable=True)
+    stt             = Column(Integer, nullable=True) # Số thứ tự xếp hàng khám
+    thoi_gian       = Column(DateTime, nullable=False)
+    trang_thai      = Column(String(30), default="cho_xac_nhan", nullable=False) # cho_xac_nhan | da_dat_lich | cho_kham | dang_kham | hoan_thanh | huy
+    ly_do_kham      = Column(Text, nullable=True)
 
     # Quan hệ ngược về BenhNhan
     benh_nhan = relationship(

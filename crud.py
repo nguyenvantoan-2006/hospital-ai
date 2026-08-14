@@ -17,4 +17,6 @@ def create_benh_nhan(db: Session, benh_nhan: schemas.BenhNhanCreate):
     db.add(db_benh_nhan)
     db.commit()
     db.refresh(db_benh_nhan)
+  
+
     return db_benh_nhan

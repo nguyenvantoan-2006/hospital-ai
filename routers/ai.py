@@ -143,6 +143,57 @@ Hãy viết một đoạn tóm tắt hành chính ngắn gọn, súc tích (dư�
     except Exception as e:
         # Fallback: Lỗi kết nối API hoặc timeout
         logger.error(f"[AI Summary Error] Bệnh nhân {request.benh_nhan_id} - {str(e)}")
-        summary_result = "Dịch vụ AI hiện không khả dụng. Vui lòng xem hồ sơ thủ công."
+        summary_result = f"Dịch vụ AI Tóm tắt hiện không khả dụng ({str(e)}). Vui lòng xem hồ sơ thủ công."
 
     return AISummaryResponse(summary=summary_result)
+
+
+# ─── AI POST-EXAM CARE GUIDE (UC-10 & SEC-AI-02) ───────────────────────────
+class AIGuideRequest(BaseModel):
+    chan_doan: str
+    trieu_chung: str = ""
+
+class AIGuideResponse(BaseModel):
+    guide: str
+
+@router.post("/post-exam-guide", response_model=AIGuideResponse)
+async def generate_post_exam_guide(request: AIGuideRequest):
+    """
+    API Sinh hướng dẫn chăm sóc sau khám bằng AI.
+    - Nhận chẩn đoán và triệu chứng từ bác sĩ.
+    - Sinh bản nháp hướng dẫn chăm sóc (Draft) tuân thủ Guardrails (SEC-AI-02).
+    """
+    if not request.chan_doan or not request.chan_doan.strip():
+        raise HTTPException(status_code=400, detail="Vui lòng nhập chẩn đoán trước khi sinh hướng dẫn sau khám.")
+
+    prompt = f"""
+Bạn là Trợ lý Y tế hỗ trợ Bác sĩ soạn thảo bản nháp "Hướng dẫn chăm sóc & dặn dò sau khám" cho bệnh nhân.
+
+RÀNG BUỘC GUARDRAILS (SEC-AI-02):
+1. Đây là BẢN NHÁP (Draft) để Bác sĩ xem xét, chỉnh sửa và phê duyệt trước khi in cho bệnh nhân.
+2. TUYỆT ĐỐI KHÔNG tự chẩn đoán bệnh mới. Dựa hoàn toàn vào chẩn đoán của bác sĩ bên dưới.
+3. Đưa ra các lời khuyên sinh hoạt, dinh dưỡng, chế độ nghỉ ngơi, dấu hiệu cần tái khám ngay.
+
+THÔNG TIN BÁC SĨ ĐÃ CHẨN ĐOÁN:
+- Triệu chứng: {request.trieu_chung or 'Đã được ghi nhận'}
+- Chẩn đoán xác định: {request.chan_doan}
+
+Hãy viết bản nháp Hướng dẫn sau khám ngắn gọn, rõ ràng, dễ hiểu (khoảng 150-200 từ) gồm:
+1. Chế độ ăn uống & Nghỉ ngơi
+2. Lưu ý khi dùng thuốc & Sinh hoạt
+3. Các dấu hiệu bất thường cần tái khám ngay.
+"""
+    try:
+        guide_result = await call_llm_api(prompt)
+    except Exception as e:
+        logger.error(f"[AI Guide Error] {str(e)}")
+        guide_result = (
+            f"BẢN NHÁP HƯỚNG DẪN SAU KHÁM (Mẫu mặc định):\n"
+            f"- Chẩn đoán: {request.chan_doan}\n"
+            f"- Chế độ nghỉ ngơi: Ăn uống đủ chất, uống nhiều nước, nghỉ ngơi hợp lý.\n"
+            f"- Dùng thuốc: Tuân thủ đơn thuốc do bác sĩ kê.\n"
+            f"- Tái khám: Tái khám khi hết thuốc hoặc có dấu hiệu bất thường."
+        )
+
+    return AIGuideResponse(guide=guide_result)
+

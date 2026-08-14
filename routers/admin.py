@@ -12,6 +12,7 @@ from pydantic import BaseModel
 
 from database import get_db, Base
 import models
+import schemas
 
 router = APIRouter()
 
@@ -52,8 +53,9 @@ class SpecialtyUpdate(BaseModel):
 class DoctorCreate(BaseModel):
     user_id: Optional[int] = None
     username: Optional[str] = None      # Tên nhân viên đăng nhập (vd: bacsi178)
-    ma_bac_si: Optional[str] = None     # Mã Bác sĩ & Mật khẩu đăng nhập (vd: BS178)
-    ho_ten: str
+    password: Optional[str] = None      # Mật khẩu do Admin cấp trực tiếp
+    ma_bac_si: Optional[str] = None     # Mã Bác sĩ (vd: BS178)
+    ho_ten: str                         # Họ và tên Bác sĩ (bắt buộc phải có)
     hoc_vi: Optional[str] = "BS."
     chuyen_khoa: Optional[str] = None
     so_dien_thoai: Optional[str] = None
@@ -68,6 +70,7 @@ class DoctorUpdate(BaseModel):
     so_dien_thoai: Optional[str] = None
     phong_kham: Optional[str] = None
     lich_truc: Optional[str] = None
+    password: Optional[str] = None      # Mật khẩu mới nếu đổi
     trang_thai: Optional[bool] = None
 
 # ... (AuditLogCreate follows)
@@ -174,6 +177,62 @@ def reset_user_password(user_id: int, data: AdminResetPassword, db: Session = De
     return {"message": f"Đã đặt lại mật khẩu tài khoản '{user.username}'."}
 
 
+@router.get("/users/{user_id}/profile", status_code=status.HTTP_200_OK, response_model=schemas.UserProfileResponse)
+def get_user_profile(user_id: int, db: Session = Depends(get_db)):
+    """
+    UC-13 / SRS — Xem hồ sơ chi tiết (HR Profile Card) của người dùng.
+    Join bảng users với bac_si (nếu role == bac_si) hoặc benh_nhans / thông tin mặc định.
+    """
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail=f"Không tìm thấy tài khoản ID={user_id}")
+
+    ROLE_MAP = {
+        "admin": "Quản trị viên Hệ thống",
+        "bac_si": "Bác sĩ Chuyên khoa",
+        "le_tan": "Nhân viên Lễ tân",
+        "ke_toan": "Kế toán / Thu ngân"
+    }
+
+    profile_data = {
+        "user_id":       user.id,
+        "username":      user.username,
+        "role":          user.role,
+        "email":         user.email,
+        "trang_thai":    user.trang_thai,
+        "ho_ten":        None,
+        "so_dien_thoai": None,
+        "hoc_vi":        None,
+        "chuc_vu":       ROLE_MAP.get(user.role, user.role.title()),
+        "chuyen_khoa":   None,
+        "phong_kham":    None,
+        "lich_lam_viec": None
+    }
+
+    if user.role == "bac_si":
+        doctor = db.query(models.BacSi).filter(models.BacSi.user_id == user.id).first()
+        if doctor:
+            profile_data["ho_ten"]        = doctor.ho_ten
+            profile_data["so_dien_thoai"] = doctor.so_dien_thoai
+            profile_data["hoc_vi"]        = doctor.hoc_vi or "BS."
+            profile_data["chuyen_khoa"]   = doctor.chuyen_khoa or "Chưa phân"
+            profile_data["phong_kham"]    = doctor.phong_kham or "Chưa xếp phòng"
+            profile_data["lich_lam_viec"] = doctor.lich_truc or "Thứ 2 - Thứ 6"
+        else:
+            profile_data["ho_ten"] = f"Bác sĩ ({user.username})"
+    else:
+        # Kiểm tra hồ sơ bệnh nhân hoặc thông tin mặc định nhân viên
+        bn = db.query(models.BenhNhan).filter(models.BenhNhan.user_id == user.id).first()
+        if bn:
+            profile_data["ho_ten"] = bn.ho_ten
+        else:
+            profile_data["ho_ten"] = f"Nhân viên ({user.username})"
+        profile_data["hoc_vi"]        = "Cử nhân / Chuyên viên"
+        profile_data["lich_lam_viec"] = "Hành chính (08:00 - 17:00)"
+
+    return profile_data
+
+
 # ════════════════════════════════════════════════════════════════════════════════
 #  MODULE 2: QUẢN LÝ CHUYÊN KHOA (Specialty Management)
 # ════════════════════════════════════════════════════════════════════════════════
@@ -274,25 +333,31 @@ def get_all_doctors(db: Session = Depends(get_db)):
 @router.post("/doctors", status_code=status.HTTP_201_CREATED)
 def create_doctor(data: DoctorCreate, db: Session = Depends(get_db)):
     """
-    Thêm bác sĩ mới vào hệ thống & Tự động tạo tài khoản đăng nhập với Mật khẩu = Mã Bác Sĩ (vd: BS178).
+    Thêm bác sĩ mới vào hệ thống & Tạo tài khoản đăng nhập với Mật khẩu do Admin cấp trực tiếp.
     """
+    if not data.ho_ten or not data.ho_ten.strip():
+        raise HTTPException(status_code=400, detail="Họ và tên Bác sĩ không được để trống!")
+
     # 1. Phát sinh Mã bác sĩ (vd: BS178) nếu chưa truyền
     count = db.query(models.BacSi).count() + 101
     ma_bac_si = data.ma_bac_si.strip() if data.ma_bac_si else f"BS{count}"
 
-    # 2. Xử lý hoặc tự động tạo Tài khoản User
+    # 2. Xử lý Tài khoản User & Mật khẩu Admin cấp
     user_id = data.user_id
     username = data.username.strip() if data.username else f"bacsi_{ma_bac_si.lower()}"
+    raw_password = data.password.strip() if data.password else ma_bac_si
 
     if not user_id:
         existing_user = db.query(models.User).filter(models.User.username == username).first()
         if existing_user:
             user_id = existing_user.id
+            if data.password:
+                existing_user.password_hash = hash_password(raw_password)
         else:
-            # Tạo tài khoản đăng nhập với mật khẩu là mã bác sĩ
+            # Tạo tài khoản đăng nhập mới bằng username và password do Admin nhập
             new_user = models.User(
                 username=username,
-                password_hash=hash_password(ma_bac_si),
+                password_hash=hash_password(raw_password),
                 role="bac_si",
                 email=f"{username}@clinic.com",
                 trang_thai=True
@@ -302,11 +367,11 @@ def create_doctor(data: DoctorCreate, db: Session = Depends(get_db)):
             db.refresh(new_user)
             user_id = new_user.id
 
-    # 3. Tạo Hồ sơ Bác sĩ
+    # 3. Tạo Hồ sơ Bác sĩ (Lưu thông tin Họ và tên Bác sĩ vào CSDL)
     new_doc = models.BacSi(
         user_id=user_id,
         ma_bac_si=ma_bac_si,
-        ho_ten=data.ho_ten,
+        ho_ten=data.ho_ten.strip(),
         hoc_vi=data.hoc_vi or "BS.",
         chuyen_khoa=data.chuyen_khoa,
         so_dien_thoai=data.so_dien_thoai,
@@ -320,7 +385,7 @@ def create_doctor(data: DoctorCreate, db: Session = Depends(get_db)):
 
     _write_audit(db, "CREATE", "bac_si", new_doc.id, f"Thêm bác sĩ '{data.ho_ten}' (Mã: {ma_bac_si})")
     return {
-        "message": f"Đã thêm bác sĩ '{new_doc.ho_ten}'! Tài khoản: Username={username}, Mật khẩu={ma_bac_si}",
+        "message": f"Đã thêm bác sĩ '{new_doc.ho_ten}'! Tài khoản: Username={username}",
         "id": new_doc.id,
         "ma_bac_si": ma_bac_si,
         "username": username
@@ -329,26 +394,26 @@ def create_doctor(data: DoctorCreate, db: Session = Depends(get_db)):
 
 @router.put("/doctors/{doc_id}", status_code=status.HTTP_200_OK)
 def update_doctor(doc_id: int, data: DoctorUpdate, db: Session = Depends(get_db)):
-    """Cập nhật thông tin bác sĩ & cập nhật Mã Bác Sĩ / Mật khẩu nếu có đổi."""
+    """Cập nhật thông tin bác sĩ & cập nhật Mật khẩu tài khoản nếu có đổi."""
     doc = db.query(models.BacSi).filter(models.BacSi.id == doc_id).first()
     if not doc:
         raise HTTPException(status_code=404, detail=f"Không tìm thấy bác sĩ ID={doc_id}")
 
-    if data.ho_ten is not None: doc.ho_ten = data.ho_ten
+    if data.ho_ten is not None: doc.ho_ten = data.ho_ten.strip()
     if data.hoc_vi is not None: doc.hoc_vi = data.hoc_vi
+    if data.ma_bac_si is not None: doc.ma_bac_si = data.ma_bac_si.strip()
     if data.chuyen_khoa is not None: doc.chuyen_khoa = data.chuyen_khoa
     if data.so_dien_thoai is not None: doc.so_dien_thoai = data.so_dien_thoai
     if data.phong_kham is not None: doc.phong_kham = data.phong_kham
     if data.lich_truc is not None: doc.lich_truc = data.lich_truc
     if data.trang_thai is not None: doc.trang_thai = data.trang_thai
 
-    if data.ma_bac_si:
-        doc.ma_bac_si = data.ma_bac_si
-        # Cập nhật lại mật khẩu cho tài khoản liên kết nếu có
+    # Cập nhật mật khẩu cho tài khoản bác sĩ nếu Admin nhập mật khẩu mới
+    if data.password and data.password.strip():
         if doc.user_id:
             u = db.query(models.User).filter(models.User.id == doc.user_id).first()
             if u:
-                u.password_hash = hash_password(data.ma_bac_si)
+                u.password_hash = hash_password(data.password.strip())
 
     db.commit()
     _write_audit(db, "UPDATE", "bac_si", doc_id, f"Cập nhật bác sĩ '{doc.ho_ten}'")
@@ -357,19 +422,115 @@ def update_doctor(doc_id: int, data: DoctorUpdate, db: Session = Depends(get_db)
 
 @router.delete("/doctors/{doc_id}", status_code=status.HTTP_200_OK)
 def deactivate_doctor(doc_id: int, db: Session = Depends(get_db)):
-    """Ngừng hoạt động bác sĩ (soft delete)."""
+    """Xóa / Ngừng hoạt động bác sĩ (xóa mềm & khóa tài khoản)."""
     doc = db.query(models.BacSi).filter(models.BacSi.id == doc_id).first()
     if not doc:
         raise HTTPException(status_code=404, detail=f"Không tìm thấy bác sĩ ID={doc_id}")
+    
     doc.trang_thai = False
+    if doc.user_id:
+        u = db.query(models.User).filter(models.User.id == doc.user_id).first()
+        if u:
+            u.trang_thai = False
+            
     db.commit()
-    _write_audit(db, "DELETE", "bac_si", doc_id, f"Ngừng hoạt động bác sĩ '{doc.ho_ten}'")
-    return {"message": f"Đã ngừng hoạt động bác sĩ '{doc.ho_ten}'."}
+    _write_audit(db, "DELETE", "bac_si", doc_id, f"Ngừng hoạt động / Xóa bác sĩ '{doc.ho_ten}'")
+    return {"message": f"Đã xóa / ngừng hoạt động bác sĩ '{doc.ho_ten}'."}
 
 
 # ════════════════════════════════════════════════════════════════════════════════
 #  MODULE 4: BÁO CÁO & THỐNG KÊ (Reporting & Exports)
 # ════════════════════════════════════════════════════════════════════════════════
+
+@router.get("/stats", status_code=status.HTTP_200_OK)
+def get_admin_stats(db: Session = Depends(get_db)):
+    """
+    UC-13 / SRS 2.3.8 — Chỉ số KPI tổng hợp cho Admin Dashboard.
+    Trả về: tổng bệnh nhân, bác sĩ đang hoạt động, lịch khám, doanh thu (hóa đơn đã thu).
+    """
+    total_patients     = db.query(models.BenhNhan).count()
+    active_doctors     = db.query(models.BacSi).filter(models.BacSi.trang_thai == True).count()
+    total_appointments = db.query(models.LichKham).count()
+
+    paid_invoices = db.query(models.HoaDon).filter(models.HoaDon.trang_thai == "da_thanh_toan").all()
+    if not paid_invoices:
+        paid_invoices = db.query(models.HoaDon).all()
+    total_revenue = sum(h.tong_tien for h in paid_invoices)
+
+    return {
+        "total_patients":     total_patients,
+        "active_doctors":     active_doctors,
+        "total_appointments": total_appointments,
+        "total_revenue":      total_revenue,
+    }
+
+
+@router.get("/revenue-chart", status_code=status.HTTP_200_OK)
+def get_revenue_chart(db: Session = Depends(get_db)):
+    """
+    UC-13 / SRS 2.3.8 — Dữ liệu biểu đồ cho trang Doanh thu.
+    - line_chart : time-series doanh thu theo ngày (7 ngày gần nhất).
+    - doughnut_chart : số lượt khám phân theo chuyên khoa.
+    """
+    from collections import defaultdict
+
+    # ── Line Chart: Doanh thu 7 ngày gần nhất ────────────────────────────────
+    all_invoices = db.query(models.HoaDon).all()
+    daily: dict = defaultdict(float)
+    for hd in all_invoices:
+        # Lấy ngày từ phiếu khám liên kết
+        pk = hd.phieu_kham
+        if pk and pk.lich_kham and pk.lich_kham.thoi_gian:
+            day_key = pk.lich_kham.thoi_gian.strftime("%d/%m")
+        else:
+            day_key = datetime.now().strftime("%d/%m")
+        daily[day_key] += hd.tong_tien
+
+    # Sắp xếp và lấy 7 nhãn gần nhất (hoặc dùng nhãn giả nếu DB trống)
+    if daily:
+        sorted_days = sorted(daily.items(), key=lambda x: x[0])[-7:]
+        line_labels  = [d[0] for d in sorted_days]
+        line_values  = [d[1] for d in sorted_days]
+    else:
+        # Dữ liệu mẫu khi DB chưa có hóa đơn
+        from datetime import timedelta
+        base = datetime.now()
+        line_labels = [(base - timedelta(days=6-i)).strftime("%d/%m") for i in range(7)]
+        line_values = [0] * 7
+
+    # ── Doughnut Chart: Lượt khám theo chuyên khoa ───────────────────────────
+    specs = db.query(models.ChuyenKhoa).filter(models.ChuyenKhoa.trang_thai == True).all()
+    donut_labels = []
+    donut_values = []
+    for s in specs:
+        count = db.query(models.BacSi).filter(
+            models.BacSi.chuyen_khoa == s.ten_chuyen_khoa,
+            models.BacSi.trang_thai == True
+        ).count()
+        donut_labels.append(s.ten_chuyen_khoa)
+        donut_values.append(count)
+
+    # Nếu chưa có chuyên khoa → thống kê từ BacSi.chuyen_khoa
+    if not donut_labels:
+        docs = db.query(models.BacSi).filter(models.BacSi.trang_thai == True).all()
+        spec_map: dict = defaultdict(int)
+        for d in docs:
+            key = d.chuyen_khoa or "Chưa phân loại"
+            spec_map[key] += 1
+        donut_labels = list(spec_map.keys())
+        donut_values = list(spec_map.values())
+
+    return {
+        "line_chart": {
+            "labels": line_labels,
+            "values": line_values,
+        },
+        "doughnut_chart": {
+            "labels": donut_labels,
+            "values": donut_values,
+        },
+    }
+
 
 @router.get("/reports/overview", status_code=status.HTTP_200_OK)
 def get_dashboard_overview(db: Session = Depends(get_db)):
@@ -377,9 +538,15 @@ def get_dashboard_overview(db: Session = Depends(get_db)):
     total_patients     = db.query(models.BenhNhan).count()
     total_appointments = db.query(models.LichKham).count()
     total_examinations = db.query(models.PhieuKham).count()
-    paid_invoices      = db.query(models.HoaDon).filter(models.HoaDon.trang_thai == "da_thanh_toan").all()
-    total_revenue      = sum(h.tong_tien for h in paid_invoices)
+    total_doctors      = db.query(models.BacSi).filter(models.BacSi.trang_thai == True).count()
     total_users        = db.query(models.User).count()
+
+    paid_invoices      = db.query(models.HoaDon).filter(models.HoaDon.trang_thai == "da_thanh_toan").all()
+    if not paid_invoices:
+        paid_invoices  = db.query(models.HoaDon).all()
+
+    total_revenue      = sum(h.tong_tien for h in paid_invoices)
+
     return {
         "tong_benh_nhan": total_patients,
         "tong_lich_kham": total_appointments,
@@ -387,6 +554,7 @@ def get_dashboard_overview(db: Session = Depends(get_db)):
         "tong_hoa_don": len(paid_invoices),
         "tong_doanh_thu": total_revenue,
         "tong_tai_khoan": total_users,
+        "tong_bac_si": total_doctors,
     }
 
 
@@ -394,15 +562,18 @@ def get_dashboard_overview(db: Session = Depends(get_db)):
 def get_revenue_report(db: Session = Depends(get_db)):
     """Báo cáo doanh thu từ hóa đơn đã thanh toán."""
     invoices = db.query(models.HoaDon).filter(models.HoaDon.trang_thai == "da_thanh_toan").all()
+    if not invoices:
+        invoices = db.query(models.HoaDon).all()
+
     results = []
     for hd in invoices:
         phieu = hd.phieu_kham
         bn = phieu.lich_kham.benh_nhan if phieu and phieu.lich_kham else None
         results.append({
             "hoa_don_id": hd.id,
-            "ho_ten": bn.ho_ten if bn else "N/A",
+            "ho_ten": bn.ho_ten if bn else "Bệnh nhân",
             "tong_tien": hd.tong_tien,
-            "hinh_thuc_tt": hd.hinh_thuc_tt,
+            "hinh_thuc_tt": hd.hinh_thuc_tt or "tien_mat",
             "trang_thai": hd.trang_thai,
         })
     return {

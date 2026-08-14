@@ -1,7 +1,7 @@
 # main.py
 # Entry point của ứng dụng FastAPI - Hệ thống Quản lý Phòng khám
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
 from database import engine, Base
@@ -72,8 +72,23 @@ app.include_router(hoa_dons.router,   prefix="/api/v1/hoa-dons",     tags=["Hóa
 app.include_router(lich_khams.router, prefix="/api/v1/lich-khams",   tags=["Lịch khám"])
 app.include_router(admin.router,      prefix="/api/v1/admin",        tags=["Quản trị viên (Admin)"])
 
-# ─── Mount Static Files (Phục vụ Web Frontend HTML/JS trực tiếp trên cổng 8000) ───
-app.mount("/", StaticFiles(directory=".", html=True), name="static")
+# ─── Mount Static Files & HTML Page Routes ─────────────────────────────────────
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
+import os
+
+app.mount("/static", StaticFiles(directory="static"), name="static")
+
+@app.get("/", tags=["Frontend"])
+def read_root():
+    return FileResponse("templates/index.html")
+
+@app.get("/{page_name}.html", tags=["Frontend"])
+def read_html_page(page_name: str):
+    file_path = os.path.join("templates", f"{page_name}.html")
+    if os.path.exists(file_path):
+        return FileResponse(file_path)
+    raise HTTPException(status_code=404, detail="Page not found")
 
 
 # ─── Chạy trực tiếp bằng: python main.py ────────────────────────────────────
