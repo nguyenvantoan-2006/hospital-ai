@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Danh sách Bệnh nhân | Clinova</title>
+  
+  <!-- Bootstrap 5 CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <!-- Google Font: Inter -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <!-- FontAwesome Icons -->
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet" />
+
+  <style>
+    :root {
+      --primary: #1A73E8;
+      --primary-dark: #1557B0;
+      --primary-light: #E8F0FE;
+      --bg: #F8F9FA;
+      --sidebar-w: 240px;
+      --navbar-h: 64px;
+      --white: #ffffff;
+      --text: #212529;
+      --text-muted: #6C757D;
+      --border: #DEE2E6;
+      --shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+      --radius: 12px;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    /* NAVBAR */
+    .navbar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: var(--navbar-h);
+      background: var(--primary);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 24px;
+      z-index: 100;
+      box-shadow: 0 2px 16px rgba(26, 115, 232, 0.3);
+    }
+
+    .navbar-brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      text-decoration: none;
+      color: var(--white);
+    }
+
+    .navbar-brand .logo-icon {
+      width: 40px;
+      height: 40px;
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+    }
+
+    .navbar-brand .brand-text h1 {
+      font-size: 17px;
+      font-weight: 700;
+      line-height: 1;
+      margin: 0;
+    }
+
+    .navbar-brand .brand-text span {
+      font-size: 11px;
+      opacity: 0.75;
+      font-weight: 400;
+    }
+
+    .user-avatar-mini {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      background: var(--primary-light);
+      color: var(--primary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+
+    /* SIDEBAR */
+    .sidebar {
+      position: fixed;
+      top: var(--navbar-h);
+      left: 0;
+      bottom: 0;
+      width: var(--sidebar-w);
+      background: var(--white);
+      border-right: 1px solid var(--border);
+      padding: 24px 12px;
+      overflow-y: auto;
+      z-index: 90;
+    }
+
+    .sidebar-section-title {
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      padding: 0 12px;
+      margin-bottom: 8px;
+      margin-top: 20px;
+    }
+
+    .sidebar-section-title:first-child {
+      margin-top: 0;
+    }
+
+    .nav-item-custom {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 14px;
+      border-radius: 10px;
+      text-decoration: none;
+      color: var(--text-muted);
+      font-size: 14px;
+      font-weight: 500;
+      transition: all .2s;
+      margin-bottom: 2px;
+    }
+
+    .nav-item-custom i {
+      width: 18px;
+      text-align: center;
+      font-size: 15px;
+    }
+
+    .nav-item-custom:hover,
+    .nav-item-custom.active {
+      background: var(--primary-light);
+      color: var(--primary);
+      font-weight: 600;
+    }
+
+    /* MAIN CONTENT */
+    .main-content {
+      margin-left: var(--sidebar-w);
+      margin-top: var(--navbar-h);
+      padding: 32px;
+      min-height: calc(100vh - var(--navbar-h));
+    }
+
+    .card-custom {
+      background: var(--white);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      border: 1px solid var(--border);
+      overflow: hidden;
+    }
+
+    .toast-container-custom {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      z-index: 1080;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="toast-container-custom" id="toastContainer"></div>
+
+  <!-- NAVBAR -->
+  <nav class="navbar">
+    <a href="index.html" class="navbar-brand">
+      <div class="logo-icon"><i class="fa-solid fa-hospital-user"></i></div>
+      <div class="brand-text">
+        <h1>Clinova</h1>
+        <span>Hệ thống Quản lý Phòng khám</span>
+      </div>
+    </a>
+    <div class="d-flex align-items-center gap-3">
+      <div class="d-flex align-items-center gap-2 text-white">
+        <div class="user-avatar-mini bg-white text-primary">LT</div>
+        <div class="d-none d-sm-block">
+          <div class="fw-bold leading-tight small" id="displayUsername">Lễ tân</div>
+          <small class="text-white-50" id="displayRole" style="font-size:10px;">Phân hệ Lễ tân</small>
+        </div>
+      </div>
+      <button class="btn btn-sm btn-outline-light border-opacity-25" onclick="logout()">
+        <i class="fa-solid fa-right-from-bracket me-1"></i> Đăng xuất
+      </button>
+    </div>
+  </nav>
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <p class="sidebar-section-title">Tổng quan</p>
+    <a href="index.html" class="nav-item-custom">
+      <i class="fa-solid fa-house"></i> Trang chủ
+    </a>
+    <p class="sidebar-section-title">Nghiệp vụ Lễ tân</p>
+    <a href="danh_sach_benh_nhan.html" class="nav-item-custom active">
+      <i class="fa-solid fa-address-book"></i> Quản lý Bệnh nhân
+    </a>
+    <a href="lich_kham.html" class="nav-item-custom">
+      <i class="fa-solid fa-calendar-check"></i> Lịch hẹn & Tiếp nhận
+    </a>
+    <a href="lap_phieu_kham.html" class="nav-item-custom">
+      <i class="fa-solid fa-file-medical"></i> Khám bệnh (Bác sĩ)
+    </a>
+    <a href="thanh_toan.html" class="nav-item-custom">
+      <i class="fa-solid fa-file-invoice-dollar"></i> Hóa đơn & Thanh toán
+    </a>
+  </aside>
+
+  <!-- MAIN CONTENT -->
+  <main class="main-content">
+    
+    <!-- Page Title & Actions -->
+    <div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-3">
+      <div>
+        <h3 class="fw-bold mb-1"><i class="fa-solid fa-users text-primary me-2"></i>Quản lý Hồ sơ Bệnh nhân</h3>
+        <p class="text-muted small mb-0">Tra cứu, thêm mới và cập nhật danh sách hồ sơ bệnh nhân phòng khám</p>
+      </div>
+      <div class="d-flex gap-2">
+        <button class="btn btn-outline-secondary rounded-3 btn-sm px-3" onclick="fetchPatients()">
+          <i class="fa-solid fa-arrows-rotate me-1" id="reloadIcon"></i> Tải lại
+        </button>
+        <button class="btn btn-primary rounded-3 btn-sm px-3 fw-semibold shadow-sm" onclick="openPatientModal()">
+          <i class="fa-solid fa-user-plus me-1"></i> Thêm Bệnh nhân Mới
+        </button>
+      </div>
+    </div>
+
+    <!-- Main Card -->
+    <div class="card-custom">
+      <!-- Search Bar Toolbar -->
+      <div class="p-3 bg-light border-bottom d-flex align-items-center justify-content-between gap-3 flex-wrap">
+        <div class="input-group style-search style-input" style="max-width: 420px;">
+          <span class="input-group-text bg-white border-end-0"><i class="fa-solid fa-magnifying-glass text-muted"></i></span>
+          <input type="text" id="searchInput" class="form-control border-start-0 ps-0" placeholder="Tìm tên, Số điện thoại, CCCD hoặc BHYT..." onkeyup="handleSearchKeyup(event)" />
+          <button class="btn btn-primary" onclick="fetchPatients()">Tìm kiếm</button>
+        </div>
+        <div class="text-muted small fw-medium">
+          Tổng số hồ sơ: <span id="totalPatientCount" class="fw-bold text-primary">0</span> bệnh nhân
+        </div>
+      </div>
+
+      <!-- Patients Table -->
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+          <thead class="table-light text-secondary small text-uppercase fw-bold">
+            <tr>
+              <th class="ps-3">ID</th>
+              <th>Họ và Tên</th>
+              <th>Ngày sinh / GT</th>
+              <th>Số Điện Thoại</th>
+              <th>Số CCCD</th>
+              <th>Mã BHYT</th>
+              <th>Tiền sử bệnh</th>
+              <th class="text-end pe-3">Thao tác</th>
+            </tr>
+          </thead>
+          <tbody id="patientTableBody">
+            <!-- Dynamic rows -->
+          </tbody>
+        </table>
+      </div>
+      <div id="loadingState" class="text-center py-5 text-muted">
+        <i class="fa-solid fa-circle-notch fa-spin fs-3 text-primary mb-2 d-block"></i>
+        <span>Đang kết nối tải danh sách bệnh nhân...</span>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- MODAL THÊM / CẬP NHẬT BỆNH NHÂN (FR-02 & UC-02) -->
+  <div class="modal fade" id="patientModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+      <div class="modal-content border-0 shadow-lg rounded-4">
+        <div class="modal-header bg-primary text-white rounded-top-4">
+          <h5 class="modal-title fw-bold" id="modalTitle"><i class="fa-solid fa-user-plus me-2"></i>Thêm Bệnh Nhân Mới</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <form id="patientForm" onsubmit="savePatient(event)">
+          <div class="modal-body p-4">
+            <input type="hidden" id="patientId" value="" />
+            
+            <div class="row g-3">
+              <!-- Họ và tên -->
+              <div class="col-md-6">
+                <label for="ho_ten" class="form-label fw-semibold small text-secondary">Họ và Tên <span class="text-danger">*</span></label>
+                <input type="text" id="ho_ten" class="form-control" placeholder="Nguyễn Văn A" required />
+              </div>
+
+              <!-- Ngày sinh -->
+              <div class="col-md-3">
+                <label for="ngay_sinh" class="form-label fw-semibold small text-secondary">Ngày sinh</label>
+                <input type="date" id="ngay_sinh" class="form-control" />
+              </div>
+
+              <!-- Giới tính -->
+              <div class="col-md-3">
+                <label for="gio_tinh" class="form-label fw-semibold small text-secondary">Giới tính</label>
+                <select id="gio_tinh" class="form-select">
+                  <option value="Nam">Nam</option>
+                  <option value="Nữ">Nữ</option>
+                  <option value="Khác">Khác</option>
+                </select>
+              </div>
+
+              <!-- Số điện thoại -->
+              <div class="col-md-4">
+                <label for="so_dien_thoai" class="form-label fw-semibold small text-secondary">Số điện thoại</label>
+                <input type="text" id="so_dien_thoai" class="form-control" placeholder="0987654321" />
+              </div>
+
+              <!-- Số CCCD -->
+              <div class="col-md-4">
+                <label for="cccd" class="form-label fw-semibold small text-secondary">Số CCCD / Định danh</label>
+                <input type="text" id="cccd" class="form-control" placeholder="12 chữ số CCCD" />
+              </div>
+
+              <!-- Mã BHYT -->
+              <div class="col-md-4">
+                <label for="ma_bhyt" class="form-label fw-semibold small text-secondary">Mã thẻ BHYT</label>
+                <input type="text" id="ma_bhyt" class="form-control" placeholder="DN4010123456789" />
+              </div>
+
+              <!-- Địa chỉ -->
+              <div class="col-md-12">
+                <label for="dia_chi" class="form-label fw-semibold small text-secondary">Địa chỉ thường trú</label>
+                <input type="text" id="dia_chi" class="form-control" placeholder="Số nhà, Đường, Phường/Xã, Quận/Huyện..." />
+              </div>
+
+              <!-- Tiền sử bệnh -->
+              <div class="col-md-12">
+                <label for="tien_su_benh" class="form-label fw-semibold small text-secondary">Tiền sử bệnh & Dị ứng</label>
+                <textarea id="tien_su_benh" class="form-control" rows="3" placeholder="Tiền sử dị ứng thuốc, huyết áp, tiểu đường..."></textarea>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer bg-light rounded-bottom-4">
+            <button type="button" class="btn btn-outline-secondary px-4 rounded-3" data-bs-dismiss="modal">Hủy</button>
+            <button type="submit" id="btnSavePatient" class="btn btn-primary px-4 rounded-3 fw-semibold">
+              <i class="fa-solid fa-save me-1"></i> Lưu hồ sơ
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bootstrap 5 JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="/static/js/auth.js"></script>
+
+  <script>
+    const API_URL = "/api/v1/benh-nhans/";
+    let patientModal = null;
+    let allPatients = [];
+
+    document.addEventListener("DOMContentLoaded", () => {
+      if (initAuthGuard(["le_tan", "bac_si", "admin"])) {
+        patientModal = new bootstrap.Modal(document.getElementById("patientModal"));
+        fetchPatients();
+      }
+    });
+
+    /**
+     * Tải danh sách bệnh nhân có hỗ trợ tìm kiếm
+     */
+    async function fetchPatients() {
+      const tbody = document.getElementById("patientTableBody");
+      const loadingState = document.getElementById("loadingState");
+      const reloadIcon = document.getElementById("reloadIcon");
+      const q = document.getElementById("searchInput").value.trim();
+
+      if (reloadIcon) reloadIcon.classList.add("fa-spin");
+      tbody.innerHTML = "";
+      loadingState.style.display = "block";
+
+      try {
+        let url = API_URL;
+        if (q) url += `?q=${encodeURIComponent(q)}`;
+
+        const response = await fetch(url, {
+          headers: getAuthHeaders()
+        });
+
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const data = await response.json();
+        allPatients = data;
+
+        document.getElementById("totalPatientCount").textContent = data.length;
+
+        if (data.length === 0) {
+          loadingState.innerHTML = `<span class="text-muted">Chưa có bệnh nhân nào phù hợp trong hệ thống</span>`;
+          return;
+        }
+
+        loadingState.style.display = "none";
+        data.forEach(p => {
+          const tr = document.createElement("tr");
+          
+          const initial = p.ho_ten ? p.ho_ten.charAt(0).toUpperCase() : "P";
+          const dobText = p.ngay_sinh ? formatDate(p.ngay_sinh) : 'Chưa nhập';
+          const genderText = p.gio_tinh || 'N/A';
+          const phoneText = p.so_dien_thoai ? `<span class="fw-semibold"><i class="fa-solid fa-phone text-success me-1"></i>${escapeHtml(p.so_dien_thoai)}</span>` : '<span class="text-muted small">--</span>';
+          const cccdText = p.cccd ? `<span class="font-monospace small"><i class="fa-solid fa-id-card text-info me-1"></i>${escapeHtml(p.cccd)}</span>` : '<span class="text-muted small">--</span>';
+          const bhytText = p.ma_bhyt ? `<span class="badge bg-primary-subtle text-primary border border-primary-subtle font-monospace">${escapeHtml(p.ma_bhyt)}</span>` : '<span class="badge bg-light text-secondary">Không có</span>';
+          const historyText = p.tien_su_benh ? `<span class="badge bg-danger-subtle text-danger border border-danger-subtle"><i class="fa-solid fa-triangle-exclamation me-1"></i>${escapeHtml(p.tien_su_benh)}</span>` : '<span class="text-muted small">Bình thường</span>';
+
+          tr.innerHTML = `
+            <td class="ps-3 fw-bold text-primary">#${p.id}</td>
+            <td>
+              <div class="d-flex align-items-center gap-2">
+                <div class="user-avatar-mini">${initial}</div>
+                <div>
+                  <div class="fw-bold text-dark">${escapeHtml(p.ho_ten)}</div>
+                  <small class="text-muted">${escapeHtml(p.dia_chi || 'Chưa cập nhật địa chỉ')}</small>
+                </div>
+              </div>
+            </td>
+            <td>
+              <div class="small fw-medium">${dobText}</div>
+              <small class="text-muted">${genderText}</small>
+            </td>
+            <td>${phoneText}</td>
+            <td>${cccdText}</td>
+            <td>${bhytText}</td>
+            <td>${historyText}</td>
+            <td class="text-end pe-3">
+              <button class="btn btn-sm btn-outline-primary me-1 rounded-2" onclick="editPatient(${p.id})">
+                <i class="fa-solid fa-pen-to-square"></i>
+              </button>
+              <button class="btn btn-sm btn-outline-danger rounded-2" onclick="deletePatient(${p.id}, '${escapeHtml(p.ho_ten)}')">
+                <i class="fa-solid fa-trash"></i>
+              </button>
+            </td>
+          `;
+          tbody.appendChild(tr);
+        });
+
+      } catch (error) {
+        console.error("Lỗi tải danh sách bệnh nhân:", error);
+        loadingState.innerHTML = `<span class="text-danger">Lỗi kết nối máy chủ (${error.message})</span>`;
+      } finally {
+        if (reloadIcon) reloadIcon.classList.remove("fa-spin");
+      }
+    }
+
+    function handleSearchKeyup(e) {
+      if (e.key === "Enter") fetchPatients();
+    }
+
+    function openPatientModal(patient = null) {
+      document.getElementById("patientForm").reset();
+      document.getElementById("patientId").value = "";
+      
+      if (patient) {
+        document.getElementById("modalTitle").innerHTML = `<i class="fa-solid fa-user-pen me-2"></i>Cập nhật Hồ sơ Bệnh nhân #${patient.id}`;
+        document.getElementById("patientId").value = patient.id;
+        document.getElementById("ho_ten").value = patient.ho_ten || "";
+        document.getElementById("ngay_sinh").value = patient.ngay_sinh || "";
+        document.getElementById("gio_tinh").value = patient.gio_tinh || "Nam";
+        document.getElementById("so_dien_thoai").value = patient.so_dien_thoai || "";
+        document.getElementById("cccd").value = patient.cccd || "";
+        document.getElementById("ma_bhyt").value = patient.ma_bhyt || "";
+        document.getElementById("dia_chi").value = patient.dia_chi || "";
+        document.getElementById("tien_su_benh").value = patient.tien_su_benh || "";
+      } else {
+        document.getElementById("modalTitle").innerHTML = `<i class="fa-solid fa-user-plus me-2"></i>Thêm Bệnh Nhân Mới`;
+      }
+      patientModal.show();
+    }
+
+    function editPatient(id) {
+      const p = allPatients.find(item => item.id === id);
+      if (p) openPatientModal(p);
+    }
+
+    /**
+     * Lưu thông tin bệnh nhân (Thêm mới hoặc Cập nhật) với kiểm tra trùng lặp tự động
+     */
+    async function savePatient(event) {
+      event.preventDefault();
+      
+      const id = document.getElementById("patientId").value;
+      const payload = {
+        ho_ten: document.getElementById("ho_ten").value.trim(),
+        ngay_sinh: document.getElementById("ngay_sinh").value || null,
+        gio_tinh: document.getElementById("gio_tinh").value,
+        so_dien_thoai: document.getElementById("so_dien_thoai").value.trim() || null,
+        cccd: document.getElementById("cccd").value.trim() || null,
+        ma_bhyt: document.getElementById("ma_bhyt").value.trim() || null,
+        dia_chi: document.getElementById("dia_chi").value.trim() || null,
+        tien_su_benh: document.getElementById("tien_su_benh").value.trim() || null
+      };
+
+      const btn = document.getElementById("btnSavePatient");
+      btn.disabled = true;
+      btn.innerHTML = `<i class="fa-solid fa-circle-notch fa-spin me-1"></i> Đang lưu...`;
+
+      try {
+        const method = id ? "PUT" : "POST";
+        const url = id ? `${API_URL}${id}` : API_URL;
+
+        const response = await fetch(url, {
+          method: method,
+          headers: getAuthHeaders(),
+          body: JSON.stringify(payload)
+        });
+
+        if (!response.ok) {
+          const errData = await response.json().catch(() => ({}));
+          throw new Error(errData.detail || `Lỗi HTTP ${response.status}`);
+        }
+
+        showToast(id ? "🎉 Cập nhật bệnh nhân thành công!" : "🎉 Thêm bệnh nhân mới thành công!", "success");
+        patientModal.hide();
+        fetchPatients();
+
+      } catch (error) {
+        console.error("Lỗi lưu bệnh nhân:", error);
+        showToast(error.message, "danger");
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = `<i class="fa-solid fa-save me-1"></i> Lưu hồ sơ`;
+      }
+    }
+
+    /**
+     * Xóa hồ sơ bệnh nhân
+     */
+    async function deletePatient(id, name) {
+      if (!confirm(`Bạn có chắc chắn muốn xóa hồ sơ bệnh nhân "${name}" (ID: #${id})?`)) return;
+
+      try {
+        const url = API_URL.endsWith('/') ? `${API_URL}${id}` : `${API_URL}/${id}`;
+        const response = await fetch(url, {
+          method: "DELETE",
+          headers: getAuthHeaders()
+        });
+
+        if (!response.ok) {
+          const err = await response.json().catch(() => ({}));
+          throw new Error(err.detail || `Lỗi HTTP ${response.status}`);
+        }
+
+        showToast(`Đã xóa bệnh nhân #${id} thành công`, "success");
+        fetchPatients();
+      } catch (error) {
+        showToast(error.message, "danger");
+      }
+    }
+
+    function formatDate(dateStr) {
+      if (!dateStr) return "";
+      const p = dateStr.split("-");
+      return p.length === 3 ? `${p[2]}/${p[1]}/${p[0]}` : dateStr;
+    }
+
+    function escapeHtml(str) {
+      if (!str) return "";
+      return String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+    }
+
+    function showToast(msg, type = "success") {
+      const container = document.getElementById("toastContainer");
+      const toast = document.createElement("div");
+      const bgClass = type === "success" ? "bg-success" : (type === "warning" ? "bg-warning text-dark" : "bg-danger");
+      toast.className = `toast align-items-center text-white ${bgClass} border-0 show mb-2 shadow-lg`;
+      toast.setAttribute("role", "alert");
+      toast.innerHTML = `
+        <div class="d-flex">
+          <div class="toast-body font-semibold">
+            <i class="fa-solid ${type === 'success' ? 'fa-circle-check' : 'fa-circle-exclamation'} me-2"></i>${msg}
+          </div>
+          <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+        </div>
+      `;
+      container.appendChild(toast);
+      setTimeout(() => toast.remove(), 4500);
+    }
+  </script>
+</body>
+
+</html>

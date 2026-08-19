@@ -15,7 +15,13 @@ if api_key:
 else:
     raise ValueError("GEMINI_API_KEY is missing in environment variables.")
 
-model = genai.GenerativeModel("gemini-1.5-flash")
+# Danh sách models ưu tiên khả dụng
+PREFERRED_MODELS = [
+    "gemini-flash-latest",
+    "gemini-pro-latest",
+    "gemini-2.0-flash-exp",
+    "gemini-1.5-flash-latest"
+]
 
 from database import get_db
 import models
@@ -69,14 +75,22 @@ def mask_patient_data(benh_nhan: models.BenhNhan) -> dict:
 
 async def call_llm_api(prompt: str) -> str:
     """
-    Gọi API Google Gemini với mô hình gemini-1.5-flash để sinh tóm tắt hồ sơ bệnh nhân.
+    Gọi API Google Gemini với cơ chế thử lại đa mô hình (Multi-model Fallback).
     """
-    try:
-        response = await asyncio.to_thread(model.generate_content, prompt)
-        return response.text
-    except Exception as e:
-        logger.error(f"Lỗi khi gọi Gemini API: {e}")
-        raise e
+    last_error = None
+    for model_name in PREFERRED_MODELS:
+        try:
+            m = genai.GenerativeModel(model_name)
+            response = await asyncio.to_thread(m.generate_content, prompt)
+            if response and response.text:
+                return response.text.strip()
+        except Exception as e:
+            last_error = e
+            logger.warning(f"Thử model {model_name} không thành công ({e}), chuyển sang model tiếp theo...")
+            continue
+    
+    logger.error(f"Tất cả các Gemini models đều gặp lỗi: {last_error}")
+    raise last_error
 
 
 # ─── API ENDPOINT ────────────────────────────────────────────────────────

@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Khám Bệnh & Kê Đơn | Clinova AI Hospital</title>
+  
+  <!-- Bootstrap 5 CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <!-- Google Font: Inter -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <!-- FontAwesome Icons -->
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet" />
+
+  <style>
+    :root {
+      --primary: #1A73E8;
+      --primary-dark: #1557B0;
+      --primary-light: #E8F0FE;
+      --ai-purple: #7C3AED;
+      --ai-purple-light: #F3E8FF;
+      --bg: #F8F9FA;
+      --sidebar-w: 240px;
+      --navbar-h: 64px;
+      --white: #ffffff;
+      --text: #212529;
+      --text-muted: #6C757D;
+      --border: #DEE2E6;
+      --shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+      --radius: 12px;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    /* NAVBAR */
+    .navbar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: var(--navbar-h);
+      background: var(--primary);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 24px;
+      z-index: 100;
+      box-shadow: 0 2px 16px rgba(26, 115, 232, 0.3);
+    }
+
+    .navbar-brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      text-decoration: none;
+      color: var(--white);
+    }
+
+    .navbar-brand .logo-icon {
+      width: 40px;
+      height: 40px;
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+    }
+
+    .navbar-brand .brand-text h1 {
+      font-size: 17px;
+      font-weight: 700;
+      line-height: 1;
+      margin: 0;
+    }
+
+    .navbar-brand .brand-text span {
+      font-size: 11px;
+      opacity: 0.75;
+      font-weight: 400;
+    }
+
+    .user-avatar-mini {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      background: var(--primary-light);
+      color: var(--primary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+
+    /* SIDEBAR */
+    .sidebar {
+      position: fixed;
+      top: var(--navbar-h);
+      left: 0;
+      bottom: 0;
+      width: var(--sidebar-w);
+      background: var(--white);
+      border-right: 1px solid var(--border);
+      padding: 24px 12px;
+      overflow-y: auto;
+      z-index: 90;
+    }
+
+    .sidebar-section-title {
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      padding: 0 12px;
+      margin-bottom: 8px;
+      margin-top: 20px;
+    }
+
+    .sidebar-section-title:first-child {
+      margin-top: 0;
+    }
+
+    .nav-item-custom {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 14px;
+      border-radius: 10px;
+      text-decoration: none;
+      color: var(--text-muted);
+      font-size: 14px;
+      font-weight: 500;
+      transition: all .2s;
+      margin-bottom: 2px;
+    }
+
+    .nav-item-custom i {
+      width: 18px;
+      text-align: center;
+      font-size: 15px;
+    }
+
+    .nav-item-custom:hover,
+    .nav-item-custom.active {
+      background: var(--primary-light);
+      color: var(--primary);
+      font-weight: 600;
+    }
+
+    /* MAIN CONTENT */
+    .main-content {
+      margin-left: var(--sidebar-w);
+      margin-top: var(--navbar-h);
+      padding: 32px;
+      min-height: calc(100vh - var(--navbar-h));
+    }
+
+    .card-custom {
+      background: var(--white);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      border: 1px solid var(--border);
+      overflow: hidden;
+    }
+
+    /* AI Card & Box */
+    .ai-badge {
+      background: linear-gradient(135deg, #7C3AED, #3B82F6);
+      color: white;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 4px 10px;
+      border-radius: 20px;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .ai-box {
+      background: var(--ai-purple-light);
+      border: 1px dashed #A78BFA;
+      border-radius: 10px;
+      padding: 14px;
+    }
+
+    .queue-item {
+      padding: 12px 14px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      margin-bottom: 8px;
+      cursor: pointer;
+      transition: all .2s;
+    }
+
+    .queue-item:hover, .queue-item.active {
+      background: var(--primary-light);
+      border-color: var(--primary);
+    }
+
+    .toast-container-custom {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      z-index: 1080;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="toast-container-custom" id="toastContainer"></div>
+
+  <!-- NAVBAR -->
+  <nav class="navbar">
+    <a href="index.html" class="navbar-brand">
+      <div class="logo-icon"><i class="fa-solid fa-user-doctor"></i></div>
+      <div class="brand-text">
+        <h1>Clinova</h1>
+        <span>Phân hệ Bác sĩ Khám bệnh</span>
+      </div>
+    </a>
+    <div class="d-flex align-items-center gap-3">
+      <div class="d-flex align-items-center gap-2 text-white">
+        <div class="user-avatar-mini bg-white text-primary">BS</div>
+        <div class="d-none d-sm-block">
+          <div class="fw-bold leading-tight small" id="displayUsername">Bác sĩ</div>
+          <small class="text-white-50" id="displayRole" style="font-size:10px;">Phòng khám chuyên khoa</small>
+        </div>
+      </div>
+      <button class="btn btn-sm btn-outline-light border-opacity-25" onclick="logout()">
+        <i class="fa-solid fa-right-from-bracket me-1"></i> Đăng xuất
+      </button>
+    </div>
+  </nav>
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <p class="sidebar-section-title">Tổng quan</p>
+    <a href="index.html" class="nav-item-custom">
+      <i class="fa-solid fa-house"></i> Trang chủ
+    </a>
+    <p class="sidebar-section-title">Nghiệp vụ Y tế</p>
+    <a href="danh_sach_benh_nhan.html" class="nav-item-custom">
+      <i class="fa-solid fa-address-book"></i> Quản lý Bệnh nhân
+    </a>
+    <a href="lich_kham.html" class="nav-item-custom">
+      <i class="fa-solid fa-calendar-check"></i> Lịch hẹn & Tiếp nhận
+    </a>
+    <a href="lap_phieu_kham.html" class="nav-item-custom active">
+      <i class="fa-solid fa-file-medical"></i> Khám bệnh (Bác sĩ)
+    </a>
+    <a href="thanh_toan.html" class="nav-item-custom">
+      <i class="fa-solid fa-file-invoice-dollar"></i> Hóa đơn & Thanh toán
+    </a>
+  </aside>
+
+  <!-- MAIN CONTENT -->
+  <main class="main-content">
+    <div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-3">
+      <div>
+        <h3 class="fw-bold mb-1"><i class="fa-solid fa-stethoscope text-primary me-2"></i>Lập Phiếu Khám & AI Trợ Lý Lâm Sàng</h3>
+        <p class="text-muted small mb-0">Tiếp nhận bệnh nhân, tóm tắt bệnh sử bằng AI, chẩn đoán và lập đơn thuốc</p>
+      </div>
+      <div class="d-flex gap-2">
+        <button class="btn btn-outline-secondary rounded-3 btn-sm px-3" onclick="loadQueue()">
+          <i class="fa-solid fa-arrows-rotate me-1" id="reloadQueueIcon"></i> Làm mới hàng chờ
+        </button>
+      </div>
+    </div>
+
+    <div class="row g-4">
+      <!-- Cột Trái: Hàng chờ khám -->
+      <div class="col-lg-4">
+        <div class="card-custom p-3 h-100">
+          <div class="d-flex align-items-center justify-content-between pb-2 mb-3 border-bottom">
+            <h6 class="fw-bold mb-0"><i class="fa-solid fa-list-ol text-primary me-2"></i>Hàng Chờ Khám Hôm Nay</h6>
+            <span class="badge bg-primary rounded-pill" id="queueCount">0</span>
+          </div>
+
+          <div id="queueList" style="max-height: 620px; overflow-y: auto;">
+            <!-- Danh sách bệnh nhân chờ khám -->
+          </div>
+
+          <div id="queueEmpty" class="text-center py-4 text-muted small" style="display:none;">
+            <i class="fa-solid fa-clipboard-check fs-2 text-secondary mb-2 d-block"></i>
+            Chưa có bệnh nhân nào trong hàng chờ
+          </div>
+        </div>
+      </div>
+
+      <!-- Cột Phải: Form Khám bệnh & Kê đơn thuốc & AI Box -->
+      <div class="col-lg-8">
+        <div class="card-custom p-4">
+          <!-- Thông tin bệnh nhân đang chọn -->
+          <div class="bg-light p-3 rounded-3 mb-3 border">
+            <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+              <div>
+                <span class="text-muted small">Bệnh nhân đang khám:</span>
+                <h5 class="fw-bold text-primary mb-0" id="currentPatientName">Chọn bệnh nhân từ danh sách bên trái</h5>
+              </div>
+              <div class="d-flex gap-2">
+                <span class="badge bg-secondary" id="currentPatientDob">--</span>
+                <span class="badge bg-info-subtle text-info border" id="currentPatientBhyt">BHYT: --</span>
+              </div>
+            </div>
+            <div class="small text-danger mt-1 fw-medium" id="currentPatientHistory"></div>
+          </div>
+
+          <!-- AI Tóm Tắt Bệnh Án Box (FR-AI-01) -->
+          <div class="ai-box mb-4">
+            <div class="d-flex align-items-center justify-content-between mb-2">
+              <div class="ai-badge">
+                <i class="fa-solid fa-wand-magic-sparkles"></i> AI Trợ Lý Tóm Tắt Hồ Sơ (SEC-AI-01)
+              </div>
+              <button class="btn btn-sm btn-outline-primary bg-white shadow-sm rounded-pill" id="btnAiSummary" onclick="triggerAiSummary()" disabled>
+                <i class="fa-solid fa-robot me-1"></i> Tóm tắt hồ sơ bằng AI
+              </button>
+            </div>
+            <div id="aiSummaryOutput" class="small text-secondary" style="line-height: 1.6;">
+              Nhấn nút "Tóm tắt hồ sơ bằng AI" để tự động phân tích và tóm tắt tiền sử bệnh án ẩn danh.
+            </div>
+          </div>
+
+          <!-- Form ghi nhận khám -->
+          <form id="examinationForm" onsubmit="savePhieuKham(event)">
+            <input type="hidden" id="selectedPatientId" value="" />
+            <input type="hidden" id="selectedLichKhamId" value="" />
+
+            <div class="row g-3 mb-3">
+              <div class="col-12">
+                <label class="form-label fw-semibold small text-secondary">Triệu chứng lâm sàng <span class="text-danger">*</span></label>
+                <textarea id="trieu_chung" class="form-control" rows="2" placeholder="Ví dụ: Đau đầu, sốt nhẹ 38 độ, ho đờm..." required></textarea>
+              </div>
+
+              <div class="col-12">
+                <label class="form-label fw-semibold small text-secondary">Chẩn đoán xác định của Bác sĩ <span class="text-danger">*</span></label>
+                <input type="text" id="chan_doan" class="form-control fw-semibold" placeholder="Ví dụ: Viêm phế quản cấp tính / Rối loạn tiền đình..." required />
+              </div>
+            </div>
+
+            <!-- AI Hướng Dẫn Sau Khám (Post-Exam Guide) -->
+            <div class="ai-box mb-4 bg-light border-primary-subtle">
+              <div class="d-flex align-items-center justify-content-between mb-2">
+                <div class="ai-badge" style="background: linear-gradient(135deg, #059669, #10B981);">
+                  <i class="fa-solid fa-notes-medical"></i> AI Sinh Bản Nháp Dặn Dò & Hướng Dẫn Sau Khám
+                </div>
+                <button type="button" class="btn btn-sm btn-outline-success bg-white shadow-sm rounded-pill" id="btnAiGuide" onclick="triggerAiPostExamGuide()">
+                  <i class="fa-solid fa-sparkles me-1"></i> AI Gợi ý dặn dò sau khám
+                </button>
+              </div>
+              <textarea id="aiGuideOutput" class="form-control small bg-white" rows="3" placeholder="Nội dung dặn dò, lưu ý sinh hoạt cho bệnh nhân..."></textarea>
+            </div>
+
+            <!-- Kê đơn thuốc -->
+            <div class="border rounded-3 p-3 mb-4 bg-light">
+              <div class="d-flex align-items-center justify-content-between mb-2">
+                <h6 class="fw-bold mb-0"><i class="fa-solid fa-pills text-success me-2"></i>Kê Đơn Thuốc Điện Tử</h6>
+                <button type="button" class="btn btn-sm btn-outline-primary" onclick="addPrescriptionRow()">
+                  <i class="fa-solid fa-plus me-1"></i> Thêm thuốc
+                </button>
+              </div>
+
+              <table class="table table-sm table-bordered bg-white mb-0">
+                <thead class="table-light small">
+                  <tr>
+                    <th>Tên thuốc</th>
+                    <th style="width: 100px;">Số lượng</th>
+                    <th>Liều dùng & Cách uống</th>
+                    <th style="width: 50px;"></th>
+                  </tr>
+                </thead>
+                <tbody id="prescriptionTableBody">
+                  <tr>
+                    <td>
+                      <input type="text" class="form-control form-control-sm med-name" placeholder="Tên thuốc (Paracetamol 500mg...)" />
+                    </td>
+                    <td>
+                      <input type="number" class="form-control form-control-sm med-qty" value="10" min="1" />
+                    </td>
+                    <td>
+                      <input type="text" class="form-control form-control-sm med-dosage" placeholder="Uống 1 viên sau ăn, ngày 2 lần..." />
+                    </td>
+                    <td class="text-center">
+                      <button type="button" class="btn btn-sm btn-link text-danger p-0" onclick="removePrescriptionRow(this)">
+                        <i class="fa-solid fa-trash"></i>
+                      </button>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="d-flex justify-content-end gap-2">
+              <button type="button" class="btn btn-outline-secondary px-4 rounded-3" onclick="resetForm()">Làm mới</button>
+              <button type="submit" id="btnSavePhieu" class="btn btn-primary px-4 rounded-3 fw-semibold shadow-sm">
+                <i class="fa-solid fa-floppy-disk me-1"></i> Hoàn Tất Khám & Chuyển Thanh Toán
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Scripts -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="/static/js/auth.js"></script>
+
+  <script>
+    let currentPatientsQueue = [];
+
+    document.addEventListener("DOMContentLoaded", () => {
+      if (initAuthGuard(["bac_si", "admin"])) {
+        loadQueue();
+      }
+    });
+
+    /**
+     * Tải danh sách hàng chờ khám
+     */
+    async function loadQueue() {
+      const queueList = document.getElementById("queueList");
+      const queueEmpty = document.getElementById("queueEmpty");
+      const reloadIcon = document.getElementById("reloadQueueIcon");
+      if (reloadIcon) reloadIcon.classList.add("fa-spin");
+
+      try {
+        const res = await fetch("/api/v1/lich-khams/", { headers: getAuthHeaders() });
+        if (!res.ok) throw new Error("Lỗi tải hàng chờ");
+        const list = await res.json();
+        
+        // Lọc trạng thái cho_kham hoặc cho_xac_nhan hoặc da_dat_lich
+        currentPatientsQueue = list.filter(item => ["cho_kham", "dang_kham", "da_dat_lich", "cho_xac_nhan"].includes(item.trang_thai));
+        document.getElementById("queueCount").textContent = currentPatientsQueue.length;
+
+        queueList.innerHTML = "";
+        if (currentPatientsQueue.length === 0) {
+          queueEmpty.style.display = "block";
+          return;
+        }
+
+        queueEmpty.style.display = "none";
+        currentPatientsQueue.forEach(item => {
+          const div = document.createElement("div");
+          div.className = "queue-item";
+          div.id = `queue-item-${item.id}`;
+          div.onclick = () => selectPatientForExam(item);
+
+          div.innerHTML = `
+            <div class="d-flex align-items-center justify-content-between mb-1">
+              <span class="badge bg-primary fw-bold">STT #${item.stt || item.id}</span>
+              <span class="badge bg-light text-secondary small">${item.thoi_gian}</span>
+            </div>
+            <div class="fw-bold text-dark">${escapeHtml(item.ho_ten)}</div>
+            <div class="small text-muted text-truncate"><i class="fa-solid fa-notes-medical me-1"></i>${escapeHtml(item.ly_do_kham || 'Khám tổng quát')}</div>
+          `;
+          queueList.appendChild(div);
+        });
+
+      } catch (e) {
+        console.error("Queue load error:", e);
+      } finally {
+        if (reloadIcon) reloadIcon.classList.remove("fa-spin");
+      }
+    }
+
+    /**
+     * Chọn bệnh nhân để khám
+     */
+    function selectPatientForExam(item) {
+      document.querySelectorAll(".queue-item").forEach(el => el.classList.remove("active"));
+      const targetEl = document.getElementById(`queue-item-${item.id}`);
+      if (targetEl) targetEl.classList.add("active");
+
+      document.getElementById("selectedPatientId").value = item.benh_nhan_id;
+      document.getElementById("selectedLichKhamId").value = item.id;
+      document.getElementById("currentPatientName").textContent = `${item.ho_ten} (STT: #${item.stt || item.id})`;
+      document.getElementById("currentPatientBhyt").textContent = `BHYT: ${item.ma_bhyt || 'Không'}`;
+      document.getElementById("trieu_chung").value = item.ly_do_kham || "";
+      document.getElementById("btnAiSummary").disabled = false;
+      document.getElementById("aiSummaryOutput").innerHTML = `Đã chọn <b>${escapeHtml(item.ho_ten)}</b>. Nhấn "Tóm tắt hồ sơ bằng AI" để phân tích bệnh án.`;
+    }
+
+    /**
+     * Kích hoạt AI Tóm tắt bệnh án
+     */
+    async function triggerAiSummary() {
+      const patientId = document.getElementById("selectedPatientId").value;
+      if (!patientId) {
+        showToast("Vui lòng chọn một bệnh nhân trước", "warning");
+        return;
+      }
+
+      const btn = document.getElementById("btnAiSummary");
+      const out = document.getElementById("aiSummaryOutput");
+
+      btn.disabled = true;
+      btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin me-1"></i> AI Đang phân tích...`;
+      out.innerHTML = `<div class="text-primary"><i class="fa-solid fa-robot fa-bounce me-2"></i>AI đang tổng hợp và che giấu danh tính bệnh nhân...</div>`;
+
+      try {
+        const res = await fetch("/api/ai/summary", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ benh_nhan_id: parseInt(patientId) })
+        });
+
+        if (!res.ok) throw new Error("Không thể gọi AI Summary");
+        const data = await res.json();
+
+        out.innerHTML = `<div class="bg-white p-3 rounded-2 border text-dark font-monospace small" style="white-space: pre-wrap;">${escapeHtml(data.summary)}</div>`;
+        showToast("AI đã tóm tắt hồ sơ thành công!", "success");
+      } catch (err) {
+        out.innerHTML = `<span class="text-danger">Lỗi: ${err.message}</span>`;
+        showToast("Không thể sinh tóm tắt AI", "danger");
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = `<i class="fa-solid fa-robot me-1"></i> Tóm tắt hồ sơ bằng AI`;
+      }
+    }
+
+    /**
+     * Kích hoạt AI Post-Exam Guide
+     */
+    async function triggerAiPostExamGuide() {
+      const chanDoan = document.getElementById("chan_doan").value.trim();
+      const trieuChung = document.getElementById("trieu_chung").value.trim();
+
+      if (!chanDoan) {
+        showToast("Vui lòng nhập chẩn đoán xác định trước khi yêu cầu AI gợi ý dặn dò", "warning");
+        return;
+      }
+
+      const btn = document.getElementById("btnAiGuide");
+      const out = document.getElementById("aiGuideOutput");
+
+      btn.disabled = true;
+      btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin me-1"></i> AI đang soạn thảo...`;
+
+      try {
+        const res = await fetch("/api/ai/post-exam-guide", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ chan_doan: chanDoan, trieu_chung: trieuChung })
+        });
+
+        if (!res.ok) throw new Error("Lỗi gọi AI Guide");
+        const data = await res.json();
+        out.value = data.guide;
+        showToast("AI đã sinh bản nháp hướng dẫn thành công!", "success");
+      } catch (e) {
+        showToast(e.message, "danger");
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = `<i class="fa-solid fa-sparkles me-1"></i> AI Gợi ý dặn dò sau khám`;
+      }
+    }
+
+    function addPrescriptionRow() {
+      const tbody = document.getElementById("prescriptionTableBody");
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td><input type="text" class="form-control form-control-sm med-name" placeholder="Tên thuốc..." /></td>
+        <td><input type="number" class="form-control form-control-sm med-qty" value="10" min="1" /></td>
+        <td><input type="text" class="form-control form-control-sm med-dosage" placeholder="Liều dùng & Cách uống..." /></td>
+        <td class="text-center">
+          <button type="button" class="btn btn-link text-danger p-0" onclick="removePrescriptionRow(this)"><i class="fa-solid fa-trash"></i></button>
+        </td>
+      `;
+      tbody.appendChild(tr);
+    }
+
+    function removePrescriptionRow(btn) {
+      btn.closest("tr").remove();
+    }
+
+    /**
+     * Lưu phiếu khám bệnh và chuyển thanh toán
+     */
+    async function savePhieuKham(e) {
+      e.preventDefault();
+      const patientId = document.getElementById("selectedPatientId").value;
+      const lichKhamId = document.getElementById("selectedLichKhamId").value;
+
+      if (!patientId) {
+        showToast("Vui lòng chọn một bệnh nhân từ danh sách chờ", "warning");
+        return;
+      }
+
+      const trieuChung = document.getElementById("trieu_chung").value.trim();
+      const chanDoan = document.getElementById("chan_doan").value.trim();
+      const aiSummary = document.getElementById("aiSummaryOutput").innerText;
+
+      const btn = document.getElementById("btnSavePhieu");
+      btn.disabled = true;
+      btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin me-1"></i> Đang lưu phiếu khám...`;
+
+      try {
+        const payload = {
+          benh_nhan_id: parseInt(patientId),
+          lich_kham_id: lichKhamId ? parseInt(lichKhamId) : null,
+          trieu_chung: trieuChung,
+          chan_doan: chanDoan,
+          ai_summary: aiSummary
+        };
+
+        const res = await fetch("/api/v1/phieu-khams/", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+
+        if (!res.ok) throw new Error("Lỗi khi lưu phiếu khám");
+        const data = await res.json();
+
+        showToast("🎉 Lập phiếu khám thành công! Đã chuyển sang kế toán thanh toán.", "success");
+        resetForm();
+        loadQueue();
+      } catch (err) {
+        showToast(err.message, "danger");
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = `<i class="fa-solid fa-floppy-disk me-1"></i> Hoàn Tất Khám & Chuyển Thanh Toán`;
+      }
+    }
+
+    function resetForm() {
+      document.getElementById("examinationForm").reset();
+      document.getElementById("selectedPatientId").value = "";
+      document.getElementById("selectedLichKhamId").value = "";
+      document.getElementById("currentPatientName").textContent = "Chọn bệnh nhân từ danh sách bên trái";
+      document.getElementById("currentPatientBhyt").textContent = "BHYT: --";
+      document.getElementById("btnAiSummary").disabled = true;
+      document.getElementById("aiSummaryOutput").innerHTML = "Nhấn nút 'Tóm tắt hồ sơ bằng AI' để tự động phân tích và tóm tắt tiền sử bệnh án ẩn danh.";
+      document.querySelectorAll(".queue-item").forEach(el => el.classList.remove("active"));
+    }
+
+    function escapeHtml(str) {
+      if (!str) return "";
+      return String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+    }
+
+    function showToast(msg, type = "success") {
+      const container = document.getElementById("toastContainer");
+      const toast = document.createElement("div");
+      const bgClass = type === "success" ? "bg-success" : (type === "warning" ? "bg-warning text-dark" : "bg-danger");
+      toast.className = `toast align-items-center text-white ${bgClass} border-0 show mb-2 shadow-lg`;
+      toast.setAttribute("role", "alert");
+      toast.innerHTML = `
+        <div class="d-flex">
+          <div class="toast-body font-semibold">
+            <i class="fa-solid ${type === 'success' ? 'fa-circle-check' : 'fa-circle-exclamation'} me-2"></i>${msg}
+          </div>
+          <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+        </div>
+      `;
+      container.appendChild(toast);
+      setTimeout(() => toast.remove(), 4500);
+    }
+  </script>
+</body>
+</html>
