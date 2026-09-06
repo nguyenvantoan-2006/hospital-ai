@@ -76,11 +76,10 @@
       </a>
 
       <!-- Menu links -->
-      <div class="collapse navbar-collapse id=" navbarScroll" ms-4">
+      <div class="collapse navbar-collapse ms-4" id="navbarScroll">
         <ul class="navbar-nav me-auto my-2 my-lg-0 navbar-nav-scroll">
           <li class="nav-item">
-            <a class="nav-link active fw-semibold" href="index.html"><i class="fa-solid fa-house me-1"></i> Trang
-              chủ</a>
+            <a class="nav-link active fw-semibold" href="index.html"><i class="fa-solid fa-house me-1"></i> Trang chủ</a>
           </li>
           <li class="nav-item">
             <a class="nav-link" href="patient_management.html"><i class="fa-solid fa-users me-1"></i> Bệnh nhân</a>
@@ -89,12 +88,13 @@
             <a class="nav-link" href="lich_kham.html"><i class="fa-solid fa-calendar-plus me-1"></i> Đặt lịch khám</a>
           </li>
           <li class="nav-item">
-            <a class="nav-link" href="lap_phieu_kham.html"><i class="fa-solid fa-stethoscope me-1"></i> Lập phiếu
-              khám</a>
+            <a class="nav-link" href="lap_phieu_kham.html"><i class="fa-solid fa-stethoscope me-1"></i> Lập phiếu khám</a>
           </li>
           <li class="nav-item">
-            <a class="nav-link" href="thanh_toan.html"><i class="fa-solid fa-file-invoice-dollar me-1"></i> Thanh
-              toán</a>
+            <a class="nav-link" href="thanh_toan.html"><i class="fa-solid fa-file-invoice-dollar me-1"></i> Thanh toán</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="ke_toan.html"><i class="fa-solid fa-coins me-1"></i> Kế toán & Tài chính</a>
           </li>
         </ul>
       </div>
@@ -103,8 +103,7 @@
       <div class="d-flex align-items-center gap-3">
         <div class="text-end text-white d-none d-sm-block">
           <div class="fw-bold leading-tight" id="displayUsername">Guest</div>
-          <small class="text-white-50 uppercase tracking-wider" id="displayRole" style="font-size: 10px;">Chưa đăng
-            nhập</small>
+          <small class="text-white-50 uppercase tracking-wider" id="displayRole" style="font-size: 10px;">Chưa đăng nhập</small>
         </div>
         <button class="btn btn-sm btn-light text-danger font-semibold rounded-3" onclick="logout()">
           <i class="fa-solid fa-right-from-bracket me-1"></i> Đăng xuất
@@ -124,7 +123,7 @@
           <span class="badge bg-primary text-white mb-2 px-3 py-2 rounded-pill">Clinic Management System v2.0</span>
           <h2 class="fw-extrabold display-6 mb-2">Hệ Thống Quản Lý Phòng Khám Thông Minh</h2>
           <p class="text-white-50 lead mb-0">Tích hợp đầy đủ các phân hệ Quản lý Bệnh nhân, Đặt lịch khám, Khám bệnh, AI
-            Trợ lý và Thanh toán Viện phí.</p>
+            Trợ lý, Thu ngân và Kế toán Tài chính.</p>
         </div>
         <div class="col-lg-4 text-end d-none d-lg-block">
           <i class="fa-solid fa-notes-medical display-1 text-primary opacity-50"></i>
@@ -138,7 +137,7 @@
     <div class="row g-4">
 
       <!-- Module 1: Quản lý Bệnh Nhân -->
-      <div class="col-md-6 col-lg-3">
+      <div class="col-md-6 col-lg-4">
         <a href="patient_management.html" class="module-card p-4">
           <div class="icon-box bg-primary-subtle text-primary mb-3">
             <i class="fa-solid fa-users"></i>
@@ -149,7 +148,7 @@
       </div>
 
       <!-- Module 2: Đặt lịch khám -->
-      <div class="col-md-6 col-lg-3">
+      <div class="col-md-6 col-lg-4">
         <a href="lich_kham.html" class="module-card p-4">
           <div class="icon-box bg-success-subtle text-success mb-3">
             <i class="fa-solid fa-calendar-check"></i>
@@ -160,7 +159,7 @@
       </div>
 
       <!-- Module 3: Lập phiếu khám -->
-      <div class="col-md-6 col-lg-3">
+      <div class="col-md-6 col-lg-4">
         <a href="lap_phieu_kham.html" class="module-card p-4">
           <div class="icon-box bg-warning-subtle text-warning mb-3">
             <i class="fa-solid fa-stethoscope"></i>
@@ -171,13 +170,35 @@
       </div>
 
       <!-- Module 4: Thanh toán viện phí -->
-      <div class="col-md-6 col-lg-3">
+      <div class="col-md-6 col-lg-4">
         <a href="thanh_toan.html" class="module-card p-4">
           <div class="icon-box bg-danger-subtle text-danger mb-3">
             <i class="fa-solid fa-file-invoice-dollar"></i>
           </div>
           <h5 class="fw-bold mb-2">Thanh toán Viện phí</h5>
           <p class="text-muted small mb-0">Thu ngân tính tổng tiền dịch vụ + tiền thuốc, hỗ trợ Tiền mặt & QR.</p>
+        </a>
+      </div>
+
+      <!-- Module 5: Kế toán Tổng hợp & Tài chính -->
+      <div class="col-md-6 col-lg-4">
+        <a href="ke_toan.html" class="module-card p-4">
+          <div class="icon-box bg-info-subtle text-info mb-3">
+            <i class="fa-solid fa-coins"></i>
+          </div>
+          <h5 class="fw-bold mb-2">Kế toán & Tài chính</h5>
+          <p class="text-muted small mb-0">Quản lý quỹ lương nhân viên, tồn kho dược phẩm, báo cáo doanh thu theo Quý và xuất Excel.</p>
+        </a>
+      </div>
+
+      <!-- Module 6: Quản trị hệ thống -->
+      <div class="col-md-6 col-lg-4">
+        <a href="admin_dashboard.html" class="module-card p-4">
+          <div class="icon-box bg-secondary-subtle text-secondary mb-3">
+            <i class="fa-solid fa-chart-pie"></i>
+          </div>
+          <h5 class="fw-bold mb-2">Quản trị Admin</h5>
+          <p class="text-muted small mb-0">Quản lý danh mục bác sĩ, chuyên khoa, tài khoản người dùng và nhật ký audit logs.</p>
         </a>
       </div>
 
