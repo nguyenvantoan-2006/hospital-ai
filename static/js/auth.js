@@ -11,7 +11,7 @@ const DEFAULT_HOME_PAGE = {
   admin: "admin_dashboard.html",
   bac_si: "lap_phieu_kham.html",
   le_tan: "patient_management.html",
-  ke_toan: "thanh_toan.html"
+  ke_toan: "ke_toan.html"
 };
 
 /**
