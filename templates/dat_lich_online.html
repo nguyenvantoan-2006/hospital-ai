@@ -1,0 +1,765 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cổng Đặt Lịch Khám Bệnh Trực Tuyến | CLINOVA Smart Clinic</title>
+
+  <!-- Bootstrap 5 CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- Google Font: Inter & Outfit -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
+  <!-- FontAwesome Icons -->
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+
+  <style>
+    :root {
+      --primary: #0284c7;
+      --primary-dark: #0369a1;
+      --primary-subtle: #f0f9ff;
+      --success: #10b981;
+      --slate-800: #1e293b;
+      --slate-600: #475569;
+      --slate-200: #e2e8f0;
+      --bg: #f8fafc;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: var(--bg);
+      color: var(--slate-800);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .font-outfit {
+      font-family: 'Outfit', sans-serif;
+    }
+
+    .navbar-booking {
+      background: #ffffff;
+      box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
+      border-bottom: 1px solid var(--slate-200);
+    }
+
+    /* Wizard steps */
+    .step-indicator {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 32px;
+    }
+
+    .step-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 600;
+      font-size: 14px;
+      color: #94a3b8;
+    }
+
+    .step-item.active {
+      color: var(--primary);
+    }
+
+    .step-circle {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: #e2e8f0;
+      color: #64748b;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .step-item.active .step-circle {
+      background: var(--primary);
+      color: #ffffff;
+    }
+
+    .step-line {
+      width: 40px;
+      height: 2px;
+      background: #e2e8f0;
+    }
+
+    /* Card styling */
+    .booking-card {
+      background: #ffffff;
+      border: 1px solid var(--slate-200);
+      border-radius: 20px;
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.04);
+      overflow: hidden;
+    }
+
+    .card-header-gradient {
+      background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+      color: #ffffff;
+      padding: 24px 32px;
+    }
+
+    .form-label {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--slate-600);
+      margin-bottom: 6px;
+    }
+
+    .form-control, .form-select {
+      border-radius: 10px;
+      padding: 10px 14px;
+      border: 1px solid #cbd5e1;
+      font-size: 14px;
+      transition: all 0.2s ease;
+    }
+
+    .form-control:focus, .form-select:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 4px rgba(2, 132, 199, 0.15);
+    }
+
+    .doctor-badge {
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 12px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .doctor-badge:hover, .doctor-badge.selected {
+      border-color: var(--primary);
+      background: #f0f9ff;
+    }
+
+    /* OTP inputs */
+    .otp-field {
+      width: 50px;
+      height: 60px;
+      font-size: 26px;
+      font-weight: 800;
+      text-align: center;
+      border-radius: 12px;
+      border: 2px solid #cbd5e1;
+    }
+
+    .otp-field:focus {
+      border-color: var(--primary);
+      outline: none;
+    }
+
+    /* Success Ticket */
+    .ticket-view {
+      border: 2px dashed #10b981;
+      background: #f0fdf4;
+      border-radius: 16px;
+      padding: 28px;
+    }
+
+    .ticket-code {
+      font-size: 28px;
+      font-weight: 800;
+      color: #059669;
+      letter-spacing: 2px;
+      font-family: 'Outfit', sans-serif;
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- Navbar -->
+  <nav class="navbar navbar-booking py-3">
+    <div class="container d-flex justify-content-between align-items-center">
+      <a class="d-flex align-items-center gap-2 text-decoration-none" href="index.html">
+        <img src="/static/img/clinic_avatar.png" alt="CLINOVA Logo" class="rounded-circle p-1 bg-light border" style="width: 40px; height: 40px; object-fit: contain;" />
+        <div>
+          <span class="fw-bold fs-5 text-dark font-outfit leading-tight d-block">CLINOVA</span>
+          <small class="text-muted" style="font-size: 11px;">Cổng Đặt Lịch Trực Tuyến Bệnh Nhân</small>
+        </div>
+      </a>
+      <div class="d-flex align-items-center gap-3">
+        <span class="d-none d-md-inline text-muted small"><i class="fa-solid fa-headset text-primary me-1"></i>Hỗ trợ: <strong>1900 8888</strong></span>
+        <a href="index.html" class="btn btn-sm btn-outline-secondary rounded-pill px-3">
+          <i class="fa-solid fa-arrow-left me-1"></i> Về Trang Chủ
+        </a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Main Container -->
+  <div class="container py-5 flex-grow-1">
+
+    <!-- Stepper indicator -->
+    <div class="step-indicator">
+      <div class="step-item active" id="stepIndicator1">
+        <div class="step-circle">1</div>
+        <span>Chọn Khoa & Bác Sĩ</span>
+      </div>
+      <div class="step-line"></div>
+      <div class="step-item" id="stepIndicator2">
+        <div class="step-circle">2</div>
+        <span>Thông Tin Bệnh Nhân</span>
+      </div>
+      <div class="step-line"></div>
+      <div class="step-item" id="stepIndicator3">
+        <div class="step-circle">3</div>
+        <span>Xác Thực OTP Gmail</span>
+      </div>
+    </div>
+
+    <!-- Booking Form Container -->
+    <div class="row justify-content-center">
+      <div class="col-lg-10 col-xl-9">
+        <div class="booking-card">
+
+          <!-- Card Header -->
+          <div class="card-header-gradient d-flex justify-content-between align-items-center">
+            <div>
+              <h4 class="fw-extrabold font-outfit mb-1" id="formHeaderTitle">Phiếu Đăng Ký Khám Bệnh</h4>
+              <p class="mb-0 text-white-50 small">Không cần tài khoản — Xác thực bảo mật tức thì qua hộp thư Gmail của bạn</p>
+            </div>
+            <div class="d-none d-sm-block text-end">
+              <span class="badge bg-white text-primary fw-bold px-3 py-2 rounded-pill">37 Chuyên Khoa • 185 Bác Sĩ</span>
+            </div>
+          </div>
+
+          <!-- Card Body Form -->
+          <div class="p-4 p-md-5" id="bookingFormSection">
+            <form id="bookingForm" onsubmit="handleSendOtp(event)">
+
+              <!-- PHẦN 1: CHUYÊN KHOA VÀ BÁC SĨ -->
+              <div class="mb-4">
+                <h6 class="fw-bold text-primary font-outfit mb-3">
+                  <i class="fa-solid fa-hospital-user me-2"></i>1. CHỌN CHUYÊN KHOA VÀ BÁC SĨ KHÁM
+                </h6>
+                <div class="row g-3">
+                  <div class="col-md-6">
+                    <label class="form-label">Chuyên Khoa Y Tế <span class="text-danger">*</span></label>
+                    <select id="chuyenKhoaSelect" class="form-select" required onchange="handleSpecialtyChange()">
+                      <option value="">-- Chọn 1 trong 37 chuyên khoa --</option>
+                    </select>
+                    <div id="specDetailNote" class="form-text text-muted mt-1 small"></div>
+                  </div>
+
+                  <div class="col-md-6">
+                    <label class="form-label">Bác Sĩ Phụ Trách (5 bác sĩ/chuyên khoa)</label>
+                    <select id="bacSiSelect" class="form-select" onchange="handleDoctorChange()">
+                      <option value="">-- Hệ thống tự phân bổ bác sĩ trực phù hợp --</option>
+                    </select>
+                    <div id="doctorDetailNote" class="form-text text-primary mt-1 small"></div>
+                  </div>
+                </div>
+              </div>
+
+              <hr class="my-4 text-secondary opacity-25">
+
+              <!-- PHẦN 2: THỜI GIAN KHÁM -->
+              <div class="mb-4">
+                <h6 class="fw-bold text-primary font-outfit mb-3">
+                  <i class="fa-solid fa-calendar-days me-2"></i>2. THỜI GIAN KHÁM MONG MUỐN
+                </h6>
+                <div class="row g-3">
+                  <div class="col-md-6">
+                    <label class="form-label">Ngày Khám <span class="text-danger">*</span></label>
+                    <input type="date" id="ngayKhamInput" class="form-control" required />
+                  </div>
+                  <div class="col-md-6">
+                    <label class="form-label">Khung Giờ Khám <span class="text-danger">*</span></label>
+                    <select id="gioKhamSelect" class="form-select" required>
+                      <option value="08:00">Ca sáng: 08:00 - 09:00</option>
+                      <option value="09:00" selected>Ca sáng: 09:00 - 10:00</option>
+                      <option value="10:00">Ca sáng: 10:00 - 11:00</option>
+                      <option value="13:30">Ca chiều: 13:30 - 14:30</option>
+                      <option value="14:30">Ca chiều: 14:30 - 15:30</option>
+                      <option value="15:30">Ca chiều: 15:30 - 16:30</option>
+                      <option value="17:00">Ca ngoài giờ: 17:00 - 18:00</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              <hr class="my-4 text-secondary opacity-25">
+
+              <!-- PHẦN 3: THÔNG TIN BỆNH NHÂN -->
+              <div class="mb-4">
+                <h6 class="fw-bold text-primary font-outfit mb-3">
+                  <i class="fa-solid fa-id-card me-2"></i>3. THÔNG TIN BỆNH NHÂN & EMAIL NHẬN OTP
+                </h6>
+                <div class="row g-3">
+                  <div class="col-md-6">
+                    <label class="form-label">Họ và Tên Bệnh Nhân <span class="text-danger">*</span></label>
+                    <input type="text" id="hoTenInput" class="form-control" placeholder="Ví dụ: Nguyễn Văn An" required />
+                  </div>
+
+                  <div class="col-md-6">
+                    <label class="form-label">Số Điện Thoại <span class="text-danger">*</span></label>
+                    <input type="tel" id="sdtInput" class="form-control" placeholder="Ví dụ: 0912345678" required />
+                  </div>
+
+                  <div class="col-md-6">
+                    <label class="form-label">
+                      Hộp Thư Gmail (Nhận Mã OTP & Vé Khám) <span class="text-danger">*</span>
+                    </label>
+                    <input type="email" id="emailInput" class="form-control" placeholder="name@gmail.com" required />
+                    <div class="form-text small text-muted">Mã OTP xác thực sẽ gửi trực tiếp đến hộp thư này.</div>
+                  </div>
+
+                  <div class="col-md-3">
+                    <label class="form-label">Ngày Sinh</label>
+                    <input type="date" id="ngaySinhInput" class="form-control" />
+                  </div>
+
+                  <div class="col-md-3">
+                    <label class="form-label">Giới Tính</label>
+                    <select id="gioiTinhSelect" class="form-select">
+                      <option value="Nam">Nam</option>
+                      <option value="Nữ">Nữ</option>
+                      <option value="Khác">Khác</option>
+                    </select>
+                  </div>
+
+                  <div class="col-md-6">
+                    <label class="form-label">Số CCCD / Định Danh (Tùy chọn)</label>
+                    <input type="text" id="cccdInput" class="form-control" placeholder="12 số CCCD" />
+                  </div>
+
+                  <div class="col-md-6">
+                    <label class="form-label">Mã Thẻ BHYT (Nếu có)</label>
+                    <input type="text" id="bhytInput" class="form-control" placeholder="Mã thẻ BHYT (vd: GD479...)" />
+                  </div>
+
+                  <div class="col-12">
+                    <label class="form-label">Lý Do Khám / Triệu Chứng Ban Đầu</label>
+                    <textarea id="lyDoKhamInput" class="form-control" rows="2" placeholder="Mô tả triệu chứng bạn đang gặp phải (vd: Đau đầu kéo dài, sốt nhẹ...)"></textarea>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Nút Tiếp tục -->
+              <div class="d-grid mt-4">
+                <button type="submit" id="btnSubmitSendOtp" class="btn btn-primary btn-lg rounded-pill fw-bold py-3 shadow">
+                  <i class="fa-solid fa-paper-plane me-2"></i> TIẾP TỤC & GỬI MÃ OTP VỀ GMAIL
+                </button>
+              </div>
+            </form>
+          </div>
+
+          <!-- MÀN HÌNH NHẬP OTP (HIỂN THỊ KHI GỬI OTP THÀNH CÔNG) -->
+          <div class="p-4 p-md-5 d-none" id="otpVerifySection">
+            <div class="text-center mb-4">
+              <div class="rounded-circle bg-primary-subtle text-primary d-inline-flex p-3 fs-2 mb-3">
+                <i class="fa-solid fa-envelope-open-text"></i>
+              </div>
+              <h4 class="fw-extrabold font-outfit text-dark mb-1">Xác Thực Mã OTP Qua Gmail</h4>
+              <p class="text-muted">
+                Hệ thống đã gửi mã OTP 6 chữ số đến hộp thư: <strong id="displayTargetEmail" class="text-primary"></strong>
+              </p>
+              <div id="debugOtpNotice" class="alert alert-info py-2 d-inline-block small mb-3 d-none">
+                <!-- Hint for testing mode -->
+              </div>
+            </div>
+
+            <div class="row justify-content-center">
+              <div class="col-md-8 text-center">
+                <div class="d-flex justify-content-center gap-2 mb-4">
+                  <input type="text" maxlength="1" class="otp-field" id="otp1" oninput="moveNext(this, 'otp2')" autofocus />
+                  <input type="text" maxlength="1" class="otp-field" id="otp2" oninput="moveNext(this, 'otp3')" />
+                  <input type="text" maxlength="1" class="otp-field" id="otp3" oninput="moveNext(this, 'otp4')" />
+                  <input type="text" maxlength="1" class="otp-field" id="otp4" oninput="moveNext(this, 'otp5')" />
+                  <input type="text" maxlength="1" class="otp-field" id="otp5" oninput="moveNext(this, 'otp6')" />
+                  <input type="text" maxlength="1" class="otp-field" id="otp6" oninput="checkAutoSubmit()" />
+                </div>
+
+                <div class="text-muted small mb-4">
+                  Thời hạn mã OTP còn lại: <strong id="countdownTimer" class="text-danger">10:00</strong>
+                </div>
+
+                <div class="d-flex justify-content-center gap-3">
+                  <button type="button" class="btn btn-outline-secondary rounded-pill px-4" onclick="backToForm()">
+                    <i class="fa-solid fa-arrow-left me-1"></i> Chỉnh sửa thông tin
+                  </button>
+                  <button type="button" class="btn btn-primary rounded-pill px-5 fw-bold" id="btnVerifyOtp" onclick="handleVerifyOtp()">
+                    XÁC THỰC & HOÀN TẤT ĐẶT LỊCH <i class="fa-solid fa-check ms-1"></i>
+                  </button>
+                </div>
+
+                <div class="mt-4 pt-3 border-top text-center small text-muted">
+                  Chưa nhận được email? <a href="javascript:void(0)" class="text-primary fw-bold text-decoration-none" onclick="resendOtp()">Gửi lại mã mới</a>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- MÀN HÌNH HOÀN TẤT & VÉ KHÁM ĐIỆN TỬ -->
+          <div class="p-4 p-md-5 d-none" id="successReceiptSection">
+            <div class="text-center mb-4">
+              <div class="rounded-circle bg-success-subtle text-success d-inline-flex p-3 fs-1 mb-3">
+                <i class="fa-solid fa-circle-check"></i>
+              </div>
+              <h3 class="fw-extrabold font-outfit text-dark mb-1">🎉 ĐẶT LỊCH KHÁM THÀNH CÔNG!</h3>
+              <p class="text-muted">Thông tin lịch khám đã được lưu vào hệ thống phòng khám và gửi về Gmail của bạn.</p>
+            </div>
+
+            <div class="ticket-view mb-4">
+              <div class="text-center mb-3">
+                <div class="small text-muted text-uppercase fw-bold">MÃ VÉ HẸN ĐIỆN TỬ</div>
+                <div class="ticket-code" id="receiptBookingCode">LK0000</div>
+              </div>
+
+              <div class="row g-3 small">
+                <div class="col-sm-6">
+                  <span class="text-muted">Họ và tên bệnh nhân:</span>
+                  <div class="fw-bold fs-6" id="receiptPatientName">--</div>
+                </div>
+                <div class="col-sm-6">
+                  <span class="text-muted">Số điện thoại:</span>
+                  <div class="fw-bold fs-6" id="receiptPhone">--</div>
+                </div>
+                <div class="col-sm-6">
+                  <span class="text-muted">Chuyên khoa khám:</span>
+                  <div class="fw-bold fs-6 text-primary" id="receiptSpecialty">--</div>
+                </div>
+                <div class="col-sm-6">
+                  <span class="text-muted">Bác sĩ phụ trách:</span>
+                  <div class="fw-bold fs-6 text-primary" id="receiptDoctor">--</div>
+                </div>
+                <div class="col-sm-6">
+                  <span class="text-muted">Thời gian khám dự kiến:</span>
+                  <div class="fw-bold fs-6 text-success" id="receiptDateTime">--</div>
+                </div>
+                <div class="col-sm-6">
+                  <span class="text-muted">Địa điểm phòng khám:</span>
+                  <div class="fw-bold fs-6" id="receiptRoom">--</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="alert alert-warning py-3 small">
+              <i class="fa-solid fa-circle-info me-2 text-warning-emphasis"></i>
+              <strong>Hướng dẫn dành cho bệnh nhân:</strong> Khi đến phòng khám, quý khách vui lòng đến <strong>Quầy Tiếp Đón Lễ Tân</strong> và đọc mã <strong><span id="guideCodeText"></span></strong> hoặc Số điện thoại để nhận <strong>Số Thứ Tự (STT)</strong> vào phòng khám.
+            </div>
+
+            <div class="d-flex justify-content-center gap-3 mt-4">
+              <button class="btn btn-outline-dark rounded-pill px-4" onclick="window.print()">
+                <i class="fa-solid fa-print me-1"></i> In Phiếu Hẹn
+              </button>
+              <a href="index.html" class="btn btn-primary rounded-pill px-4 fw-bold">
+                Về Trang Chủ CLINOVA <i class="fa-solid fa-house ms-1"></i>
+              </a>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Container -->
+  <div class="toast-container position-fixed bottom-0 end-0 p-3" id="toastBox"></div>
+
+  <!-- Bootstrap JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+  <script>
+    let specialtiesList = [];
+    let doctorsBySpec = [];
+    let countdownInterval = null;
+    let cachedBookingPayload = null;
+
+    // Thiết lập ngày tối thiểu là ngày hôm nay
+    document.addEventListener("DOMContentLoaded", () => {
+      const today = new Date().toISOString().split('T')[0];
+      document.getElementById("ngayKhamInput").min = today;
+      document.getElementById("ngayKhamInput").value = today;
+
+      // Đọc query parameters nếu chuyển từ trang chủ sang
+      const urlParams = new URLSearchParams(window.location.search);
+      const preSpec = urlParams.get('khoa');
+      const preDocId = urlParams.get('doc');
+
+      loadSpecialties(preSpec, preDocId);
+    });
+
+    // 1. Tải danh sách 37 chuyên khoa
+    async function loadSpecialties(preSelectSpec, preSelectDocId) {
+      try {
+        const res = await fetch("/api/v1/admin/specialties");
+        if (res.ok) {
+          specialtiesList = await res.json();
+          const select = document.getElementById("chuyenKhoaSelect");
+          select.innerHTML = '<option value="">-- Chọn 1 trong 37 chuyên khoa --</option>' +
+            specialtiesList.map(s => `<option value="${s.ten_chuyen_khoa}" data-id="${s.id}" data-desc="${s.mo_ta || ''}" data-fee="${s.gia_kham_tieu_chuan || 150000}">${s.ten_chuyen_khoa}</option>`).join("");
+
+          if (preSelectSpec) {
+            select.value = preSelectSpec;
+            await handleSpecialtyChange(preSelectDocId);
+          }
+        }
+      } catch (e) {
+        showToast("Lỗi khi tải danh sách chuyên khoa!", "danger");
+      }
+    }
+
+    // 2. Khi chọn chuyên khoa -> Tự động load 5 bác sĩ của chuyên khoa đó
+    async function handleSpecialtyChange(preDocId) {
+      const select = document.getElementById("chuyenKhoaSelect");
+      const selectedOption = select.options[select.selectedIndex];
+      const specName = select.value;
+      const note = document.getElementById("specDetailNote");
+
+      if (!specName) {
+        note.innerHTML = "";
+        document.getElementById("bacSiSelect").innerHTML = '<option value="">-- Hệ thống tự phân bổ bác sĩ trực phù hợp --</option>';
+        return;
+      }
+
+      const desc = selectedOption.getAttribute("data-desc");
+      const fee = parseInt(selectedOption.getAttribute("data-fee") || 150000);
+      note.innerHTML = `📋 <em>${desc}</em> | Giá khám chuẩn: <strong>${new Intl.NumberFormat('vi-VN').format(fee)} đ</strong>`;
+
+      // Fetch 5 bác sĩ của chuyên khoa này
+      try {
+        const res = await fetch(`/api/v1/lich-khams/public/doctors?chuyen_khoa=${encodeURIComponent(specName)}`);
+        if (res.ok) {
+          doctorsBySpec = await res.json();
+          const docSelect = document.getElementById("bacSiSelect");
+          docSelect.innerHTML = '<option value="">-- Chọn bác sĩ (hoặc để hệ thống tự xếp) --</option>' +
+            doctorsBySpec.map(d => `<option value="${d.id}" data-name="${d.hoc_vi} ${d.ho_ten}" data-room="${d.phong_kham}" data-shift="${d.lich_truc}">${d.hoc_vi} ${d.ho_ten} (${d.phong_kham})</option>`).join("");
+
+          if (preDocId) {
+            docSelect.value = preDocId;
+            handleDoctorChange();
+          }
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    function handleDoctorChange() {
+      const docSelect = document.getElementById("bacSiSelect");
+      const note = document.getElementById("doctorDetailNote");
+      if (docSelect.value) {
+        const opt = docSelect.options[docSelect.selectedIndex];
+        note.innerHTML = `Lịch trực: ${opt.getAttribute('data-shift')} | ${opt.getAttribute('data-room')}`;
+      } else {
+        note.innerHTML = "";
+      }
+    }
+
+    // 3. Gửi OTP
+    async function handleSendOtp(event) {
+      event.preventDefault();
+
+      const hoTen = document.getElementById("hoTenInput").value.trim();
+      const sdt = document.getElementById("sdtInput").value.trim();
+      const email = document.getElementById("emailInput").value.trim().toLowerCase();
+      const chuyenKhoa = document.getElementById("chuyenKhoaSelect").value;
+      const bacSiId = document.getElementById("bacSiSelect").value;
+      const ngayKham = document.getElementById("ngayKhamInput").value;
+      const gioKham = document.getElementById("gioKhamSelect").value;
+      const lyDoKham = document.getElementById("lyDoKhamInput").value.trim();
+
+      const docOpt = document.getElementById("bacSiSelect").options[document.getElementById("bacSiSelect").selectedIndex];
+      const bacSiName = docOpt && docOpt.value ? docOpt.getAttribute("data-name") : "Bác sĩ phụ trách ca";
+
+      const specOpt = document.getElementById("chuyenKhoaSelect").options[document.getElementById("chuyenKhoaSelect").selectedIndex];
+      const specId = specOpt ? parseInt(specOpt.getAttribute("data-id")) : null;
+
+      const thoiGianStr = `${ngayKham} ${gioKham}`;
+
+      cachedBookingPayload = {
+        email: email,
+        ho_ten: hoTen,
+        sdt: sdt,
+        ngay_sinh: document.getElementById("ngaySinhInput").value || null,
+        gioi_tinh: document.getElementById("gioiTinhSelect").value,
+        cccd: document.getElementById("cccdInput").value.trim() || null,
+        bhyt: document.getElementById("bhytInput").value.trim() || null,
+        chuyen_khoa: chuyenKhoa,
+        chuyen_khoa_id: specId,
+        bac_si: bacSiName,
+        bac_si_id: bacSiId ? parseInt(bacSiId) : null,
+        thoi_gian: thoiGianStr,
+        ly_do_kham: lyDoKham
+      };
+
+      const btn = document.getElementById("btnSubmitSendOtp");
+      btn.disabled = true;
+      btn.innerHTML = `<span class="spinner-border spinner-border-sm me-2"></span> Đang kết nối Gmail & gửi mã OTP...`;
+
+      try {
+        const response = await fetch("/api/v1/lich-khams/send-otp", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(cachedBookingPayload)
+        });
+
+        const data = await response.json();
+        if (!response.ok) {
+          throw new Error(data.detail || "Không thể gửi mã OTP. Vui lòng kiểm tra lại email!");
+        }
+
+        // Chuyển sang màn hình xác thực OTP
+        document.getElementById("bookingFormSection").classList.add("d-none");
+        document.getElementById("otpVerifySection").classList.remove("d-none");
+        document.getElementById("stepIndicator1").classList.remove("active");
+        document.getElementById("stepIndicator2").classList.remove("active");
+        document.getElementById("stepIndicator3").classList.add("active");
+
+        document.getElementById("displayTargetEmail").innerText = email;
+
+        // Nếu có debug_otp (môi trường dev), hiển thị gợi ý
+        if (data.debug_otp) {
+          const notice = document.getElementById("debugOtpNotice");
+          notice.innerHTML = `<strong>💡 Gợi ý thử nghiệm:</strong> Mã OTP phát sinh là: <span class="badge bg-danger fs-6">${data.debug_otp}</span>`;
+          notice.classList.remove("d-none");
+        }
+
+        startTimer(600); // 10 phút
+        showToast("Đã gửi mã OTP đến Gmail thành công!", "success");
+        document.getElementById("otp1").focus();
+
+      } catch (err) {
+        showToast(err.message, "danger");
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = `<i class="fa-solid fa-paper-plane me-2"></i> TIẾP TỤC & GỬI MÃ OTP VỀ GMAIL`;
+      }
+    }
+
+    // 4. Xử lý Input mã OTP
+    function moveNext(current, nextId) {
+      if (current.value.length >= 1 && nextId) {
+        document.getElementById(nextId).focus();
+      }
+    }
+
+    function checkAutoSubmit() {
+      const fullOtp = getEnteredOtp();
+      if (fullOtp.length === 6) {
+        handleVerifyOtp();
+      }
+    }
+
+    function getEnteredOtp() {
+      return (
+        document.getElementById("otp1").value +
+        document.getElementById("otp2").value +
+        document.getElementById("otp3").value +
+        document.getElementById("otp4").value +
+        document.getElementById("otp5").value +
+        document.getElementById("otp6").value
+      ).trim();
+    }
+
+    // 5. Xác thực OTP và hoàn tất đặt lịch
+    async function handleVerifyOtp() {
+      const otp = getEnteredOtp();
+      if (otp.length < 6) {
+        showToast("Vui lòng nhập đủ 6 chữ số mã OTP!", "warning");
+        return;
+      }
+
+      const btn = document.getElementById("btnVerifyOtp");
+      btn.disabled = true;
+      btn.innerHTML = `<span class="spinner-border spinner-border-sm me-2"></span> Đang xác thực...`;
+
+      const payload = {
+        ...cachedBookingPayload,
+        otp: otp
+      };
+
+      try {
+        const response = await fetch("/api/v1/lich-khams/verify-otp-and-book", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+
+        const data = await response.json();
+        if (!response.ok) {
+          throw new Error(data.detail || "Mã OTP không đúng hoặc đã hết hạn!");
+        }
+
+        clearInterval(countdownInterval);
+
+        // Hiển thị vé khám thành công
+        document.getElementById("otpVerifySection").classList.add("d-none");
+        document.getElementById("successReceiptSection").classList.remove("d-none");
+
+        document.getElementById("receiptBookingCode").innerText = data.booking_code;
+        document.getElementById("guideCodeText").innerText = data.booking_code;
+        document.getElementById("receiptPatientName").innerText = data.benh_nhan.ho_ten;
+        document.getElementById("receiptPhone").innerText = data.benh_nhan.so_dien_thoai;
+        document.getElementById("receiptSpecialty").innerText = data.details.chuyen_khoa;
+        document.getElementById("receiptDoctor").innerText = data.details.bac_si;
+        document.getElementById("receiptDateTime").innerText = data.details.thoi_gian;
+        document.getElementById("receiptRoom").innerText = data.details.phong_kham;
+
+        showToast("🎉 Đặt lịch khám thành công!", "success");
+
+      } catch (err) {
+        showToast(err.message, "danger");
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = `XÁC THỰC & HOÀN TẤT ĐẶT LỊCH <i class="fa-solid fa-check ms-1"></i>`;
+      }
+    }
+
+    function backToForm() {
+      clearInterval(countdownInterval);
+      document.getElementById("otpVerifySection").classList.add("d-none");
+      document.getElementById("bookingFormSection").classList.remove("d-none");
+      document.getElementById("stepIndicator3").classList.remove("active");
+      document.getElementById("stepIndicator1").classList.add("active");
+    }
+
+    function resendOtp() {
+      if (cachedBookingPayload) {
+        showToast("Đang gửi lại mã OTP mới...", "info");
+        handleSendOtp({ preventDefault: () => {} });
+      }
+    }
+
+    function startTimer(duration) {
+      clearInterval(countdownInterval);
+      let timer = duration;
+      const display = document.getElementById("countdownTimer");
+      countdownInterval = setInterval(() => {
+        const minutes = parseInt(timer / 60, 10);
+        const seconds = parseInt(timer % 60, 10);
+        display.textContent = (minutes < 10 ? "0" + minutes : minutes) + ":" + (seconds < 10 ? "0" + seconds : seconds);
+        if (--timer < 0) {
+          clearInterval(countdownInterval);
+          display.textContent = "HẾT HẠN";
+          showToast("Mã OTP đã hết hiệu lực. Vui lòng bấm 'Gửi lại mã mới'!", "danger");
+        }
+      }, 1000);
+    }
+
+    function showToast(msg, type = "success") {
+      const container = document.getElementById("toastBox");
+      const toast = document.createElement("div");
+      const bg = type === "success" ? "bg-success" : (type === "warning" ? "bg-warning text-dark" : (type === "info" ? "bg-primary" : "bg-danger"));
+      toast.className = `toast align-items-center text-white ${bg} border-0 show mb-2 shadow`;
+      toast.innerHTML = `
+        <div class="d-flex">
+          <div class="toast-body fw-semibold">${msg}</div>
+          <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+        </div>
+      `;
+      container.appendChild(toast);
+      setTimeout(() => toast.remove(), 5000);
+    }
+  </script>
+</body>
+
+</html>

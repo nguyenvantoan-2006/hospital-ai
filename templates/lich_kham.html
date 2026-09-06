@@ -125,8 +125,11 @@
   <!-- Sidebar -->
   <aside class="sidebar">
     <p class="sidebar-section-title">Tổng quan</p>
-    <a href="index.html" class="nav-item-custom">
-      <i class="fa-solid fa-house"></i> Trang chủ
+    <a href="dashboard.html" class="nav-item-custom">
+      <i class="fa-solid fa-house"></i> Bảng điều khiển
+    </a>
+    <a href="index.html" class="nav-item-custom" target="_blank">
+      <i class="fa-solid fa-globe"></i> Trang chủ Bệnh nhân
     </a>
     <p class="sidebar-section-title">Nghiệp vụ Lễ tân</p>
     <a href="danh_sach_benh_nhan.html" class="nav-item-custom">
@@ -154,9 +157,14 @@
         <h3 class="fw-bold mb-1"><i class="fa-solid fa-calendar-days text-primary me-2"></i>Quản lý & Tiếp nhận Lịch khám</h3>
         <p class="text-muted small mb-0">Theo dõi tiến trình lịch khám, tiếp nhận bệnh nhân đến khám và điều phối số thứ tự (FR-04 & UC-04)</p>
       </div>
-      <button class="btn btn-primary rounded-3 px-3 fw-semibold shadow-sm" onclick="openBookingModal()">
-        <i class="fa-solid fa-calendar-plus me-1"></i> Đặt Lịch Khám Mới
-      </button>
+      <div class="d-flex gap-2">
+        <a href="dat_lich_online.html" target="_blank" class="btn btn-outline-success rounded-3 px-3 fw-semibold shadow-sm">
+          <i class="fa-solid fa-earth-americas me-1"></i> Xem Cổng Đặt Lịch Online
+        </a>
+        <button class="btn btn-primary rounded-3 px-3 fw-semibold shadow-sm" onclick="openBookingModal()">
+          <i class="fa-solid fa-calendar-plus me-1"></i> Đặt Lịch Khám Mới (Tại Quầy)
+        </button>
+      </div>
     </div>
 
     <!-- Toolbar Filters -->

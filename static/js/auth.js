@@ -32,7 +32,7 @@ function initAuthGuard(allowedRoles = []) {
   // 2. Kiểm tra phân quyền truy cập theo vai trò (RBAC)
   if (allowedRoles.length > 0 && !allowedRoles.includes(role)) {
     alert(`Rất tiếc! Vai trò [${ROLE_NAMES[role] || role}] không có quyền truy cập trang này.`);
-    const homePage = DEFAULT_HOME_PAGE[role] || "index.html";
+    const homePage = DEFAULT_HOME_PAGE[role] || "dashboard.html";
     window.location.href = homePage;
     return false;
   }
