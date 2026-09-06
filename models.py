@@ -178,7 +178,9 @@ class Thuoc(Base):
     id          = Column(Integer, primary_key=True, index=True)
     ten_thuoc   = Column(String(200), nullable=False, index=True)
     don_vi_tinh = Column(String(50),  nullable=True)   # Ví dụ: viên, chai, ống
-    don_gia     = Column(Float,       nullable=False, default=0.0)
+    gia_nhap    = Column(Float,       nullable=False, default=0.0) # Giá vốn nhập kho
+    don_gia     = Column(Float,       nullable=False, default=0.0) # Giá bán lẻ ra cho bệnh nhân
+    so_luong_ton= Column(Integer,     nullable=False, default=100) # Tồn kho hiện tại
 
     # Một Thuoc có thể xuất hiện trong nhiều DonThuoc
     don_thuocs = relationship(
@@ -186,8 +188,14 @@ class Thuoc(Base):
         back_populates="thuoc",
     )
 
+    # Một Thuoc có thể xuất hiện trong nhiều ChiTietNhapKho
+    chi_tiet_nhaps = relationship(
+        "ChiTietNhapKho",
+        back_populates="thuoc",
+    )
+
     def __repr__(self) -> str:
-        return f"<Thuoc id={self.id} ten_thuoc='{self.ten_thuoc}' don_gia={self.don_gia}>"
+        return f"<Thuoc id={self.id} ten_thuoc='{self.ten_thuoc}' don_gia={self.don_gia} ton_kho={self.so_luong_ton}>"
 
 
 # ════════════════════════════════════════════════════════════════════════════════
@@ -309,3 +317,76 @@ class AuditLog(Base):
 
     def __repr__(self) -> str:
         return f"<AuditLog id={self.id} action='{self.action}' table='{self.target_table}'>"
+
+
+# ════════════════════════════════════════════════════════════════════════════════
+#  11. PHIẾU NHẬP KHO — Quản lý nhập thuốc/vật tư từ nhà cung cấp
+# ════════════════════════════════════════════════════════════════════════════════
+class PhieuNhapKho(Base):
+    __tablename__ = "phieu_nhap_kho"
+
+    id            = Column(Integer, primary_key=True, index=True)
+    ma_phieu      = Column(String(50), unique=True, index=True) # PNK20260901...
+    nha_cung_cap  = Column(String(200), nullable=False)        # Tên công ty dược
+    ngay_nhap     = Column(DateTime, default=datetime.utcnow)
+    tong_tien     = Column(Float, default=0.0)                 # Tổng giá vốn nhập kho
+    nguoi_nhap    = Column(String(100), nullable=True)         # Tên kế toán/thủ kho
+    ghi_chu       = Column(Text, nullable=True)
+
+    # 1 Phiếu nhập có nhiều chi tiết mặt hàng
+    chi_tiets = relationship(
+        "ChiTietNhapKho",
+        back_populates="phieu_nhap",
+        cascade="all, delete-orphan"
+    )
+
+    def __repr__(self) -> str:
+        return f"<PhieuNhapKho id={self.id} ma='{self.ma_phieu}' tong_tien={self.tong_tien}>"
+
+
+# ════════════════════════════════════════════════════════════════════════════════
+#  12. CHI TIẾT NHẬP KHO — Chi tiết từng thuốc trong phiếu nhập
+# ════════════════════════════════════════════════════════════════════════════════
+class ChiTietNhapKho(Base):
+    __tablename__ = "chi_tiet_nhap_kho"
+
+    id            = Column(Integer, primary_key=True, index=True)
+    phieu_nhap_id = Column(Integer, ForeignKey("phieu_nhap_kho.id", ondelete="CASCADE"), nullable=False)
+    thuoc_id      = Column(Integer, ForeignKey("thuocs.id", ondelete="RESTRICT"), nullable=False)
+    so_luong      = Column(Integer, nullable=False, default=1)
+    don_gia_nhap  = Column(Float, nullable=False, default=0.0)
+    thanh_tien    = Column(Float, nullable=False, default=0.0)
+
+    phieu_nhap = relationship("PhieuNhapKho", back_populates="chi_tiets")
+    thuoc      = relationship("Thuoc", back_populates="chi_tiet_nhaps")
+
+    def __repr__(self) -> str:
+        return f"<ChiTietNhapKho id={self.id} thuoc_id={self.thuoc_id} so_luong={self.so_luong}>"
+
+
+# ════════════════════════════════════════════════════════════════════════════════
+#  13. BẢNG LƯƠNG — Quản lý tính lương & phát lương nhân viên
+# ════════════════════════════════════════════════════════════════════════════════
+class BangLuong(Base):
+    __tablename__ = "bang_luong"
+
+    id            = Column(Integer, primary_key=True, index=True)
+    user_id       = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    ho_ten        = Column(String(100), nullable=False)
+    chuc_vu       = Column(String(50), nullable=False)        # Bác sĩ | Lễ tân | Kế toán | Admin
+    thang         = Column(Integer, nullable=False)           # Tháng 1 - 12
+    nam           = Column(Integer, nullable=False)           # Năm
+    luong_co_ban  = Column(Float, default=0.0)
+    phu_cap       = Column(Float, default=0.0)
+    thuong        = Column(Float, default=0.0)
+    khau_tru      = Column(Float, default=0.0)
+    thuc_linh     = Column(Float, default=0.0)                # = luong_co_ban + phu_cap + thuong - khau_tru
+    trang_thai    = Column(String(30), default="chua_chi")    # chua_chi | da_chi
+    ngay_tra      = Column(DateTime, nullable=True)
+    ghi_chu       = Column(Text, nullable=True)
+
+    user = relationship("User")
+
+    def __repr__(self) -> str:
+        return f"<BangLuong id={self.id} ho_ten='{self.ho_ten}' thang={self.thang}/{self.nam} thuc_linh={self.thuc_linh} trang_thai='{self.trang_thai}'>"
+

@@ -337,6 +337,54 @@ class HoaDonResponse(HoaDonBase):
 
 
 # ════════════════════════════════════════════════════════════════════════════════
+#  8. BẢNG LƯƠNG SCHEMAS
+# ════════════════════════════════════════════════════════════════════════════════
+class BangLuongBase(OrmBase):
+    user_id:      Optional[int] = None
+    ho_ten:       str
+    chuc_vu:      str
+    thang:        int
+    nam:          int
+    luong_co_ban: float = 0.0
+    phu_cap:      float = 0.0
+    thuong:       float = 0.0
+    khau_tru:     float = 0.0
+    thuc_linh:    float = 0.0
+    trang_thai:   str = "chua_chi"
+    ghi_chu:      Optional[str] = None
+
+
+class BangLuongCreate(BangLuongBase):
+    pass
+
+
+class BangLuongChiTraInput(OrmBase):
+    trang_thai: Literal["da_chi", "chua_chi"] = "da_chi"
+    ghi_chu:    Optional[str] = None
+
+
+class BangLuongResponse(BangLuongBase):
+    id:       int
+    ngay_tra: Optional[datetime] = None
+
+
+# ════════════════════════════════════════════════════════════════════════════════
+#  9. KHO DƯỢC & NHẬP KHO SCHEMAS
+# ════════════════════════════════════════════════════════════════════════════════
+class ChiTietNhapKhoInput(BaseModel):
+    thuoc_id:     int
+    so_luong:     int
+    don_gia_nhap: float
+
+
+class PhieuNhapKhoCreate(BaseModel):
+    nha_cung_cap: str
+    nguoi_nhap:   Optional[str] = None
+    ghi_chu:      Optional[str] = None
+    chi_tiets:    List[ChiTietNhapKhoInput]
+
+
+# ════════════════════════════════════════════════════════════════════════════════
 #  RESOLVE FORWARD REFERENCES
 #  Cần thiết vì BenhNhanDetailResponse, LichKhamDetailResponse,
 #  PhieuKhamDetailResponse dùng forward reference ("...Response")

@@ -1,0 +1,997 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kế toán Tổng hợp & Tài chính | Phòng khám CLINOVA</title>
+
+  <!-- Bootstrap 5 CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- Google Font: Inter -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <!-- FontAwesome Icons -->
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <style>
+    :root {
+      --primary-color: #1A73E8;
+      --primary-dark: #1557B0;
+      --teal-color: #20C997;
+      --success-color: #10B981;
+      --warning-color: #F59E0B;
+      --danger-color: #EF4444;
+      --bg-color: #F8FAFC;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: var(--bg-color);
+      color: #1E293B;
+    }
+
+    .navbar-custom {
+      background: linear-gradient(135deg, #1E3A8A 0%, #1A73E8 100%);
+      box-shadow: 0 4px 16px rgba(26,115,232,0.25);
+    }
+
+    .card-kpi {
+      border: 1px solid #E2E8F0;
+      border-radius: 14px;
+      background: #FFFFFF;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .card-kpi:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(0,0,0,0.06);
+    }
+
+    .kpi-icon-box {
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+    }
+
+    .nav-tabs-custom .nav-link {
+      color: #64748B;
+      font-weight: 600;
+      padding: 12px 20px;
+      border: none;
+      border-bottom: 3px solid transparent;
+      transition: all 0.2s;
+    }
+    .nav-tabs-custom .nav-link.active {
+      color: var(--primary-color);
+      border-bottom-color: var(--primary-color);
+      background: transparent;
+    }
+    .nav-tabs-custom .nav-link:hover {
+      color: var(--primary-color);
+    }
+
+    .table-custom th {
+      background-color: #F1F5F9;
+      color: #475569;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      font-weight: 700;
+      border-bottom: 2px solid #CBD5E1;
+    }
+
+    .table-custom td {
+      vertical-align: middle;
+      font-size: 13.5px;
+    }
+
+    .badge-paid {
+      background-color: #DCFCE7;
+      color: #15803D;
+      font-weight: 600;
+    }
+    .badge-unpaid {
+      background-color: #FEF3C7;
+      color: #B45309;
+      font-weight: 600;
+    }
+
+    .btn-gradient-primary {
+      background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%);
+      color: #fff;
+      font-weight: 600;
+      border: none;
+    }
+    .btn-gradient-primary:hover {
+      color: #fff;
+      opacity: 0.95;
+    }
+
+    .btn-gradient-success {
+      background: linear-gradient(135deg, var(--teal-color) 0%, #0D9488 100%);
+      color: #fff;
+      font-weight: 600;
+      border: none;
+    }
+    .btn-gradient-success:hover {
+      color: #fff;
+      opacity: 0.95;
+    }
+
+    .toast-container-custom {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      z-index: 1090;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Toast Container -->
+  <div class="toast-container-custom" id="toastContainer"></div>
+
+  <!-- Navbar -->
+  <nav class="navbar navbar-expand-lg navbar-dark navbar-custom px-4 py-2">
+    <div class="container-fluid">
+      <a class="navbar-brand d-flex align-items-center gap-2" href="index.html">
+        <div class="bg-white bg-opacity-25 rounded-3 p-2 d-flex align-items-center justify-content-center" style="width:40px; height:40px;">
+          <i class="fa-solid fa-coins text-white fs-5"></i>
+        </div>
+        <div>
+          <span class="fw-bold fs-6 d-block leading-none">CLINOVA</span>
+          <small class="text-white-50" style="font-size:11px;">Phân Hệ Kế Toán & Tài Chính Toàn Diện</small>
+        </div>
+      </a>
+
+      <div class="ms-auto d-flex align-items-center gap-2">
+        <a href="thanh_toan.html" class="btn btn-sm btn-outline-light"><i class="fa-solid fa-cash-register me-1"></i> Quầy Thu Ngân</a>
+        <a href="danh_sach_benh_nhan.html" class="btn btn-sm btn-outline-light"><i class="fa-solid fa-users me-1"></i> Bệnh Nhân</a>
+        <a href="admin_dashboard.html" class="btn btn-sm btn-outline-light"><i class="fa-solid fa-chart-pie me-1"></i> Admin</a>
+        <div class="vr bg-white opacity-50 mx-1" style="height:24px;"></div>
+        <div class="text-end text-white ms-1 d-none d-sm-block">
+          <div class="fw-bold leading-tight" id="displayUser">Kế toán viên</div>
+          <small class="text-white-50" style="font-size: 10px;">Phòng Tài Chính</small>
+        </div>
+        <a href="login.html" class="btn btn-sm btn-light text-danger fw-bold rounded-3 ms-2">
+          <i class="fa-solid fa-right-from-bracket"></i>
+        </a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Main Container -->
+  <div class="container-fluid px-4 py-4">
+
+    <!-- Top Toolbar -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
+      <div>
+        <h4 class="fw-bold mb-1 text-dark"><i class="fa-solid fa-file-invoice-dollar text-primary me-2"></i>Tổng Quan Tài Chính & Kế Toán</h4>
+        <p class="text-muted small mb-0">Theo dõi doanh thu, phát lương nhân viên, quản lý xuất nhập kho dược phẩm và báo cáo theo Quý.</p>
+      </div>
+
+      <div class="d-flex flex-wrap align-items-center gap-2">
+        <!-- Bộ lọc năm và quý -->
+        <select class="form-select form-select-sm fw-semibold" id="selectYear" style="width: 110px;" onchange="loadAllAccountingData()">
+          <option value="2026" selected>Năm 2026</option>
+          <option value="2025">Năm 2025</option>
+        </select>
+
+        <select class="form-select form-select-sm fw-semibold" id="selectQuarter" style="width: 130px;" onchange="loadAllAccountingData()">
+          <option value="" selected>Tất cả các Quý</option>
+          <option value="1">Quý 1 (T1-T3)</option>
+          <option value="2">Quý 2 (T4-T6)</option>
+          <option value="3">Quý 3 (T7-T9)</option>
+          <option value="4">Quý 4 (T10-T12)</option>
+        </select>
+
+        <!-- Nút xuất báo cáo Excel -->
+        <div class="dropdown">
+          <button class="btn btn-sm btn-success dropdown-toggle fw-semibold shadow-sm" type="button" data-bs-toggle="dropdown">
+            <i class="fa-solid fa-file-excel me-1"></i> Xuất Báo Cáo Excel/CSV
+          </button>
+          <ul class="dropdown-menu dropdown-menu-end shadow border-0">
+            <li><a class="dropdown-item py-2" href="javascript:void(0)" onclick="exportReport('tong_hop')"><i class="fa-solid fa-table me-2 text-primary"></i>Báo Cáo Tài Chính Theo Quý</a></li>
+            <li><a class="dropdown-item py-2" href="javascript:void(0)" onclick="exportReport('doanh_thu')"><i class="fa-solid fa-user-injured me-2 text-info"></i>Doanh Thu Viện Phí Bệnh Nhân</a></li>
+            <li><a class="dropdown-item py-2" href="javascript:void(0)" onclick="exportReport('luong')"><i class="fa-solid fa-money-check-dollar me-2 text-success"></i>Bảng Lương Toàn Bộ Nhân Viên</a></li>
+            <li><a class="dropdown-item py-2" href="javascript:void(0)" onclick="exportReport('kho')"><i class="fa-solid fa-boxes-stacked me-2 text-warning"></i>Báo Cáo Tồn Kho Dược Phẩm</a></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- 4 Thẻ KPI Tài Chính -->
+    <div class="row g-3 mb-4">
+      <div class="col-xl-3 col-md-6">
+        <div class="card-kpi p-3">
+          <div class="d-flex justify-content-between align-items-center">
+            <div>
+              <small class="text-muted fw-bold text-uppercase" style="font-size: 11px;">TỔNG DOANH THU</small>
+              <h3 class="fw-bold mb-0 text-primary mt-1" id="kpiRevenue">0 đ</h3>
+              <small class="text-muted" style="font-size: 11px;">Tiền khám: <span id="kpiExamFee">0 đ</span> | Thuốc: <span id="kpiMedFee">0 đ</span></small>
+            </div>
+            <div class="kpi-icon-box bg-primary bg-opacity-10 text-primary">
+              <i class="fa-solid fa-wallet"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-xl-3 col-md-6">
+        <div class="card-kpi p-3">
+          <div class="d-flex justify-content-between align-items-center">
+            <div>
+              <small class="text-muted fw-bold text-uppercase" style="font-size: 11px;">CHI PHÍ NHẬP HÀNG KHO</small>
+              <h3 class="fw-bold mb-0 text-warning mt-1" id="kpiImportCost">0 đ</h3>
+              <small class="text-muted" style="font-size: 11px;">Giá vốn nhập thuốc/vật tư</small>
+            </div>
+            <div class="kpi-icon-box bg-warning bg-opacity-10 text-warning">
+              <i class="fa-solid fa-truck-ramp-box"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-xl-3 col-md-6">
+        <div class="card-kpi p-3">
+          <div class="d-flex justify-content-between align-items-center">
+            <div>
+              <small class="text-muted fw-bold text-uppercase" style="font-size: 11px;">QUỸ LƯƠNG NHÂN VIÊN</small>
+              <h3 class="fw-bold mb-0 text-danger mt-1" id="kpiSalaryCost">0 đ</h3>
+              <small class="text-muted" style="font-size: 11px;">Chi lương bác sĩ & nhân viên</small>
+            </div>
+            <div class="kpi-icon-box bg-danger bg-opacity-10 text-danger">
+              <i class="fa-solid fa-users-gear"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-xl-3 col-md-6">
+        <div class="card-kpi p-3">
+          <div class="d-flex justify-content-between align-items-center">
+            <div>
+              <small class="text-muted fw-bold text-uppercase" style="font-size: 11px;">LỢI NHUẬN RÒNG (LÃI THUẦN)</small>
+              <h3 class="fw-bold mb-0 text-success mt-1" id="kpiNetProfit">0 đ</h3>
+              <small class="text-muted" style="font-size: 11px;">Tỷ suất lợi nhuận: <b id="kpiProfitMargin">0%</b></small>
+            </div>
+            <div class="kpi-icon-box bg-success bg-opacity-10 text-success">
+              <i class="fa-solid fa-chart-line"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Navigation Tabs -->
+    <div class="card border-0 shadow-sm rounded-4 mb-4">
+      <div class="card-header bg-white border-bottom pt-3 px-4">
+        <ul class="nav nav-tabs nav-tabs-custom card-header-tabs" id="accountingTabs" role="tablist">
+          <li class="nav-item">
+            <button class="nav-link active" id="quarterly-tab" data-bs-toggle="tab" data-bs-target="#tabQuarterly" type="button">
+              <i class="fa-solid fa-chart-column me-2"></i>Báo Cáo Theo Quý
+            </button>
+          </li>
+          <li class="nav-item">
+            <button class="nav-link" id="patients-tab" data-bs-toggle="tab" data-bs-target="#tabPatients" type="button">
+              <i class="fa-solid fa-user-injured me-2"></i>Doanh Thu Bệnh Nhân
+            </button>
+          </li>
+          <li class="nav-item">
+            <button class="nav-link" id="salary-tab" data-bs-toggle="tab" data-bs-target="#tabSalary" type="button">
+              <i class="fa-solid fa-money-check-dollar me-2"></i>Quản Lý & Phát Lương
+            </button>
+          </li>
+          <li class="nav-item">
+            <button class="nav-link" id="inventory-tab" data-bs-toggle="tab" data-bs-target="#tabInventory" type="button">
+              <i class="fa-solid fa-boxes-packing me-2"></i>Kho Dược & Xuất Nhập Hàng
+            </button>
+          </li>
+        </ul>
+      </div>
+
+      <div class="card-body p-4">
+        <div class="tab-content" id="accountingTabContent">
+
+          <!-- TAB 1: BÁO CÁO THEO QUÝ & BIỂU ĐỒ -->
+          <div class="tab-pane fade show active" id="tabQuarterly" role="tabpanel">
+            <div class="row g-4 mb-4">
+              <div class="col-lg-8">
+                <div class="card border p-3 rounded-3 shadow-none h-100">
+                  <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h6 class="fw-bold mb-0"><i class="fa-solid fa-chart-line text-primary me-2"></i>Biểu Đồ Doanh Thu & Chi Phí Qua 4 Quý</h6>
+                    <span class="badge bg-light text-secondary border">Đơn vị: VNĐ</span>
+                  </div>
+                  <div style="height: 280px;">
+                    <canvas id="quarterChart"></canvas>
+                  </div>
+                </div>
+              </div>
+
+              <div class="col-lg-4">
+                <div class="card border p-3 rounded-3 shadow-none h-100 bg-light">
+                  <h6 class="fw-bold mb-3"><i class="fa-solid fa-bullseye text-success me-2"></i>Tổng Hợp Tài Chính Năm <span class="year-label">2026</span></h6>
+                  <div class="p-3 bg-white rounded-3 border mb-2">
+                    <div class="text-muted small">Tổng lượt bệnh nhân đã thu viện phí</div>
+                    <div class="fs-4 fw-bold text-dark mt-1" id="totalPatientsPaid">0 bệnh nhân</div>
+                  </div>
+                  <div class="p-3 bg-white rounded-3 border mb-2">
+                    <div class="text-muted small">Số hóa đơn đã xử lý</div>
+                    <div class="fs-4 fw-bold text-dark mt-1" id="totalInvoicesPaid">0 hóa đơn</div>
+                  </div>
+                  <div class="p-3 bg-white rounded-3 border">
+                    <div class="text-muted small">Tỷ lệ đóng góp doanh thu thuốc</div>
+                    <div class="fs-4 fw-bold text-primary mt-1" id="medContribution">0%</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Bảng chi tiết 4 Quý -->
+            <div class="table-responsive rounded-3 border">
+              <table class="table table-custom table-hover align-middle mb-0">
+                <thead>
+                  <tr>
+                    <th>KỲ BÁO CÁO</th>
+                    <th class="text-end">DOANH THU VIỆN PHÍ & THUỐC</th>
+                    <th class="text-end">CHI PHÍ QUỸ LƯƠNG & NHẬP HÀNG</th>
+                    <th class="text-end">LỢI NHUẬN RÒNG</th>
+                    <th class="text-center">ĐÁNH GIÁ TÀI CHÍNH</th>
+                  </tr>
+                </thead>
+                <tbody id="quarterlyTableBody">
+                  <tr><td colspan="5" class="text-center py-4 text-muted">Đang tải dữ liệu báo cáo theo Quý...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- TAB 2: DOANH THU BỆNH NHÂN -->
+          <div class="tab-pane fade" id="tabPatients" role="tabpanel">
+            <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+              <div class="input-group" style="max-width: 320px;">
+                <span class="input-group-text bg-white border-end-0"><i class="fa-solid fa-magnifying-glass text-muted"></i></span>
+                <input type="text" class="form-control border-start-0" id="searchPatientInvoice" placeholder="Tìm tên bệnh nhân, mã BHYT..." oninput="filterInvoices()">
+              </div>
+              <div>
+                <button class="btn btn-sm btn-outline-primary fw-semibold" onclick="loadAllAccountingData()"><i class="fa-solid fa-rotate-right me-1"></i> Tải lại</button>
+              </div>
+            </div>
+
+            <div class="table-responsive rounded-3 border">
+              <table class="table table-custom table-hover align-middle mb-0">
+                <thead>
+                  <tr>
+                    <th>MÃ HĐ</th>
+                    <th>BỆNH NHÂN</th>
+                    <th>MÃ BHYT</th>
+                    <th>CHẨN ĐOÁN</th>
+                    <th class="text-end">TIỀN KHÁM</th>
+                    <th class="text-end">TIỀN THUỐC</th>
+                    <th class="text-end">TỔNG THU</th>
+                    <th class="text-center">HÌNH THỨC</th>
+                    <th class="text-center">TRẠNG THÁI</th>
+                  </tr>
+                </thead>
+                <tbody id="patientInvoiceTableBody">
+                  <tr><td colspan="9" class="text-center py-4 text-muted">Đang tải danh sách hóa đơn bệnh nhân...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- TAB 3: QUẢN LÝ VÀ PHÁT LƯƠNG -->
+          <div class="tab-pane fade" id="tabSalary" role="tabpanel">
+            <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+              <div class="d-flex align-items-center gap-2">
+                <span class="fw-bold small text-muted">Tháng bảng lương:</span>
+                <select class="form-select form-select-sm fw-semibold" id="selectSalaryMonth" style="width: 120px;" onchange="loadPayrollData()">
+                  <option value="1">Tháng 1</option>
+                  <option value="2">Tháng 2</option>
+                  <option value="3">Tháng 3</option>
+                  <option value="4">Tháng 4</option>
+                  <option value="5">Tháng 5</option>
+                  <option value="6">Tháng 6</option>
+                  <option value="7">Tháng 7</option>
+                  <option value="8">Tháng 8</option>
+                  <option value="9" selected>Tháng 9</option>
+                  <option value="10">Tháng 10</option>
+                  <option value="11">Tháng 11</option>
+                  <option value="12">Tháng 12</option>
+                </select>
+              </div>
+
+              <div class="d-flex gap-2">
+                <button class="btn btn-sm btn-gradient-primary shadow-sm" onclick="autoGeneratePayroll()">
+                  <i class="fa-solid fa-wand-magic-sparkles me-1"></i> Tự Động Lập Bảng Lương Tháng
+                </button>
+              </div>
+            </div>
+
+            <div class="table-responsive rounded-3 border">
+              <table class="table table-custom table-hover align-middle mb-0">
+                <thead>
+                  <tr>
+                    <th>MÃ BL</th>
+                    <th>NHÂN VIÊN / BÁC SĨ</th>
+                    <th>CHỨC VỤ</th>
+                    <th>THÁNG</th>
+                    <th class="text-end">LƯƠNG CƠ BẢN</th>
+                    <th class="text-end">PHỤ CẤP</th>
+                    <th class="text-end">THƯỞNG</th>
+                    <th class="text-end">KHẤU TRỪ</th>
+                    <th class="text-end">THỰC LĨNH</th>
+                    <th class="text-center">TRẠNG THÁI</th>
+                    <th class="text-center">HÀNH ĐỘNG</th>
+                  </tr>
+                </thead>
+                <tbody id="salaryTableBody">
+                  <tr><td colspan="11" class="text-center py-4 text-muted">Đang tải bảng lương nhân viên...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- TAB 4: KHO DƯỢC & XUẤT NHẬP HÀNG -->
+          <div class="tab-pane fade" id="tabInventory" role="tabpanel">
+            <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+              <div>
+                <h6 class="fw-bold mb-0"><i class="fa-solid fa-warehouse text-warning me-2"></i>Tình Trạng Tồn Kho Dược & Vật Tư Y Tế</h6>
+                <small class="text-muted">Tổng giá trị tồn kho dược hiện tại: <b class="text-dark" id="totalInventoryVal">0 đ</b></small>
+              </div>
+              <div class="d-flex gap-2">
+                <button class="btn btn-sm btn-gradient-success shadow-sm" data-bs-toggle="modal" data-bs-target="#modalImportMedicine">
+                  <i class="fa-solid fa-plus me-1"></i> Lập Phiếu Nhập Kho Thuốc
+                </button>
+              </div>
+            </div>
+
+            <!-- Bảng tồn kho thuốc -->
+            <div class="table-responsive rounded-3 border mb-4">
+              <table class="table table-custom table-hover align-middle mb-0">
+                <thead>
+                  <tr>
+                    <th>MÃ</th>
+                    <th>TÊN THUỐC / DƯỢC PHẨM</th>
+                    <th>ĐƠN VỊ</th>
+                    <th class="text-end">GIÁ VỐN NHẬP</th>
+                    <th class="text-end">GIÁ BÁN LẺ</th>
+                    <th class="text-center">TỒN KHO</th>
+                    <th class="text-end">GIÁ TRỊ TỒN KHO</th>
+                    <th class="text-center">TRẠNG THÁI</th>
+                  </tr>
+                </thead>
+                <tbody id="inventoryTableBody">
+                  <tr><td colspan="8" class="text-center py-4 text-muted">Đang tải dữ liệu kho dược...</td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <!-- Bảng báo cáo doanh thu & lãi gộp xuất thuốc -->
+            <div class="card border rounded-3 p-3">
+              <h6 class="fw-bold mb-2"><i class="fa-solid fa-receipt text-primary me-2"></i>Báo Cáo Lãi Gộp Xuất Bán Thuốc Cho Bệnh Nhân</h6>
+              <div class="table-responsive">
+                <table class="table table-sm table-hover align-middle mb-0">
+                  <thead class="table-light">
+                    <tr>
+                      <th>TÊN THUỐC</th>
+                      <th>ĐƠN VỊ</th>
+                      <th class="text-center">SỐ LƯỢNG ĐÃ XUẤT</th>
+                      <th class="text-end">TỔNG DOANH THU BÁN</th>
+                      <th class="text-end">GIÁ VỐN HÀNG BÁN</th>
+                      <th class="text-end text-success">LÃI GỘP</th>
+                    </tr>
+                  </thead>
+                  <tbody id="medicineExportTableBody">
+                    <tr><td colspan="6" class="text-center py-3 text-muted">Chưa có phát sinh xuất thuốc</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- MODAL: LẬP PHIẾU NHẬP KHO THUỐC -->
+  <div class="modal fade" id="modalImportMedicine" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content border-0 shadow-lg rounded-4">
+        <div class="modal-header border-bottom py-3 px-4">
+          <h5 class="modal-title fw-bold text-dark"><i class="fa-solid fa-truck-ramp-box text-success me-2"></i>Lập Phiếu Nhập Kho Thuốc</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body p-4">
+          <form id="formImportMedicine" onsubmit="handleImportMedicine(event)">
+            <div class="mb-3">
+              <label class="form-label small fw-bold">Nhà cung cấp dược / Dược phẩm <span class="text-danger">*</span></label>
+              <input type="text" class="form-control" id="importSupplier" required placeholder="VD: Công ty Dược phẩm Hậu Giang (DHG)">
+            </div>
+            <div class="mb-3">
+              <label class="form-label small fw-bold">Chọn mặt hàng thuốc <span class="text-danger">*</span></label>
+              <select class="form-select" id="importMedicineId" required>
+                <option value="">-- Đang tải danh mục thuốc --</option>
+              </select>
+            </div>
+            <div class="row g-2 mb-3">
+              <div class="col-6">
+                <label class="form-label small fw-bold">Số lượng nhập <span class="text-danger">*</span></label>
+                <input type="number" class="form-control" id="importQuantity" required min="1" value="100">
+              </div>
+              <div class="col-6">
+                <label class="form-label small fw-bold">Giá vốn nhập (VNĐ) <span class="text-danger">*</span></label>
+                <input type="number" class="form-control" id="importPrice" required min="0" step="500" value="3500">
+              </div>
+            </div>
+            <div class="mb-3">
+              <label class="form-label small fw-bold">Ghi chú phiếu nhập</label>
+              <textarea class="form-control" id="importNote" rows="2" placeholder="Nhập kho theo hợp đồng cung ứng định kỳ..."></textarea>
+            </div>
+            <div class="d-flex justify-content-end gap-2 mt-4">
+              <button type="button" class="btn btn-light" data-bs-dismiss="modal">Hủy</button>
+              <button type="submit" class="btn btn-gradient-success px-4"><i class="fa-solid fa-check me-1"></i> Xác Nhận Nhập Kho</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bootstrap 5 JS Bundle -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+  <script>
+    const API_BASE = '/api/v1';
+    let allInvoices = [];
+    let allMedicines = [];
+    let myQuarterChart = null;
+
+    // Định dạng tiền tệ VNĐ
+    function formatVND(amount) {
+      return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount || 0);
+    }
+
+    // Hiển thị thông báo Toast
+    function showToast(msg, type = 'success') {
+      const container = document.getElementById('toastContainer');
+      const toastEl = document.createElement('div');
+      toastEl.className = `toast align-items-center text-white bg-${type === 'success' ? 'success' : 'danger'} border-0 shadow`;
+      toastEl.setAttribute('role', 'alert');
+      toastEl.setAttribute('aria-live', 'assertive');
+      toastEl.setAttribute('aria-atomic', 'true');
+      toastEl.innerHTML = `
+        <div class="d-flex">
+          <div class="toast-body fw-semibold"><i class="fa-solid ${type === 'success' ? 'fa-check-circle' : 'fa-triangle-exclamation'} me-2"></i>${msg}</div>
+          <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+        </div>
+      `;
+      container.appendChild(toastEl);
+      const toast = new bootstrap.Toast(toastEl, { delay: 3500 });
+      toast.show();
+      toastEl.addEventListener('hidden.bs.toast', () => toastEl.remove());
+    }
+
+    // Tải toàn bộ dữ liệu kế toán
+    async function loadAllAccountingData() {
+      const year = document.getElementById('selectYear').value;
+      const quarter = document.getElementById('selectQuarter').value;
+      document.querySelectorAll('.year-label').forEach(el => el.innerText = year);
+
+      try {
+        // 1. Thống kê tổng hợp & Báo cáo Quý
+        let summaryUrl = `${API_BASE}/ke-toan/thong-ke?period=quy&nam=${year}`;
+        if (quarter) summaryUrl += `&quy=${quarter}`;
+
+        const res = await fetch(summaryUrl);
+        const data = await res.json();
+
+        if (data && data.tong_quan) {
+          const tq = data.tong_quan;
+          document.getElementById('kpiRevenue').innerText = formatVND(tq.tong_doanh_thu);
+          document.getElementById('kpiExamFee').innerText = formatVND(tq.tong_tien_kham);
+          document.getElementById('kpiMedFee').innerText = formatVND(tq.tong_tien_thuoc);
+          document.getElementById('kpiImportCost').innerText = formatVND(tq.tong_chi_nhap_hang);
+          document.getElementById('kpiSalaryCost').innerText = formatVND(tq.tong_chi_luong);
+          document.getElementById('kpiNetProfit').innerText = formatVND(tq.loi_nhuan_rong);
+          document.getElementById('kpiProfitMargin').innerText = `${tq.ty_suat_loi_nhuan}%`;
+
+          document.getElementById('totalPatientsPaid').innerText = `${tq.so_benh_nhan} bệnh nhân`;
+          document.getElementById('totalInvoicesPaid').innerText = `${tq.so_hoa_don} hóa đơn`;
+
+          const medRate = tq.tong_doanh_thu > 0 ? ((tq.tong_tien_thuoc / tq.tong_doanh_thu) * 100).toFixed(1) : 0;
+          document.getElementById('medContribution').innerText = `${medRate}%`;
+
+          renderQuarterTable(data.bieu_do_quy);
+          renderQuarterChart(data.bieu_do_quy);
+        }
+
+        // 2. Tải hóa đơn bệnh nhân
+        loadPatientInvoices();
+
+        // 3. Tải bảng lương
+        loadPayrollData();
+
+        // 4. Tải tồn kho dược
+        loadInventoryData();
+
+      } catch (err) {
+        console.error('Lỗi khi tải dữ liệu kế toán:', err);
+      }
+    }
+
+    // Vẽ biểu đồ 4 Quý
+    function renderQuarterChart(quarters) {
+      const ctx = document.getElementById('quarterChart').getContext('2d');
+      if (myQuarterChart) {
+        myQuarterChart.destroy();
+      }
+
+      const labels = quarters.map(q => `Quý ${q.quy}`);
+      const revData = quarters.map(q => q.doanh_thu);
+      const costData = quarters.map(q => q.chi_phi);
+      const profitData = quarters.map(q => q.loi_nhuan);
+
+      myQuarterChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: labels,
+          datasets: [
+            {
+              label: 'Doanh thu (Thu)',
+              data: revData,
+              backgroundColor: 'rgba(26, 115, 232, 0.85)',
+              borderRadius: 6
+            },
+            {
+              label: 'Chi phí (Chi)',
+              data: costData,
+              backgroundColor: 'rgba(245, 158, 11, 0.85)',
+              borderRadius: 6
+            },
+            {
+              label: 'Lợi nhuận ròng',
+              data: profitData,
+              backgroundColor: 'rgba(16, 185, 129, 0.85)',
+              borderRadius: 6
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { position: 'top', labels: { font: { family: 'Inter', size: 12, weight: '600' } } }
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              ticks: {
+                callback: function(val) { return val >= 1000000 ? (val/1000000) + 'M' : val; }
+              }
+            }
+          }
+        }
+      });
+    }
+
+    // Hiển thị bảng chi tiết Quý
+    function renderQuarterTable(quarters) {
+      const tbody = document.getElementById('quarterlyTableBody');
+      if (!quarters || quarters.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" class="text-center py-4 text-muted">Chưa có phát sinh số liệu trong năm</td></tr>`;
+        return;
+      }
+
+      let html = '';
+      quarters.forEach(q => {
+        const isProfit = q.loi_nhuan >= 0;
+        html += `
+          <tr>
+            <td class="fw-bold text-dark"><i class="fa-regular fa-calendar-check text-primary me-2"></i>${q.ten}</td>
+            <td class="text-end fw-semibold text-primary">${formatVND(q.doanh_thu)}</td>
+            <td class="text-end fw-semibold text-warning">${formatVND(q.chi_phi)}</td>
+            <td class="text-end fw-bold ${isProfit ? 'text-success' : 'text-danger'}">${formatVND(q.loi_nhuan)}</td>
+            <td class="text-center">
+              <span class="badge ${isProfit ? 'badge-paid' : 'bg-danger text-white'} px-3 py-2 rounded-pill">
+                ${isProfit ? '<i class="fa-solid fa-arrow-trend-up me-1"></i> Đạt Lãi Thuần' : '<i class="fa-solid fa-arrow-trend-down me-1"></i> Bù Chi Phí'}
+              </span>
+            </td>
+          </tr>
+        `;
+      });
+      tbody.innerHTML = html;
+    }
+
+    // Tải danh sách hóa đơn theo bệnh nhân
+    async function loadPatientInvoices() {
+      try {
+        const res = await fetch(`${API_BASE}/hoa-dons/`);
+        allInvoices = await res.json();
+        filterInvoices();
+      } catch (err) {
+        console.error('Lỗi tải hóa đơn:', err);
+      }
+    }
+
+    function filterInvoices() {
+      const search = (document.getElementById('searchPatientInvoice').value || '').toLowerCase().trim();
+      const tbody = document.getElementById('patientInvoiceTableBody');
+
+      const filtered = allInvoices.filter(i => {
+        const name = (i.benh_nhan_ho_ten || '').toLowerCase();
+        const bhyt = (i.ma_bhyt || '').toLowerCase();
+        return name.includes(search) || bhyt.includes(search);
+      });
+
+      if (filtered.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="9" class="text-center py-4 text-muted">Không tìm thấy hóa đơn bệnh nhân nào</td></tr>`;
+        return;
+      }
+
+      let html = '';
+      filtered.forEach(i => {
+        const isPaid = i.trang_thai === 'da_thanh_toan';
+        html += `
+          <tr>
+            <td class="fw-bold text-dark">HD${String(i.id).padStart(4, '0')}</td>
+            <td class="fw-semibold">${i.benh_nhan_ho_ten}</td>
+            <td>${i.ma_bhyt ? `<span class="badge bg-light text-dark border">${i.ma_bhyt}</span>` : '<span class="text-muted">---</span>'}</td>
+            <td class="small text-muted">${i.chan_doan || 'Khám tổng quát'}</td>
+            <td class="text-end text-muted">100.000 đ</td>
+            <td class="text-end text-muted">${formatVND(Math.max(0, i.tong_tien - 100000))}</td>
+            <td class="text-end fw-bold text-primary">${formatVND(i.tong_tien)}</td>
+            <td class="text-center"><span class="badge bg-light text-secondary border text-uppercase">${i.hinh_thuc_tt || 'Tiền mặt'}</span></td>
+            <td class="text-center">
+              <span class="badge ${isPaid ? 'badge-paid' : 'badge-unpaid'} px-2 py-1 rounded-pill">
+                ${isPaid ? 'Đã thu tiền' : 'Chờ thu tiền'}
+              </span>
+            </td>
+          </tr>
+        `;
+      });
+      tbody.innerHTML = html;
+    }
+
+    // Tải bảng lương
+    async function loadPayrollData() {
+      const year = document.getElementById('selectYear').value;
+      const month = document.getElementById('selectSalaryMonth').value;
+
+      try {
+        const res = await fetch(`${API_BASE}/ke-toan/luong?thang=${month}&nam=${year}`);
+        const data = await res.json();
+        const tbody = document.getElementById('salaryTableBody');
+
+        if (!data || data.length === 0) {
+          tbody.innerHTML = `
+            <tr>
+              <td colspan="11" class="text-center py-4 text-muted">
+                Chưa có bảng lương Tháng ${month}/${year}. Hãy bấm <b>"Tự Động Lập Bảng Lương Tháng"</b> để hệ thống tự tạo bảng lương.
+              </td>
+            </tr>
+          `;
+          return;
+        }
+
+        let html = '';
+        data.forEach(bl => {
+          const isPaid = bl.trang_thai === 'da_chi';
+          html += `
+            <tr>
+              <td class="fw-bold text-dark">BL${String(bl.id).padStart(4, '0')}</td>
+              <td class="fw-bold">${bl.ho_ten}</td>
+              <td><span class="badge bg-light text-primary border">${bl.chuc_vu}</span></td>
+              <td class="text-center">T${bl.thang}/${bl.nam}</td>
+              <td class="text-end text-muted">${formatVND(bl.luong_co_ban)}</td>
+              <td class="text-end text-muted">+${formatVND(bl.phu_cap)}</td>
+              <td class="text-end text-success">+${formatVND(bl.thuong)}</td>
+              <td class="text-end text-danger">-${formatVND(bl.khau_tru)}</td>
+              <td class="text-end fw-bold text-primary">${formatVND(bl.thuc_linh)}</td>
+              <td class="text-center">
+                <span class="badge ${isPaid ? 'badge-paid' : 'badge-unpaid'} px-2 py-1 rounded-pill">
+                  ${isPaid ? '<i class="fa-solid fa-check me-1"></i> Đã phát lương' : '<i class="fa-solid fa-clock me-1"></i> Chưa phát'}
+                </span>
+              </td>
+              <td class="text-center">
+                ${isPaid ?
+                  `<small class="text-muted"><i class="fa-solid fa-receipt me-1"></i>Đã chi</small>` :
+                  `<button class="btn btn-sm btn-gradient-success px-3 py-1 shadow-sm" onclick="paySalary(${bl.id}, '${bl.ho_ten}')">
+                    <i class="fa-solid fa-hand-holding-dollar me-1"></i> Phát lương
+                   </button>`
+                }
+              </td>
+            </tr>
+          `;
+        });
+        tbody.innerHTML = html;
+      } catch (err) {
+        console.error('Lỗi tải bảng lương:', err);
+      }
+    }
+
+    // Tự động khởi tạo bảng lương
+    async function autoGeneratePayroll() {
+      const year = document.getElementById('selectYear').value;
+      const month = document.getElementById('selectSalaryMonth').value;
+
+      try {
+        const res = await fetch(`${API_BASE}/ke-toan/luong/khoi-tao?thang=${month}&nam=${year}`, {
+          method: 'POST'
+        });
+        const data = await res.json();
+        showToast(data.message || 'Đã khởi tạo bảng lương thành công!');
+        loadPayrollData();
+        loadAllAccountingData();
+      } catch (err) {
+        showToast('Lỗi khi khởi tạo bảng lương: ' + err, 'danger');
+      }
+    }
+
+    // Phát lương cho nhân viên
+    async function paySalary(blId, empName) {
+      if (!confirm(`Xác nhận thanh toán phát lương cho: ${empName}?`)) return;
+
+      try {
+        const res = await fetch(`${API_BASE}/ke-toan/luong/${blId}/chi-tra`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ trang_thai: 'da_chi', ghi_chu: 'Phát lương chuyển khoản' })
+        });
+        const data = await res.json();
+        showToast(data.message || 'Đã phát lương thành công!');
+        loadPayrollData();
+        loadAllAccountingData();
+      } catch (err) {
+        showToast('Lỗi khi phát lương: ' + err, 'danger');
+      }
+    }
+
+    // Tải tồn kho dược
+    async function loadInventoryData() {
+      try {
+        const res = await fetch(`${API_BASE}/ke-toan/kho/ton-kho`);
+        const data = await res.json();
+        allMedicines = data.data || [];
+
+        document.getElementById('totalInventoryVal').innerText = formatVND(data.tong_gia_tri_ton_kho);
+
+        // Render bảng tồn kho
+        const tbody = document.getElementById('inventoryTableBody');
+        const selectMedicine = document.getElementById('importMedicineId');
+        selectMedicine.innerHTML = '<option value="">-- Chọn thuốc cần nhập --</option>';
+
+        let html = '';
+        allMedicines.forEach(m => {
+          const isLow = m.so_luong_ton < 20;
+          html += `
+            <tr>
+              <td class="fw-bold text-dark">TH${String(m.id).padStart(3, '0')}</td>
+              <td class="fw-semibold">${m.ten_thuoc}</td>
+              <td>${m.don_vi_tinh}</td>
+              <td class="text-end text-muted">${formatVND(m.gia_nhap)}</td>
+              <td class="text-end fw-semibold text-primary">${formatVND(m.don_gia_ban)}</td>
+              <td class="text-center fw-bold ${isLow ? 'text-danger' : 'text-dark'}">${m.so_luong_ton}</td>
+              <td class="text-end fw-semibold">${formatVND(m.gia_tri_ton_kho)}</td>
+              <td class="text-center">
+                <span class="badge ${isLow ? 'bg-danger bg-opacity-10 text-danger' : 'badge-paid'} px-2 py-1 rounded-pill">
+                  ${m.canh_bao}
+                </span>
+              </td>
+            </tr>
+          `;
+
+          // Đưa vào select của modal
+          selectMedicine.innerHTML += `<option value="${m.id}" data-price="${m.gia_nhap}">${m.ten_thuoc} (Hiện có: ${m.so_luong_ton} ${m.don_vi_tinh})</option>`;
+        });
+        tbody.innerHTML = html;
+
+        // Tải báo cáo xuất bán thuốc
+        const resExport = await fetch(`${API_BASE}/ke-toan/kho/bao-cao-xuat`);
+        const expData = await resExport.json();
+        const tbodyExp = document.getElementById('medicineExportTableBody');
+
+        if (!expData.data || expData.data.length === 0) {
+          tbodyExp.innerHTML = `<tr><td colspan="6" class="text-center py-3 text-muted">Chưa có dữ liệu xuất thuốc</td></tr>`;
+        } else {
+          let expHtml = '';
+          expData.data.forEach(item => {
+            expHtml += `
+              <tr>
+                <td class="fw-semibold">${item.ten_thuoc}</td>
+                <td>${item.don_vi_tinh}</td>
+                <td class="text-center fw-bold">${item.so_luong_xuat}</td>
+                <td class="text-end text-primary fw-semibold">${formatVND(item.doanh_thu_xuat)}</td>
+                <td class="text-end text-warning">${formatVND(item.gia_von)}</td>
+                <td class="text-end text-success fw-bold">+${formatVND(item.lai_gop)}</td>
+              </tr>
+            `;
+          });
+          tbodyExp.innerHTML = expHtml;
+        }
+
+      } catch (err) {
+        console.error('Lỗi tải tồn kho:', err);
+      }
+    }
+
+    // Tự động điền giá vốn khi chọn thuốc ở Modal
+    document.getElementById('importMedicineId').addEventListener('change', function() {
+      const selected = this.options[this.selectedIndex];
+      const price = selected.getAttribute('data-price');
+      if (price) {
+        document.getElementById('importPrice').value = price;
+      }
+    });
+
+    // Xử lý nộp form nhập kho thuốc
+    async function handleImportMedicine(e) {
+      e.preventDefault();
+      const supplier = document.getElementById('importSupplier').value;
+      const medId = parseInt(document.getElementById('importMedicineId').value);
+      const qty = parseInt(document.getElementById('importQuantity').value);
+      const price = parseFloat(document.getElementById('importPrice').value);
+      const note = document.getElementById('importNote').value;
+
+      if (!medId || !qty || qty <= 0) {
+        showToast('Vui lòng chọn thuốc và số lượng hợp lệ!', 'danger');
+        return;
+      }
+
+      const payload = {
+        nha_cung_cap: supplier,
+        nguoi_nhap: 'Kế toán kho CLINOVA',
+        ghi_chu: note,
+        chi_tiets: [
+          { thuoc_id: medId, so_luong: qty, don_gia_nhap: price }
+        ]
+      };
+
+      try {
+        const res = await fetch(`${API_BASE}/ke-toan/kho/nhap-kho`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const result = await res.json();
+        showToast(result.message || 'Đã nhập kho thành công!');
+
+        // Đóng modal
+        const modalEl = document.getElementById('modalImportMedicine');
+        const modalInstance = bootstrap.Modal.getInstance(modalEl);
+        if (modalInstance) modalInstance.hide();
+
+        document.getElementById('formImportMedicine').reset();
+        loadInventoryData();
+        loadAllAccountingData();
+      } catch (err) {
+        showToast('Lỗi khi nhập kho: ' + err, 'danger');
+      }
+    }
+
+    // Tải file xuất báo cáo
+    function exportReport(reportType) {
+      const year = document.getElementById('selectYear').value;
+      const quarter = document.getElementById('selectQuarter').value;
+      let url = `${API_BASE}/ke-toan/export?type=${reportType}&nam=${year}`;
+      if (quarter) url += `&quy=${quarter}`;
+
+      showToast('Đang tải file báo cáo Excel/CSV về máy...', 'success');
+      window.location.href = url;
+    }
+
+    // Khởi chạy khi tải trang
+    window.addEventListener('DOMContentLoaded', () => {
+      loadAllAccountingData();
+    });
+  </script>
+</body>
+</html>
