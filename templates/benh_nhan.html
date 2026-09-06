@@ -1082,8 +1082,11 @@
       try {
         const res = await fetch(API + '/api/v1/admin/doctors');
         if (!res.ok) throw new Error();
-        const doctors = await res.json();
-        renderDoctors(doctors.filter(d => !selectedSpecialtyName || d.chuyen_khoa === selectedSpecialtyName || !selectedSpecialtyName));
+        const filtered = doctors.filter(d => {
+          if (!selectedSpecialtyName) return true;
+          return d.chuyen_khoa && d.chuyen_khoa.trim().toLowerCase() === selectedSpecialtyName.trim().toLowerCase();
+        });
+        renderDoctors(filtered);
       } catch {
         // Demo fallback
         renderDoctors([
