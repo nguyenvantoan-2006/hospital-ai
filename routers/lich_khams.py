@@ -16,6 +16,13 @@ from routers.auth import get_current_user, require_roles
 router = APIRouter()
 
 
+from email_service import (
+    save_otp, verify_stored_otp,
+    send_booking_otp_email, send_booking_confirmation_email
+)
+import random
+
+
 # ─── SCHEMAS ĐẦU VÀO ĐẶT LỊCH ─────────────────────────────────────────────
 class LichKhamCreateInput(BaseModel):
     benh_nhan_id: int
@@ -28,6 +35,239 @@ class LichKhamCreateInput(BaseModel):
 
 class LichKhamStatusUpdate(BaseModel):
     trang_thai: str  # cho_xac_nhan | da_dat_lich | cho_kham | dang_kham | hoan_thanh | huy
+
+
+class PatientSendOtpInput(BaseModel):
+    email: str
+    ho_ten: str
+    sdt: str
+    ngay_sinh: Optional[str] = None
+    gioi_tinh: Optional[str] = None
+    chuyen_khoa: Optional[str] = None
+    chuyen_khoa_id: Optional[int] = None
+    bac_si: Optional[str] = None
+    bac_si_id: Optional[int] = None
+    thoi_gian: Optional[str] = None
+    ly_do_kham: Optional[str] = None
+
+
+class PatientVerifyOtpAndBookInput(BaseModel):
+    email: str
+    otp: str
+    ho_ten: str
+    sdt: str
+    ngay_sinh: Optional[str] = None
+    gioi_tinh: Optional[str] = None
+    cccd: Optional[str] = None
+    bhyt: Optional[str] = None
+    chuyen_khoa: Optional[str] = None
+    chuyen_khoa_id: Optional[int] = None
+    bac_si: Optional[str] = None
+    bac_si_id: Optional[int] = None
+    thoi_gian: str
+    ly_do_kham: Optional[str] = None
+
+
+# ════════════════════════════════════════════════════════════════════════════════
+#  ENDPOINTS CÔNG KHAI DÀNH CHO BỆNH NHÂN (KHÔNG CẦN ĐĂNG NHẬP)
+# ════════════════════════════════════════════════════════════════════════════════
+
+@router.get("/public/doctors", status_code=status.HTTP_200_OK)
+def get_public_doctors(
+    chuyen_khoa: Optional[str] = Query(None, description="Lọc theo tên chuyên khoa"),
+    db: Session = Depends(get_db)
+):
+    """
+    API công khai cho bệnh nhân: Lấy danh sách bác sĩ để chọn khi đặt lịch.
+    Có thể lọc theo chuyên khoa (mỗi chuyên khoa có 5 bác sĩ).
+    """
+    query = db.query(models.BacSi).filter(models.BacSi.trang_thai == True)
+    if chuyen_khoa and chuyen_khoa.strip():
+        clean_name = chuyen_khoa.strip()
+        query = query.filter(models.BacSi.chuyen_khoa == clean_name)
+    
+    docs = query.all()
+    return [
+        {
+            "id": d.id,
+            "user_id": d.user_id,
+            "ma_bac_si": d.ma_bac_si,
+            "ho_ten": d.ho_ten,
+            "hoc_vi": d.hoc_vi or "BS.",
+            "chuyen_khoa": d.chuyen_khoa,
+            "phong_kham": d.phong_kham,
+            "lich_truc": d.lich_truc,
+            "so_dien_thoai": d.so_dien_thoai
+        }
+        for d in docs
+    ]
+
+
+@router.post("/send-otp", status_code=status.HTTP_200_OK)
+def send_booking_otp(data: PatientSendOtpInput):
+    """
+    Tạo mã OTP 6 chữ số và gửi về Gmail của bệnh nhân để xác thực trước khi hoàn thành đặt lịch.
+    """
+    clean_email = data.email.strip().lower()
+    if not clean_email or "@" not in clean_email:
+        raise HTTPException(status_code=400, detail="Địa chỉ email không hợp lệ!")
+
+    # 1. Phát sinh mã OTP ngẫu nhiên 6 chữ số
+    otp_code = f"{random.randint(100000, 999999)}"
+
+    booking_details = {
+        "ho_ten": data.ho_ten,
+        "sdt": data.sdt,
+        "chuyen_khoa": data.chuyen_khoa or "Khám chuyên khoa",
+        "bac_si": data.bac_si or "Bác sĩ phụ trách",
+        "thoi_gian": data.thoi_gian or "Theo lịch hẹn",
+        "ly_do_kham": data.ly_do_kham or "",
+    }
+
+    # 2. Lưu trữ OTP trong bộ nhớ đệm (hiệu lực 10 phút)
+    save_otp(clean_email, otp_code, booking_details, ttl_minutes=10)
+
+    # 3. Gửi email qua Gmail SMTP
+    success, msg = send_booking_otp_email(clean_email, data.ho_ten, otp_code, booking_details)
+
+    return {
+        "success": True,
+        "message": f"Mã xác thực OTP đã được gửi đến hộp thư {clean_email}.",
+        "email": clean_email,
+        "debug_otp": otp_code  # Hỗ trợ hiển thị gợi ý / kiểm thử nhanh
+    }
+
+
+@router.post("/verify-otp-and-book", status_code=status.HTTP_201_CREATED)
+def verify_otp_and_book(data: PatientVerifyOtpAndBookInput, db: Session = Depends(get_db)):
+    """
+    Xác thực mã OTP gửi về Gmail và hoàn tất lưu hồ sơ bệnh nhân + lịch khám vào CSDL.
+    """
+    clean_email = data.email.strip().lower()
+    clean_otp   = data.otp.strip()
+
+    # 1. Kiểm tra OTP
+    valid, saved_info, err_msg = verify_stored_otp(clean_email, clean_otp)
+    if not valid:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=err_msg)
+
+    # 2. Tìm hoặc tạo Hồ sơ Bệnh nhân (BenhNhan) theo SĐT hoặc CCCD
+    clean_phone = data.sdt.strip()
+    benh_nhan = db.query(models.BenhNhan).filter(
+        or_(
+            models.BenhNhan.so_dien_thoai == clean_phone,
+            models.BenhNhan.cccd == (data.cccd.strip() if data.cccd else None)
+        )
+    ).first()
+
+    parsed_dob = None
+    if data.ngay_sinh:
+        try:
+            parsed_dob = datetime.strptime(data.ngay_sinh.strip(), "%Y-%m-%d").date()
+        except Exception:
+            pass
+
+    if not benh_nhan:
+        benh_nhan = models.BenhNhan(
+            ho_ten=data.ho_ten.strip(),
+            ngay_sinh=parsed_dob,
+            gio_tinh=data.gioi_tinh or "Khác",
+            so_dien_thoai=clean_phone,
+            cccd=data.cccd.strip() if data.cccd else None,
+            ma_bhyt=data.bhyt.strip() if data.bhyt else None,
+            tien_su_benh=data.ly_do_kham or ""
+        )
+        db.add(benh_nhan)
+        db.commit()
+        db.refresh(benh_nhan)
+    else:
+        if data.ho_ten: benh_nhan.ho_ten = data.ho_ten.strip()
+        if parsed_dob: benh_nhan.ngay_sinh = parsed_dob
+        if data.gioi_tinh: benh_nhan.gio_tinh = data.gioi_tinh
+        if data.cccd: benh_nhan.cccd = data.cccd.strip()
+        if data.bhyt: benh_nhan.ma_bhyt = data.bhyt.strip()
+        db.commit()
+
+    # 3. Phân giải Bác sĩ và Chuyên khoa
+    target_user_id = None
+    doc_name = data.bac_si or "Bác sĩ phụ trách"
+    room_name = "Phòng khám đa khoa"
+
+    if data.bac_si_id:
+        doc = db.query(models.BacSi).filter(models.BacSi.id == data.bac_si_id).first()
+        if not doc:
+            doc = db.query(models.BacSi).filter(models.BacSi.user_id == data.bac_si_id).first()
+        if doc:
+            target_user_id = doc.user_id
+            doc_name = f"{doc.hoc_vi or 'BS.'} {doc.ho_ten}"
+            room_name = doc.phong_kham or "Phòng khám"
+        else:
+            target_user_id = data.bac_si_id
+
+    target_spec_id = data.chuyen_khoa_id
+    spec_name = data.chuyen_khoa or "Đa khoa"
+    if not target_spec_id and data.chuyen_khoa:
+        spec = db.query(models.ChuyenKhoa).filter(models.ChuyenKhoa.ten_chuyen_khoa == data.chuyen_khoa.strip()).first()
+        if spec:
+            target_spec_id = spec.id
+            spec_name = spec.ten_chuyen_khoa
+
+    # 4. Parse thời gian khám
+    try:
+        if "T" in data.thoi_gian:
+            dt_kham = datetime.fromisoformat(data.thoi_gian)
+        else:
+            dt_kham = datetime.strptime(data.thoi_gian, "%Y-%m-%d %H:%M")
+    except Exception:
+        dt_kham = datetime.now() + timedelta(days=1)
+
+    # 5. Lưu lịch khám (LichKham)
+    new_lich = models.LichKham(
+        benh_nhan_id=benh_nhan.id,
+        bac_si_id=target_user_id,
+        chuyen_khoa_id=target_spec_id,
+        thoi_gian=dt_kham,
+        trang_thai="cho_xac_nhan",
+        ly_do_kham=data.ly_do_kham or "Đặt lịch online qua Cổng Bệnh nhân"
+    )
+    db.add(new_lich)
+    db.commit()
+    db.refresh(new_lich)
+
+    # 6. Gửi Email thông báo Xác nhận đặt lịch thành công qua Gmail
+    confirm_info = {
+        "ma_lich": f"LK{new_lich.id:04d}",
+        "chuyen_khoa": spec_name,
+        "bac_si": doc_name,
+        "phong_kham": room_name,
+        "thoi_gian": dt_kham.strftime("%H:%M ngày %d/%m/%Y")
+    }
+    send_booking_confirmation_email(clean_email, benh_nhan.ho_ten, confirm_info)
+
+    # Ghi nhật ký
+    audit = models.AuditLog(
+        action="CREATE",
+        target_table="lich_khams",
+        target_id=new_lich.id,
+        mo_ta=f"Bệnh nhân {benh_nhan.ho_ten} xác thực OTP qua Gmail {clean_email} và đặt lịch #{new_lich.id}"
+    )
+    db.add(audit)
+    db.commit()
+
+    return {
+        "success": True,
+        "message": "Xác thực OTP thành công! Lịch khám đã được ghi nhận vào hệ thống.",
+        "appointment_id": new_lich.id,
+        "booking_code": f"LK{new_lich.id:04d}",
+        "benh_nhan": {
+            "id": benh_nhan.id,
+            "ho_ten": benh_nhan.ho_ten,
+            "so_dien_thoai": benh_nhan.so_dien_thoai,
+            "email": clean_email
+        },
+        "details": confirm_info
+    }
+
 
 
 # ════════════════════════════════════════════════════════════════════════════════
