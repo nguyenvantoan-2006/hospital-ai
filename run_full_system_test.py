@@ -137,30 +137,30 @@ def run_tests():
     print("\n[3] 🔐 KIỂM TRA XÁC THỰC & ĐĂNG NHẬP (AUTH / RBAC)")
     
     # 3.1 Đăng nhập Admin
-    login_admin = session.post(f"{BASE_URL}/api/v1/auth/login", json={"username": "admin", "password": "123"})
+    login_admin = session.post(f"{BASE_URL}/api/v1/auth/login", json={"username": "admin", "password": "Admin@2024!"})
     check("Đăng nhập tài khoản Admin thành công (200)", login_admin.status_code == 200, f"Status: {login_admin.status_code}")
     admin_token = login_admin.json().get("access_token") if login_admin.status_code == 200 else None
     admin_headers = {"Authorization": f"Bearer {admin_token}"}
     check("Admin Token hợp lệ", bool(admin_token))
 
     # 3.2 Đăng nhập Lễ tân
-    login_letan = session.post(f"{BASE_URL}/api/v1/auth/login", json={"username": "letan", "password": "123"})
+    login_letan = session.post(f"{BASE_URL}/api/v1/auth/login", json={"username": "letan", "password": "LeTan@2024!"})
     check("Đăng nhập tài khoản Lễ tân thành công (200)", login_letan.status_code == 200, f"Status: {login_letan.status_code}")
     letan_token = login_letan.json().get("access_token") if login_letan.status_code == 200 else None
     letan_headers = {"Authorization": f"Bearer {letan_token}"}
 
     # 3.3 Đăng nhập Bác sĩ
-    login_bacsi = session.post(f"{BASE_URL}/api/v1/auth/login", json={"username": "bacsi", "password": "123"})
+    login_bacsi = session.post(f"{BASE_URL}/api/v1/auth/login", json={"username": "bacsi", "password": "BacSi@2024!"})
     check("Đăng nhập tài khoản Bác sĩ thành công (200)", login_bacsi.status_code == 200, f"Status: {login_bacsi.status_code}")
     bacsi_token = login_bacsi.json().get("access_token") if login_bacsi.status_code == 200 else None
     bacsi_headers = {"Authorization": f"Bearer {bacsi_token}"}
 
     # 3.4 Đăng nhập Kế toán
-    login_ketoan = session.post(f"{BASE_URL}/api/v1/auth/login", json={"username": "ketoan", "password": "123"})
+    login_ketoan = session.post(f"{BASE_URL}/api/v1/auth/login", json={"username": "ketoan", "password": "KeToan@2024!"})
     check("Đăng nhập tài khoản Kế toán thành công (200)", login_ketoan.status_code == 200, f"Status: {login_ketoan.status_code}")
 
     # 3.5 Đăng nhập sai mật khẩu
-    login_fail = session.post(f"{BASE_URL}/api/v1/auth/login", json={"username": "admin", "password": "wrong_password"})
+    login_fail = session.post(f"{BASE_URL}/api/v1/auth/login", json={"username": "admin", "password": "wrong_password_xyz"})
     check("Từ chối mật khẩu sai (401)", login_fail.status_code == 401, f"Status: {login_fail.status_code}")
 
     # 3.6 Lấy thông tin user hiện tại (/me)

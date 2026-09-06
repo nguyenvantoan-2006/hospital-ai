@@ -70,12 +70,15 @@ async function loadDashboard() {
 
 /* ── USERS ── */
 async function loadUsers() {
-  const tbody = document.getElementById("tUsers");
-  tbody.innerHTML = `<tr><td colspan="6" class="text-center py-3"><i class="fa-solid fa-spinner fa-spin me-2"></i>Đang tải...</td></tr>`;
+  const t1 = document.getElementById("tUsers");
+  const t2 = document.getElementById("tUsersDash");
+  if (t1) t1.innerHTML = `<tr><td colspan="6" class="text-center py-3"><i class="fa-solid fa-spinner fa-spin me-2"></i>Đang tải...</td></tr>`;
+  if (t2) t2.innerHTML = `<tr><td colspan="6" class="text-center py-3"><i class="fa-solid fa-spinner fa-spin me-2"></i>Đang tải...</td></tr>`;
   try {
     const data = await api("/users");
-    if (!data.length) { tbody.innerHTML=`<tr><td colspan="6" class="text-center text-muted py-3">Chưa có tài khoản</td></tr>`; return; }
-    tbody.innerHTML = data.map(u=>`
+    const html = (!data || !data.length) 
+      ? `<tr><td colspan="6" class="text-center text-muted py-3">Chưa có tài khoản</td></tr>`
+      : data.map(u=>`
       <tr>
         <td class="ps-3 fw-bold text-muted">#${u.id}</td>
         <td class="fw-bold">${esc(u.username)}</td>
@@ -88,7 +91,13 @@ async function loadUsers() {
           <button class="btn btn-xs ${u.trang_thai?'btn-outline-danger':'btn-outline-success'} py-0 px-2" onclick="toggleStatus(${u.id},${u.trang_thai})"><i class="fa-solid ${u.trang_thai?'fa-lock':'fa-lock-open'}"></i></button>
         </td>
       </tr>`).join("");
-  } catch(e){ tbody.innerHTML=`<tr><td colspan="6" class="text-center text-danger py-3">${e.message}</td></tr>`; }
+    if (t1) t1.innerHTML = html;
+    if (t2) t2.innerHTML = html;
+  } catch(e) { 
+    const err = `<tr><td colspan="6" class="text-center text-danger py-3">${e.message}</td></tr>`;
+    if (t1) t1.innerHTML = err;
+    if (t2) t2.innerHTML = err;
+  }
 }
 
 async function viewUserProfile(userId) {

@@ -108,8 +108,10 @@
           <label for="password" class="form-label small fw-bold text-secondary">Mật khẩu </label>
           <div class="input-group">
             <span class="input-group-text bg-light border-end-0"><i class="fa-solid fa-lock text-primary"></i></span>
-            <input type="password" id="password" class="form-control border-start-0" placeholder="Nhập mật khẩu"
-              required />
+            <input type="password" id="password" class="form-control border-start-0 border-end-0" placeholder="Nhập mật khẩu" required />
+            <span class="input-group-text bg-white cursor-pointer" id="togglePassword" style="cursor: pointer;">
+              <i class="fa-solid fa-eye text-muted"></i>
+            </span>
           </div>
         </div>
 
@@ -119,17 +121,11 @@
 
       </form>
 
-      <!-- Quick Demo Login Badges -->
+      <!-- Footer Message -->
       <div class="pt-3 border-top text-center">
-        <p class="text-muted text-uppercase tracking-wider fw-bold mb-2" style="font-size: 10px;">
-          ĐĂNG NHẬP NHANH DEMO (BÁC SĨ MẬT KHẨU: BS178):
+        <p class="text-muted fw-medium mb-0" style="font-size: 13px;">
+          Cảm ơn bạn đã sử dụng Hệ thống Clinova!
         </p>
-        <div class="d-flex flex-wrap justify-content-center gap-2">
-          <span class="quick-role-badge bg-primary text-white px-2 py-1" onclick="quickFill('admin', '123')">👑 Admin (123)</span>
-          <span class="quick-role-badge bg-success text-white px-2 py-1" onclick="quickFill('letan', '123')">📋 Lễ tân (123)</span>
-          <span class="quick-role-badge bg-info text-white px-2 py-1" onclick="quickFill('bacsi', 'BS178')">🩺 Bác sĩ (BS178)</span>
-          <span class="quick-role-badge bg-warning text-dark px-2 py-1" onclick="quickFill('ketoan', '123')">💰 Kế toán (123)</span>
-        </div>
       </div>
 
     </div>
@@ -203,6 +199,21 @@
         btn.innerHTML = `<i class="fa-solid fa-right-to-bracket me-2"></i> ĐĂNG NHẬP HỆ THỐNG`;
       }
     }
+
+    // Bật/tắt hiển thị mật khẩu
+    document.getElementById('togglePassword')?.addEventListener('click', function (e) {
+      const passwordInput = document.getElementById('password');
+      const icon = this.querySelector('i');
+      if (passwordInput.type === 'password') {
+        passwordInput.type = 'text';
+        icon.classList.remove('fa-eye');
+        icon.classList.add('fa-eye-slash');
+      } else {
+        passwordInput.type = 'password';
+        icon.classList.remove('fa-eye-slash');
+        icon.classList.add('fa-eye');
+      }
+    });
   </script>
 </body>
 

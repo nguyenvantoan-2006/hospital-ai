@@ -1,7 +1,7 @@
 # routers/admin.py — Phân hệ Quản trị viên (Admin) — FastAPI Router
 # Bao gồm: Quản lý Bác sĩ, Chuyên khoa, Tài khoản, Báo cáo, Nhật ký hệ thống
 
-import hashlib
+import bcrypt
 from typing import List, Literal, Optional
 from datetime import datetime
 
@@ -90,7 +90,9 @@ class AuditLogCreate(BaseModel):
 # ════════════════════════════════════════════════════════════════════════════════
 
 def hash_password(password: str) -> str:
-    return hashlib.sha256(password.encode("utf-8")).hexdigest()
+    password_bytes = password.encode("utf-8")
+    salt = bcrypt.gensalt(rounds=12)
+    return bcrypt.hashpw(password_bytes, salt).decode("utf-8")
 
 
 def _write_audit(db: Session, action: str, table: str, target_id: int = None, mo_ta: str = None):

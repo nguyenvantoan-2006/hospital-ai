@@ -260,7 +260,9 @@
       stateDiv.style.display = "block";
 
       try {
-        const response = await fetch(API_BENH_NHAN_URL);
+        const response = await fetch(API_BENH_NHAN_URL, {
+          headers: getAuthHeaders()
+        });
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
         const patients = await response.json();
@@ -347,7 +349,7 @@
         const response = await fetch(API_BENH_NHAN_URL, {
           method: "POST",
           headers: {
-            "Content-Type": "application/json",
+            ...getAuthHeaders(),
             "Accept": "application/json"
           },
           body: JSON.stringify(payload)
