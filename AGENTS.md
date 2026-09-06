@@ -9,6 +9,87 @@
 
 ---
 
+## 🔄 LUỒNG XỬ LÝ CHUẨN — BẮT BUỘC VỚI MỌI CHỨC NĂNG / BUG
+
+> AI Agent PHẢI tuân thủ đúng 6 bước sau theo thứ tự. KHÔNG được bỏ qua bước nào.
+> KHÔNG được tự ý thực hiện bước tiếp theo khi chưa có xác nhận của người dùng.
+
+### BƯỚC 1 — Phân tích yêu cầu
+- Đọc kỹ yêu cầu của người dùng
+- Xác định rõ: chức năng gì, FR nào liên quan, file nào cần sửa
+- Hỏi lại nếu yêu cầu chưa rõ ràng — KHÔNG tự đoán và code ngay
+
+### BƯỚC 2 — Tạo branch
+- Kiểm tra branch hiện tại: `git branch --show-current`
+- Nếu đang ở `main` hoặc branch không phù hợp → tạo/chuyển sang branch đúng
+- Thông báo cho user: "Đang làm việc trên branch: feat/xxx"
+
+### BƯỚC 3 — Lập kế hoạch thực hiện (TẠO FILE PLAN)
+- Tạo file kế hoạch trong thư mục `docs/plans/` với tên mô tả chức năng
+  Ví dụ: `docs/plans/feat-bac-si-dashboard.md`
+- Nội dung kế hoạch bao gồm:
+  * Mục tiêu và FR liên quan
+  * Danh sách file sẽ thay đổi (kèm lý do)
+  * Thứ tự thực hiện các bước
+  * Rủi ro hoặc điểm cần chú ý
+- DỪNG LẠI và chờ người dùng xác nhận kế hoạch trước khi code
+
+### BƯỚC 4 — Thực hiện code (Sau khi được xác nhận)
+- Code theo đúng kế hoạch đã được duyệt
+- COMMIT TỪNG NHÓM FILE LIÊN QUAN — không commit tất cả một lúc:
+  * Ví dụ: commit 1 = model + schema, commit 2 = router, commit 3 = template HTML
+  * Mỗi commit phải có message rõ ràng theo convention
+- Thông báo tiến độ sau mỗi commit
+
+### BƯỚC 5 — Tự kiểm tra sau khi hoàn thành
+AI Agent phải tự rà soát trước khi báo cho user:
+- [ ] Không có lỗi syntax (import sai, thiếu dấu, v.v.)
+- [ ] Logic xử lý đúng với yêu cầu FR
+- [ ] Không vô tình xóa hoặc ghi đè code cũ đang hoạt động
+- [ ] Không commit file: .env, __pycache__, *.db, *.pyc
+- [ ] Không có hardcode password, API key
+- Sau đó báo cho user: "Đã hoàn thành, mời bạn test. Dưới đây là những gì đã thay đổi: ..."
+- DỪNG LẠI và chờ người dùng test
+
+### BƯỚC 6 — Push / PR / Squash Merge (CHỈ KHI ĐƯỢC PHÉP)
+> ⚠️ AI Agent TUYỆT ĐỐI KHÔNG tự thực hiện bước này khi chưa có xác nhận rõ ràng từ người dùng.
+> Người dùng phải nói rõ: "push đi", "merge vào main", "tạo PR" hoặc tương tự.
+
+Khi được phép:
+```bash
+# 1. Rebase với main mới nhất
+git checkout main && git pull origin main
+git checkout feat/<ten-chuc-nang>
+git rebase main
+
+# 2. Squash merge
+git checkout main
+git merge --squash feat/<ten-chuc-nang>
+git commit -m "feat(<scope>): <tom tat tinh nang>"
+
+# 3. Push và dọn branch
+git push origin main
+git branch -d feat/<ten-chuc-nang>
+git push origin --delete feat/<ten-chuc-nang>
+```
+
+---
+
+## ⚙️ QUY TẮC COMMIT — TÁCH RIÊNG TỪNG NHÓM FILE
+
+KHÔNG được commit tất cả file thay đổi vào 1 commit duy nhất.
+Phải tách theo nhóm logic:
+
+| Nhóm | Ví dụ file | Ví dụ commit message |
+|------|-----------|---------------------|
+| Database/Model | models.py, schemas.py | `feat(model): them truong X vao bang Y` |
+| Backend/Router | routers/xxx.py | `feat(api): them endpoint GET /xxx` |
+| Frontend | templates/xxx.html | `feat(ui): them trang dashboard bac si` |
+| Static assets | static/js/xxx.js | `feat(js): them logic dat lich online` |
+| Docs/Plan | docs/plans/xxx.md | `docs(plan): them ke hoach feat-xxx` |
+
+---
+
 ## ⚠️ QUY TẮC GIT — BẮT BUỘC TUYỆT ĐỐI
 
 ### RULE-GIT-01: KHÔNG BAO GIỜ làm việc trên branch `main`
