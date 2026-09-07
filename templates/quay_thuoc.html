@@ -1,0 +1,883 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Quầy Dược & Cấp Phát Thuốc | Phòng khám CLINOVA</title>
+
+  <!-- Bootstrap 5 CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- Google Font: Inter -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <!-- FontAwesome Icons -->
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+
+  <style>
+    :root {
+      --primary-color: #1A73E8;
+      --primary-dark: #1557B0;
+      --teal-color: #0D9488;
+      --success-color: #10B981;
+      --warning-color: #F59E0B;
+      --danger-color: #EF4444;
+      --purple-color: #8B5CF6;
+      --bg-color: #F8FAFC;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: var(--bg-color);
+      color: #1E293B;
+    }
+
+    .navbar-custom {
+      background: linear-gradient(135deg, #0F766E 0%, #0D9488 100%);
+      box-shadow: 0 4px 16px rgba(13, 148, 136, 0.25);
+    }
+
+    .card-kpi {
+      border: 1px solid #E2E8F0;
+      border-radius: 14px;
+      background: #FFFFFF;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .card-kpi:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(0,0,0,0.06);
+    }
+
+    .kpi-icon-box {
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+    }
+
+    .card-custom {
+      border: 1px solid #E2E8F0;
+      border-radius: 14px;
+      background: #FFFFFF;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.04);
+    }
+
+    .card-header-custom {
+      background-color: #FFFFFF;
+      border-bottom: 1px solid #E2E8F0;
+      padding: 16px 20px;
+      font-weight: 700;
+      color: #1E293B;
+    }
+
+    .table-custom th {
+      background-color: #F1F5F9;
+      color: #475569;
+      font-size: 11.5px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      font-weight: 700;
+      border-bottom: 2px solid #CBD5E1;
+    }
+
+    .table-custom td {
+      vertical-align: middle;
+      font-size: 13.5px;
+    }
+
+    .badge-cho-lay {
+      background-color: #FEF3C7;
+      color: #B45309;
+      font-weight: 600;
+      padding: 5px 10px;
+      border-radius: 8px;
+    }
+
+    .badge-da-lay {
+      background-color: #DCFCE7;
+      color: #15803D;
+      font-weight: 600;
+      padding: 5px 10px;
+      border-radius: 8px;
+    }
+
+    .badge-da-thanh-toan {
+      background-color: #E0F2FE;
+      color: #0369A1;
+      font-weight: 600;
+      padding: 5px 10px;
+      border-radius: 8px;
+    }
+
+    .badge-chua-thanh-toan {
+      background-color: #FEE2E2;
+      color: #B91C1C;
+      font-weight: 600;
+      padding: 5px 10px;
+      border-radius: 8px;
+    }
+
+    .btn-gradient-teal {
+      background: linear-gradient(135deg, #0D9488 0%, #0F766E 100%);
+      color: #fff;
+      font-weight: 600;
+      border: none;
+    }
+    .btn-gradient-teal:hover {
+      color: #fff;
+      opacity: 0.95;
+    }
+
+    .btn-gradient-primary {
+      background: linear-gradient(135deg, #1A73E8 0%, #1557B0 100%);
+      color: #fff;
+      font-weight: 600;
+      border: none;
+    }
+    .btn-gradient-primary:hover {
+      color: #fff;
+      opacity: 0.95;
+    }
+
+    .prescription-item-row:hover {
+      background-color: #F8FAFC;
+      cursor: pointer;
+    }
+
+    .prescription-item-row.selected {
+      background-color: #EFF6FF !important;
+      border-left: 4px solid var(--primary-color);
+    }
+
+    .toast-container-custom {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      z-index: 1090;
+    }
+
+    /* Print Template */
+    @media print {
+      body * {
+        visibility: hidden;
+      }
+      #printInvoiceArea, #printInvoiceArea * {
+        visibility: visible;
+      }
+      #printInvoiceArea {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        margin: 0;
+        padding: 20px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Toast Container -->
+  <div class="toast-container-custom" id="toastContainer"></div>
+
+  <!-- Navbar -->
+  <nav class="navbar navbar-expand-lg navbar-dark navbar-custom px-4 py-2">
+    <div class="container-fluid">
+      <a class="navbar-brand d-flex align-items-center gap-2" href="index.html">
+        <div class="bg-white bg-opacity-25 rounded-3 p-2 d-flex align-items-center justify-content-center" style="width:40px; height:40px;">
+          <i class="fa-solid fa-prescription-bottle-medical text-white fs-5"></i>
+        </div>
+        <div>
+          <span class="fw-bold fs-6 d-block leading-none">CLINOVA PHARMACY</span>
+          <small class="text-white-50" style="font-size:11px;">Quầy Dược & Cấp Phát Thuốc Theo Đơn</small>
+        </div>
+      </a>
+
+      <div class="ms-auto d-flex align-items-center gap-2">
+        <a href="thanh_toan.html" class="btn btn-sm btn-outline-light"><i class="fa-solid fa-cash-register me-1"></i> Quầy Thu Ngân</a>
+        <a href="lap_phieu_kham.html" class="btn btn-sm btn-outline-light"><i class="fa-solid fa-stethoscope me-1"></i> Khám Bác Sĩ</a>
+        <a href="ke_toan.html" class="btn btn-sm btn-outline-light"><i class="fa-solid fa-coins me-1"></i> Kho & Kế Toán</a>
+        <div class="vr bg-white opacity-50 mx-1" style="height:24px;"></div>
+        <div class="text-end text-white ms-1 d-none d-sm-block">
+          <div class="fw-bold leading-tight" id="displayUser">Dược sĩ phụ trách</div>
+          <small class="text-white-50" style="font-size: 10px;">Kho Dược Lâm Sàng</small>
+        </div>
+        <button onclick="logout()" class="btn btn-sm btn-light text-danger fw-bold rounded-3 ms-2" title="Đăng xuất">
+          <i class="fa-solid fa-right-from-bracket"></i>
+        </button>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Main Container -->
+  <div class="container-fluid px-4 py-4">
+
+    <!-- Top Toolbar -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
+      <div>
+        <h4 class="fw-bold mb-1 text-dark"><i class="fa-solid fa-pills text-teal me-2" style="color: var(--teal-color)"></i>Quản Lý Đơn Thuốc & Cấp Phát Thuốc</h4>
+        <p class="text-muted small mb-0">Tiếp nhận đơn thuốc tức thì sau khi Bác sĩ kê đơn, thu tiền thuốc và xác nhận cấp phát thuốc cho bệnh nhân.</p>
+      </div>
+      <div class="d-flex gap-2">
+        <button class="btn btn-outline-secondary btn-sm rounded-3 px-3 shadow-sm bg-white" onclick="loadPrescriptions()">
+          <i class="fa-solid fa-arrows-rotate me-1" id="btnReloadIcon"></i> Làm mới danh sách
+        </button>
+      </div>
+    </div>
+
+    <!-- 4 KPI Cards -->
+    <div class="row g-3 mb-4">
+      <div class="col-sm-6 col-xl-3">
+        <div class="card-kpi p-3 d-flex align-items-center gap-3">
+          <div class="kpi-icon-box bg-teal text-white" style="background: var(--teal-color)">
+            <i class="fa-solid fa-file-prescription"></i>
+          </div>
+          <div>
+            <div class="text-muted small fw-semibold">Tổng Đơn Thuốc Hôm Nay</div>
+            <div class="fs-4 fw-bold text-dark" id="kpiTotalPrescriptions">0 đơn</div>
+          </div>
+        </div>
+      </div>
+      <div class="col-sm-6 col-xl-3">
+        <div class="card-kpi p-3 d-flex align-items-center gap-3">
+          <div class="kpi-icon-box bg-warning text-white">
+            <i class="fa-solid fa-clock-rotate-left"></i>
+          </div>
+          <div>
+            <div class="text-muted small fw-semibold">Chờ Cấp Phát Thuốc</div>
+            <div class="fs-4 fw-bold text-warning" id="kpiWaitingDispense">0 đơn</div>
+          </div>
+        </div>
+      </div>
+      <div class="col-sm-6 col-xl-3">
+        <div class="card-kpi p-3 d-flex align-items-center gap-3">
+          <div class="kpi-icon-box bg-success text-white">
+            <i class="fa-solid fa-check-double"></i>
+          </div>
+          <div>
+            <div class="text-muted small fw-semibold">Đã Phát Thành Công</div>
+            <div class="fs-4 fw-bold text-success" id="kpiCompletedDispense">0 đơn</div>
+          </div>
+        </div>
+      </div>
+      <div class="col-sm-6 col-xl-3">
+        <div class="card-kpi p-3 d-flex align-items-center gap-3">
+          <div class="kpi-icon-box bg-primary text-white">
+            <i class="fa-solid fa-hand-holding-dollar"></i>
+          </div>
+          <div>
+            <div class="text-muted small fw-semibold">Doanh Thu Tiền Thuốc</div>
+            <div class="fs-4 fw-bold text-primary" id="kpiMedRevenue">0 đ</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main Content Layout (60% List - 40% Detail & Dispense Action) -->
+    <div class="row g-4">
+
+      <!-- CỘT TRÁI (60%): Danh sách đơn thuốc -->
+      <div class="col-lg-7">
+        <div class="card-custom">
+          <div class="card-header-custom d-flex flex-wrap align-items-center justify-content-between gap-2">
+            <div class="d-flex align-items-center gap-2">
+              <i class="fa-solid fa-clipboard-list text-teal fs-5" style="color: var(--teal-color)"></i>
+              <span>Danh Sách Đơn Thuốc Phòng Khám</span>
+            </div>
+            <!-- Bộ lọc trạng thái -->
+            <div class="btn-group btn-group-sm" role="group">
+              <button type="button" class="btn btn-outline-teal active fw-semibold" id="filterAll" onclick="filterPrescriptions('all')">Tất cả</button>
+              <button type="button" class="btn btn-outline-warning fw-semibold" id="filterWaiting" onclick="filterPrescriptions('cho_lay_thuoc')">Chờ phát thuốc</button>
+              <button type="button" class="btn btn-outline-success fw-semibold" id="filterDone" onclick="filterPrescriptions('da_lay_thuoc')">Đã phát thuốc</button>
+            </div>
+          </div>
+
+          <!-- Thanh tìm kiếm -->
+          <div class="p-3 bg-light border-bottom">
+            <div class="input-group input-group-sm">
+              <span class="input-group-text bg-white border-end-0"><i class="fa-solid fa-magnifying-glass text-muted"></i></span>
+              <input type="text" class="form-control border-start-0" id="searchPatientInput" placeholder="Tìm theo Tên bệnh nhân, SĐT, Mã BHYT hoặc Mã phiếu (#PK)..." onkeyup="searchPrescriptions()">
+            </div>
+          </div>
+
+          <!-- Bảng danh sách đơn thuốc -->
+          <div class="table-responsive" style="max-height: 540px; overflow-y: auto;">
+            <table class="table table-hover table-custom mb-0">
+              <thead class="sticky-top">
+                <tr>
+                  <th class="ps-3">Mã PK</th>
+                  <th>Bệnh nhân</th>
+                  <th>Bác sĩ kê</th>
+                  <th>Thuốc</th>
+                  <th>Tiền thuốc</th>
+                  <th>Thanh toán</th>
+                  <th>Cấp phát</th>
+                  <th class="text-center">Thao tác</th>
+                </tr>
+              </thead>
+              <tbody id="tablePrescriptionsBody">
+                <tr>
+                  <td colspan="8" class="text-center py-4 text-muted">
+                    <i class="fa-solid fa-spinner fa-spin me-2"></i>Đang tải dữ liệu đơn thuốc...
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- CỘT PHẢI (40%): Chi tiết đơn thuốc & Xác nhận phát thuốc -->
+      <div class="col-lg-5">
+        <div class="card-custom sticky-top" style="top: 80px;">
+          
+          <div class="card-header-custom bg-teal text-white rounded-top-3 d-flex align-items-center justify-content-between" style="background: var(--teal-color)">
+            <span class="d-flex align-items-center gap-2">
+              <i class="fa-solid fa-capsules fs-5"></i>
+              <span class="fw-bold">Chi Tiết Đơn Thuốc & Cấp Phát</span>
+            </span>
+            <span class="badge bg-white text-dark rounded-pill px-2 py-1" id="badgeSelectedPK">Chưa chọn</span>
+          </div>
+
+          <div class="card-body p-4">
+
+            <!-- Thông báo khi chưa chọn -->
+            <div id="panelEmptySelection" class="text-center py-5 text-muted">
+              <i class="fa-solid fa-prescription-bottle display-4 mb-3 text-secondary opacity-50"></i>
+              <h6 class="fw-bold">Chưa chọn đơn thuốc nào</h6>
+              <p class="small mb-0">Hãy bấm vào một đơn thuốc bên danh sách để xem chi tiết, thu tiền và xác nhận phát thuốc cho bệnh nhân.</p>
+            </div>
+
+            <!-- Panel chi tiết khi đã chọn đơn -->
+            <div id="panelPrescriptionDetail" class="d-none">
+              
+              <!-- Thông tin bệnh nhân & Bác sĩ -->
+              <div class="bg-light p-3 rounded-3 mb-3 border">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                  <div>
+                    <h6 class="fw-bold text-primary mb-0" id="detailPatientName">---</h6>
+                    <small class="text-muted" id="detailPatientMeta">---</small>
+                  </div>
+                  <span class="badge" id="detailDispenseStatusBadge">---</span>
+                </div>
+                <div class="small text-secondary">
+                  <div><i class="fa-solid fa-stethoscope me-1 text-muted"></i><strong>Bác sĩ kê:</strong> <span id="detailDoctorName">---</span></div>
+                  <div><i class="fa-solid fa-notes-medical me-1 text-muted"></i><strong>Chẩn đoán:</strong> <span class="text-dark fw-semibold" id="detailDiagnosis">---</span></div>
+                  <div><i class="fa-solid fa-id-card me-1 text-muted"></i><strong>Mã BHYT:</strong> <span id="detailBHYT">---</span></div>
+                </div>
+              </div>
+
+              <!-- Bảng thuốc kê chi tiết -->
+              <h6 class="fw-bold text-dark mb-2 d-flex align-items-center justify-content-between">
+                <span><i class="fa-solid fa-list-check text-teal me-1" style="color:var(--teal-color)"></i>Đơn thuốc chi tiết:</span>
+                <span class="badge bg-light text-secondary border" id="detailMedicineCount">0 loại</span>
+              </h6>
+
+              <div class="table-responsive mb-3 border rounded-3" style="max-height: 180px; overflow-y: auto;">
+                <table class="table table-sm table-custom mb-0">
+                  <thead class="bg-light">
+                    <tr>
+                      <th class="ps-2">Tên thuốc</th>
+                      <th class="text-center">SL</th>
+                      <th class="text-end">Đơn giá</th>
+                      <th class="text-end pe-2">Thành tiền</th>
+                    </tr>
+                  </thead>
+                  <tbody id="detailMedicineTableBody">
+                    <!-- Thuốc chi tiết -->
+                  </tbody>
+                </table>
+              </div>
+
+              <!-- Tổng chi phí -->
+              <div class="p-3 bg-light rounded-3 mb-3 border">
+                <div class="d-flex justify-content-between small text-muted mb-1">
+                  <span>Tiền thuốc:</span>
+                  <span class="fw-semibold text-dark" id="detailMedFee">0 đ</span>
+                </div>
+                <div class="d-flex justify-content-between small text-muted mb-2">
+                  <span>Phí dịch vụ khám:</span>
+                  <span class="fw-semibold text-dark" id="detailExamFee">100.000 đ</span>
+                </div>
+                <div class="d-flex justify-content-between align-items-center pt-2 border-top">
+                  <span class="fw-bold fs-6 text-dark">TỔNG THU:</span>
+                  <span class="fw-bold fs-5 text-danger" id="detailTotalFee">0 đ</span>
+                </div>
+              </div>
+
+              <!-- Khung Thanh Toán (nếu chưa thanh toán) -->
+              <div id="sectionPaymentAction" class="mb-3 p-3 bg-white border rounded-3">
+                <label class="form-label small fw-bold text-secondary mb-2"><i class="fa-solid fa-credit-card me-1"></i>Hình thức thanh toán:</label>
+                <select class="form-select form-select-sm mb-3" id="selectPaymentMethod" onchange="toggleQRPreview()">
+                  <option value="tien_mat" selected>💵 Tiền mặt tại quầy thuốc</option>
+                  <option value="chuyen_khoan">🏦 Chuyển khoản ngân hàng</option>
+                  <option value="qr">📱 Quét mã QR thanh toán nhanh (VietQR)</option>
+                </select>
+
+                <!-- VietQR Preview (Ẩn/Hiện) -->
+                <div id="boxVietQR" class="d-none text-center p-3 bg-light rounded-3 mb-3 border">
+                  <p class="small fw-semibold text-primary mb-2"><i class="fa-solid fa-qrcode me-1"></i>Mã QR Thanh Toán Viện Phí & Thuốc</p>
+                  <img id="imgVietQR" src="" alt="VietQR" class="img-fluid rounded-2 shadow-sm mb-2" style="max-height: 160px;">
+                  <div class="small text-muted" id="qrNote">Quét mã bằng app ngân hàng</div>
+                </div>
+
+                <div class="mb-3">
+                  <label class="form-label small fw-bold text-secondary mb-1"><i class="fa-solid fa-user-nurse me-1"></i>Dược sĩ phát thuốc:</label>
+                  <input type="text" class="form-control form-control-sm" id="inputPharmacist" value="Dược sĩ Quầy Thuốc CLINOVA">
+                </div>
+
+                <div class="mb-3">
+                  <label class="form-label small fw-bold text-secondary mb-1"><i class="fa-solid fa-message me-1"></i>Dặn dò / Ghi chú phát thuốc:</label>
+                  <input type="text" class="form-control form-control-sm" id="inputDispenseNote" placeholder="Ví dụ: Đã dặn uống sau ăn, kiêng đồ chua...">
+                </div>
+
+                <!-- Nút Hành Động -->
+                <div class="d-grid gap-2">
+                  <button type="button" class="btn btn-gradient-teal py-2 rounded-3 shadow-sm fw-bold" onclick="submitDispenseMedicine()">
+                    <i class="fa-solid fa-check-double me-1"></i> XÁC NHẬN ĐÃ PHÁT THUỐC & XUẤT KHO
+                  </button>
+                  <button type="button" class="btn btn-outline-primary btn-sm py-2 rounded-3 fw-semibold" onclick="openPrintModal()">
+                    <i class="fa-solid fa-print me-1"></i> In Đơn Thuốc & Phiếu Hướng Dẫn
+                  </button>
+                </div>
+              </div>
+
+              <!-- Khi đã phát thuốc thành công -->
+              <div id="sectionDispensedSuccess" class="d-none alert alert-success border-0 rounded-3 mb-3 p-3">
+                <div class="d-flex align-items-center gap-2 mb-2">
+                  <i class="fa-solid fa-circle-check fs-4 text-success"></i>
+                  <div>
+                    <strong class="d-block">ĐÃ PHÁT THUỐC THÀNH CÔNG!</strong>
+                    <small id="dispensedTimeInfo" class="text-muted">Thời gian: ---</small>
+                  </div>
+                </div>
+                <div class="small text-secondary mb-3" id="dispensedByInfo">Dược sĩ: ---</div>
+                <button type="button" class="btn btn-success w-100 btn-sm fw-bold rounded-3" onclick="openPrintModal()">
+                  <i class="fa-solid fa-print me-1"></i> In lại Đơn Thuốc Cho Bệnh Nhân
+                </button>
+              </div>
+
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+  <!-- Modal Xem trước & In Đơn Thuốc -->
+  <div class="modal fade" id="modalPrintPrescription" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+      <div class="modal-content border-0 shadow-lg rounded-4">
+        <div class="modal-header border-0 pb-0">
+          <h5 class="modal-title fw-bold text-dark"><i class="fa-solid fa-file-invoice me-2 text-teal" style="color:var(--teal-color)"></i>Đơn Thuốc & Hướng Dẫn Sử Dụng</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body p-4" id="printInvoiceArea">
+          
+          <!-- Header Bệnh Viện -->
+          <div class="text-center pb-3 border-bottom mb-3">
+            <h4 class="fw-bold text-primary mb-1">PHÒNG KHÁM ĐA KHOA QUỐC TẾ CLINOVA</h4>
+            <p class="small text-muted mb-0">Địa chỉ: 123 Đường Sức Khỏe, Quận Trung Tâm | Hotline: 1900 6868</p>
+            <h5 class="fw-bold text-dark mt-3 mb-0">ĐƠN THUỐC ĐIỀU TRỊ & HÓA ĐƠN THUỐC</h5>
+            <small class="text-muted" id="printHeaderMeta">Mã đơn: #PK-16 | Ngày: 06/09/2026</small>
+          </div>
+
+          <!-- Thông tin bệnh nhân -->
+          <div class="row g-2 mb-3 small">
+            <div class="col-6"><strong>Họ tên:</strong> <span id="printPatientName">---</span></div>
+            <div class="col-3"><strong>Ngày sinh:</strong> <span id="printPatientDOB">---</span></div>
+            <div class="col-3"><strong>Giới tính:</strong> <span id="printPatientGender">---</span></div>
+            <div class="col-6"><strong>Điện thoại:</strong> <span id="printPatientPhone">---</span></div>
+            <div class="col-6"><strong>Mã BHYT:</strong> <span id="printPatientBHYT">---</span></div>
+            <div class="col-12"><strong>Chẩn đoán:</strong> <span class="fw-bold text-dark" id="printDiagnosis">---</span></div>
+            <div class="col-12"><strong>Bác sĩ kê đơn:</strong> <span id="printDoctorName">---</span></div>
+          </div>
+
+          <!-- Bảng thuốc -->
+          <div class="table-responsive mb-3">
+            <table class="table table-bordered table-sm mb-0">
+              <thead class="table-light">
+                <tr>
+                  <th class="text-center" style="width:40px;">STT</th>
+                  <th>Tên thuốc, hàm lượng</th>
+                  <th class="text-center" style="width:70px;">ĐVT</th>
+                  <th class="text-center" style="width:60px;">SL</th>
+                  <th class="text-end" style="width:100px;">Đơn giá</th>
+                  <th class="text-end" style="width:110px;">Thành tiền</th>
+                </tr>
+              </thead>
+              <tbody id="printMedicineTableBody">
+                <!-- Data -->
+              </tbody>
+              <tfoot>
+                <tr>
+                  <th colspan="5" class="text-end">Tiền thuốc:</th>
+                  <th class="text-end" id="printMedTotal">0 đ</th>
+                </tr>
+                <tr>
+                  <th colspan="5" class="text-end">Phí khám bệnh:</th>
+                  <th class="text-end">100.000 đ</th>
+                </tr>
+                <tr class="table-light">
+                  <th colspan="5" class="text-end fs-6">TỔNG CỘNG:</th>
+                  <th class="text-end fs-6 text-danger" id="printGrandTotal">0 đ</th>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+
+          <!-- Lời dặn -->
+          <div class="p-3 bg-light rounded-3 mb-4 small border">
+            <strong>Lời dặn của Bác sĩ / Dược sĩ:</strong>
+            <p class="mb-0 text-secondary" id="printDoctorAdvice">Uống thuốc đúng giờ, đúng liều lượng chỉ định. Tái khám theo hẹn hoặc khi có triệu chứng bất thường.</p>
+          </div>
+
+          <!-- Chữ ký -->
+          <div class="row text-center small mt-4">
+            <div class="col-6">
+              <p class="mb-5"><strong>BỆNH NHÂN / NGƯỜI NHẬN</strong><br><span class="text-muted">(Ký và ghi rõ họ tên)</span></p>
+            </div>
+            <div class="col-6">
+              <p class="mb-5"><strong>DƯỢC SĨ PHÁT THUỐC</strong><br><span class="text-muted">(Ký và ghi rõ họ tên)</span></p>
+              <strong id="printSignPharmacist">Dược sĩ CLINOVA</strong>
+            </div>
+          </div>
+
+        </div>
+        <div class="modal-footer border-0">
+          <button type="button" class="btn btn-light" data-bs-dismiss="modal">Đóng</button>
+          <button type="button" class="btn btn-gradient-teal px-4" onclick="window.print()">
+            <i class="fa-solid fa-print me-1"></i> In Ngay
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bootstrap 5 JS Bundle -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="/static/js/auth.js"></script>
+
+  <script>
+    const API_BASE = '/api/v1';
+    let allPrescriptions = [];
+    let selectedPrescription = null;
+    let currentFilter = 'all';
+
+    // Format tiền tệ VNĐ
+    function formatVND(amount) {
+      return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount || 0);
+    }
+
+    // Hiển thị Toast thông báo
+    function showToast(msg, type = 'success') {
+      const container = document.getElementById('toastContainer');
+      const toastEl = document.createElement('div');
+      toastEl.className = `toast align-items-center text-white bg-${type === 'success' ? 'success' : (type === 'warning' ? 'warning' : 'danger')} border-0 shadow`;
+      toastEl.setAttribute('role', 'alert');
+      toastEl.innerHTML = `
+        <div class="d-flex">
+          <div class="toast-body fw-semibold"><i class="fa-solid ${type === 'success' ? 'fa-check-circle' : 'fa-triangle-exclamation'} me-2"></i>${msg}</div>
+          <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+        </div>
+      `;
+      container.appendChild(toastEl);
+      const toast = new bootstrap.Toast(toastEl, { delay: 3500 });
+      toast.show();
+      toastEl.addEventListener('hidden.bs.toast', () => toastEl.remove());
+    }
+
+    // Tải danh sách đơn thuốc từ API
+    async function loadPrescriptions() {
+      const icon = document.getElementById('btnReloadIcon');
+      if (icon) icon.classList.add('fa-spin');
+
+      try {
+        const res = await fetch(`${API_BASE}/hoa-dons/don-thuoc-cho-phat`);
+        allPrescriptions = await res.json();
+
+        // Cập nhật KPIs
+        updateKPIs(allPrescriptions);
+
+        // Render bảng theo filter
+        renderPrescriptionsTable();
+
+        // Nếu đang chọn đơn nào, cập nhật lại thông tin đơn đó
+        if (selectedPrescription) {
+          const updated = allPrescriptions.find(p => p.phieu_kham_id === selectedPrescription.phieu_kham_id);
+          if (updated) selectPrescription(updated);
+        }
+      } catch (err) {
+        console.error('Lỗi khi tải đơn thuốc:', err);
+        showToast('Lỗi khi tải danh sách đơn thuốc: ' + err, 'danger');
+      } finally {
+        if (icon) icon.classList.remove('fa-spin');
+      }
+    }
+
+    // Cập nhật thẻ KPI
+    function updateKPIs(data) {
+      const total = data.length;
+      const waiting = data.filter(d => d.trang_thai_phat_thuoc === 'cho_lay_thuoc').length;
+      const completed = data.filter(d => d.trang_thai_phat_thuoc === 'da_lay_thuoc').length;
+      const revenue = data.reduce((sum, d) => sum + (d.tien_thuoc || 0), 0);
+
+      document.getElementById('kpiTotalPrescriptions').innerText = `${total} đơn`;
+      document.getElementById('kpiWaitingDispense').innerText = `${waiting} đơn`;
+      document.getElementById('kpiCompletedDispense').innerText = `${completed} đơn`;
+      document.getElementById('kpiMedRevenue').innerText = formatVND(revenue);
+    }
+
+    // Bộ lọc trạng thái
+    function filterPrescriptions(filter) {
+      currentFilter = filter;
+      document.getElementById('filterAll').className = `btn btn-sm ${filter === 'all' ? 'btn-teal text-white' : 'btn-outline-teal'} fw-semibold`;
+      document.getElementById('filterWaiting').className = `btn btn-sm ${filter === 'cho_lay_thuoc' ? 'btn-warning text-white' : 'btn-outline-warning'} fw-semibold`;
+      document.getElementById('filterDone').className = `btn btn-sm ${filter === 'da_lay_thuoc' ? 'btn-success text-white' : 'btn-outline-success'} fw-semibold`;
+
+      renderPrescriptionsTable();
+    }
+
+    // Tìm kiếm bệnh nhân
+    function searchPrescriptions() {
+      renderPrescriptionsTable();
+    }
+
+    // Render danh sách đơn thuốc ra HTML
+    function renderPrescriptionsTable() {
+      const tbody = document.getElementById('tablePrescriptionsBody');
+      const query = (document.getElementById('searchPatientInput').value || '').toLowerCase().trim();
+
+      let filtered = allPrescriptions.filter(d => {
+        // Lọc theo tab
+        if (currentFilter !== 'all' && d.trang_thai_phat_thuoc !== currentFilter) return false;
+
+        // Lọc theo từ khóa
+        if (query) {
+          const matchName = (d.benh_nhan.ho_ten || '').toLowerCase().includes(query);
+          const matchPhone = (d.benh_nhan.so_dien_thoai || '').includes(query);
+          const matchBHYT = (d.benh_nhan.ma_bhyt || '').toLowerCase().includes(query);
+          const matchPK = `pk-${d.phieu_kham_id}`.toLowerCase().includes(query);
+          return matchName || matchPhone || matchBHYT || matchPK;
+        }
+        return true;
+      });
+
+      if (filtered.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="8" class="text-center text-muted py-4">Không tìm thấy đơn thuốc nào phù hợp.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = filtered.map(d => {
+        const isSelected = selectedPrescription && selectedPrescription.phieu_kham_id === d.phieu_kham_id;
+        const isPaid = d.trang_thai_thanh_toan === 'da_thanh_toan';
+        const isDispensed = d.trang_thai_phat_thuoc === 'da_lay_thuoc';
+
+        return `
+          <tr class="prescription-item-row ${isSelected ? 'selected' : ''}" onclick="selectPrescriptionById(${d.phieu_kham_id})">
+            <td class="ps-3 fw-bold text-primary">#PK-${d.phieu_kham_id}</td>
+            <td>
+              <div class="fw-bold text-dark">${d.benh_nhan.ho_ten}</div>
+              <small class="text-muted">${d.benh_nhan.gioi_tinh} • BHYT: ${d.benh_nhan.ma_bhyt}</small>
+            </td>
+            <td>
+              <div class="small fw-semibold text-secondary">${d.bac_si.ho_ten}</div>
+              <small class="text-muted" style="font-size:11px;">${d.chan_doan}</small>
+            </td>
+            <td>
+              <span class="badge bg-light text-dark border">${d.so_loai_thuoc} loại thuốc</span>
+            </td>
+            <td class="fw-bold text-dark">${formatVND(d.tien_thuoc)}</td>
+            <td>
+              <span class="badge ${isPaid ? 'badge-da-thanh-toan' : 'badge-chua-thanh-toan'}">
+                ${isPaid ? '✓ Đã thanh toán' : '⏳ Chưa thu'}
+              </span>
+            </td>
+            <td>
+              <span class="badge ${isDispensed ? 'badge-da-lay' : 'badge-cho-lay'}">
+                ${isDispensed ? '✓ Đã nhận thuốc' : '⏳ Chờ lấy thuốc'}
+              </span>
+            </td>
+            <td class="text-center">
+              <button class="btn btn-sm btn-outline-teal rounded-pill px-3 py-1 fw-bold" onclick="event.stopPropagation(); selectPrescriptionById(${d.phieu_kham_id})">
+                ${isDispensed ? '<i class="fa-solid fa-eye me-1"></i> Xem' : '<i class="fa-solid fa-hand-holding-medical me-1"></i> Phát thuốc'}
+              </button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    // Chọn một đơn thuốc theo ID
+    function selectPrescriptionById(pkId) {
+      const item = allPrescriptions.find(p => p.phieu_kham_id === pkId);
+      if (item) selectPrescription(item);
+    }
+
+    // Chọn đơn thuốc và hiển thị chi tiết bên cột phải
+    function selectPrescription(item) {
+      selectedPrescription = item;
+      renderPrescriptionsTable(); // Highlight hàng được chọn
+
+      document.getElementById('panelEmptySelection').classList.add('d-none');
+      document.getElementById('panelPrescriptionDetail').classList.remove('d-none');
+
+      document.getElementById('badgeSelectedPK').innerText = `#PK-${item.phieu_kham_id}`;
+      document.getElementById('detailPatientName').innerText = item.benh_nhan.ho_ten;
+      document.getElementById('detailPatientMeta').innerText = `${item.benh_nhan.gioi_tinh} • Ngày sinh: ${item.benh_nhan.ngay_sinh} • SĐT: ${item.benh_nhan.so_dien_thoai}`;
+      document.getElementById('detailDoctorName').innerText = `${item.bac_si.ho_ten} (${item.bac_si.chuyen_khoa})`;
+      document.getElementById('detailDiagnosis').innerText = item.chan_doan;
+      document.getElementById('detailBHYT').innerText = item.benh_nhan.ma_bhyt || 'Không có';
+
+      const isDispensed = item.trang_thai_phat_thuoc === 'da_lay_thuoc';
+      const badgeDispense = document.getElementById('detailDispenseStatusBadge');
+      badgeDispense.className = `badge ${isDispensed ? 'badge-da-lay' : 'badge-cho-lay'}`;
+      badgeDispense.innerText = isDispensed ? '✓ Đã Nhận Thuốc' : '⏳ Chờ Lấy Thuốc';
+
+      // Render bảng thuốc chi tiết
+      document.getElementById('detailMedicineCount').innerText = `${item.chi_tiet_thuoc.length} loại`;
+      const tbodyMed = document.getElementById('detailMedicineTableBody');
+      tbodyMed.innerHTML = item.chi_tiet_thuoc.map((m, idx) => `
+        <tr>
+          <td class="ps-2">
+            <div class="fw-bold text-dark">${idx + 1}. ${m.ten_thuoc}</div>
+            <small class="text-primary"><i class="fa-solid fa-clock me-1"></i>${m.lieu_dung}</small>
+            ${m.ton_kho <= 15 ? `<br><small class="text-danger fw-bold"><i class="fa-solid fa-triangle-exclamation me-1"></i>Tồn kho ít (${m.ton_kho})</small>` : ''}
+          </td>
+          <td class="text-center fw-bold">${m.so_luong} ${m.don_vi_tinh}</td>
+          <td class="text-end text-muted">${formatVND(m.don_gia)}</td>
+          <td class="text-end pe-2 fw-bold text-dark">${formatVND(m.thanh_tien)}</td>
+        </tr>
+      `).join('');
+
+      // Tiền
+      document.getElementById('detailMedFee').innerText = formatVND(item.tien_thuoc);
+      document.getElementById('detailExamFee').innerText = formatVND(item.tien_kham);
+      document.getElementById('detailTotalFee').innerText = formatVND(item.tong_tien);
+
+      // Hiển thị phần Action phát thuốc hay đã phát
+      if (isDispensed) {
+        document.getElementById('sectionPaymentAction').classList.add('d-none');
+        document.getElementById('sectionDispensedSuccess').classList.remove('d-none');
+        document.getElementById('dispensedTimeInfo').innerText = `Thời điểm lấy thuốc: ${item.thoi_gian_phat_thuoc || 'Vừa xong'}`;
+        document.getElementById('dispensedByInfo').innerText = `Dược sĩ phụ trách: ${item.duoc_si_phat || 'Dược sĩ Quầy Thuốc'}`;
+      } else {
+        document.getElementById('sectionPaymentAction').classList.remove('d-none');
+        document.getElementById('sectionDispensedSuccess').classList.add('d-none');
+        toggleQRPreview();
+      }
+    }
+
+    // Bật/tắt xem trước VietQR
+    function toggleQRPreview() {
+      if (!selectedPrescription) return;
+      const method = document.getElementById('selectPaymentMethod').value;
+      const boxQR = document.getElementById('boxVietQR');
+
+      if (method === 'qr') {
+        boxQR.classList.remove('d-none');
+        const amount = selectedPrescription.tong_tien || 100000;
+        const addInfo = encodeURIComponent(`PK${selectedPrescription.phieu_kham_id} ${selectedPrescription.benh_nhan.ho_ten}`);
+        const qrUrl = `https://img.vietqr.io/image/970422-1234567890-compact.png?amount=${amount}&addInfo=${addInfo}&accountName=PHONG%20KHAM%20CLINOVA`;
+        document.getElementById('imgVietQR').src = qrUrl;
+      } else {
+        boxQR.classList.add('d-none');
+      }
+    }
+
+    // Xác nhận đã phát thuốc & Trừ kho dược
+    async function submitDispenseMedicine() {
+      if (!selectedPrescription) return;
+
+      const pharmacist = document.getElementById('inputPharmacist').value.trim() || 'Dược sĩ Quầy Thuốc';
+      const note = document.getElementById('inputDispenseNote').value.trim();
+      const method = document.getElementById('selectPaymentMethod').value;
+
+      const payload = {
+        phieu_kham_id: selectedPrescription.phieu_kham_id,
+        duoc_si_phat: pharmacist,
+        ghi_chu_phat: note,
+        da_thanh_toan_ngay: true,
+        hinh_thuc_tt: method
+      };
+
+      try {
+        const res = await fetch(`${API_BASE}/hoa-dons/xac-nhan-phat-thuoc`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.detail || 'Không thể xác nhận phát thuốc');
+        }
+
+        const data = await res.json();
+        showToast('🎉 ' + data.message, 'success');
+
+        // Tải lại dữ liệu để cập nhật bảng và trạng thái
+        await loadPrescriptions();
+        selectPrescriptionById(payload.phieu_kham_id);
+
+      } catch (err) {
+        showToast('Lỗi: ' + err.message, 'danger');
+      }
+    }
+
+    // Mở Modal xem trước và in Đơn thuốc
+    function openPrintModal() {
+      if (!selectedPrescription) return;
+
+      const d = selectedPrescription;
+      document.getElementById('printHeaderMeta').innerText = `Mã đơn: #PK-${d.phieu_kham_id} | Ngày khám: ${d.thoi_gian_kham}`;
+      document.getElementById('printPatientName').innerText = d.benh_nhan.ho_ten;
+      document.getElementById('printPatientDOB').innerText = d.benh_nhan.ngay_sinh;
+      document.getElementById('printPatientGender').innerText = d.benh_nhan.gioi_tinh;
+      document.getElementById('printPatientPhone').innerText = d.benh_nhan.so_dien_thoai;
+      document.getElementById('printPatientBHYT').innerText = d.benh_nhan.ma_bhyt || 'Không có';
+      document.getElementById('printDiagnosis').innerText = d.chan_doan;
+      document.getElementById('printDoctorName').innerText = `${d.bac_si.ho_ten} (${d.bac_si.chuyen_khoa})`;
+
+      // Render bảng thuốc in
+      const tbody = document.getElementById('printMedicineTableBody');
+      tbody.innerHTML = d.chi_tiet_thuoc.map((m, idx) => `
+        <tr>
+          <td class="text-center">${idx + 1}</td>
+          <td>
+            <strong>${m.ten_thuoc}</strong>
+            <div class="text-muted" style="font-size: 11px;">Cách dùng: ${m.lieu_dung}</div>
+          </td>
+          <td class="text-center">${m.don_vi_tinh}</td>
+          <td class="text-center fw-bold">${m.so_luong}</td>
+          <td class="text-end">${formatVND(m.don_gia)}</td>
+          <td class="text-end fw-bold">${formatVND(m.thanh_tien)}</td>
+        </tr>
+      `).join('');
+
+      document.getElementById('printMedTotal').innerText = formatVND(d.tien_thuoc);
+      document.getElementById('printGrandTotal').innerText = formatVND(d.tong_tien);
+      document.getElementById('printSignPharmacist').innerText = d.duoc_si_phat || 'Dược sĩ CLINOVA';
+
+      const modalEl = document.getElementById('modalPrintPrescription');
+      const modal = new bootstrap.Modal(modalEl);
+      modal.show();
+    }
+
+    // Khởi chạy khi tải trang
+    window.addEventListener('DOMContentLoaded', () => {
+      const username = localStorage.getItem('username');
+      if (username) {
+        const el = document.getElementById('displayUser');
+        if (el) el.innerText = username;
+      }
+      loadPrescriptions();
+    });
+  </script>
+</body>
+</html>

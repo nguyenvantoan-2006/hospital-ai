@@ -289,6 +289,11 @@ class HoaDonBase(OrmBase):
     trang_thai:    str = "chua_thanh_toan"
     hinh_thuc_tt:  Optional[str] = None  # Hình thức thanh toán: 'tien_mat' | 'chuyen_khoan' | 'qr'
 
+    trang_thai_phat_thuoc: Optional[str] = "cho_lay_thuoc" # cho_lay_thuoc | da_lay_thuoc | khong_co_thuoc
+    thoi_gian_phat_thuoc:  Optional[datetime] = None
+    duoc_si_phat:          Optional[str] = None
+    ghi_chu_phat:          Optional[str] = None
+
     @field_validator("trang_thai")
     @classmethod
     def validate_trang_thai(cls, v: str) -> str:
@@ -310,6 +315,16 @@ class HoaDonCreateInput(OrmBase):
     hinh_thuc_tt:  Literal["tien_mat", "chuyen_khoan", "qr"] = "tien_mat"
     tong_tien:     Optional[float] = None
     trang_thai:    Literal["da_thanh_toan", "chua_thanh_toan"] = "da_thanh_toan"
+    trang_thai_phat_thuoc: Optional[str] = None
+
+
+class XacNhanPhatThuocInput(OrmBase):
+    """Schema xác nhận bệnh nhân đã lấy thuốc & xuất kho dược."""
+    phieu_kham_id:        int
+    duoc_si_phat:         Optional[str] = "Dược sĩ Quầy Thuốc"
+    ghi_chu_phat:         Optional[str] = None
+    da_thanh_toan_ngay:   bool = True
+    hinh_thuc_tt:         Literal["tien_mat", "chuyen_khoan", "qr"] = "tien_mat"
 
 
 class HoaDonCreate(HoaDonBase):
@@ -319,9 +334,13 @@ class HoaDonCreate(HoaDonBase):
 
 class HoaDonUpdate(OrmBase):
     """Schema cập nhật hóa đơn — tất cả field đều Optional."""
-    tong_tien:    Optional[float] = None
-    trang_thai:   Optional[str]   = None
-    hinh_thuc_tt: Optional[str]   = None
+    tong_tien:             Optional[float] = None
+    trang_thai:            Optional[str]   = None
+    hinh_thuc_tt:          Optional[str]   = None
+    trang_thai_phat_thuoc: Optional[str]   = None
+    thoi_gian_phat_thuoc:  Optional[datetime] = None
+    duoc_si_phat:          Optional[str]   = None
+    ghi_chu_phat:          Optional[str]   = None
 
     @field_validator("trang_thai")
     @classmethod

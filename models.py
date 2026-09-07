@@ -250,7 +250,11 @@ class HoaDon(Base):
     )
     tong_tien     = Column(Float,      nullable=False, default=0.0)
     trang_thai    = Column(String(30), nullable=False, default="chua_thanh_toan")
-    hinh_thuc_tt  = Column(String(30), nullable=True)   # Hình thức thanh toán
+    hinh_thuc_tt  = Column(String(30), nullable=True)   # Hình thức thanh toán: tien_mat | chuyen_khoan | qr
+    trang_thai_phat_thuoc = Column(String(30), nullable=False, default="cho_lay_thuoc") # cho_lay_thuoc | da_lay_thuoc | khong_co_thuoc
+    thoi_gian_phat_thuoc  = Column(DateTime,   nullable=True)   # Thời điểm bệnh nhân nhận thuốc
+    duoc_si_phat          = Column(String(100),nullable=True)   # Dược sĩ phụ trách phát thuốc
+    ghi_chu_phat          = Column(Text,       nullable=True)   # Ghi chú khi phát thuốc
 
     # Quan hệ ngược về PhieuKham
     phieu_kham = relationship(

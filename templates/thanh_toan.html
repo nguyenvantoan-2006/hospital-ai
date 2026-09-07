@@ -140,6 +140,7 @@
         </div>
       </a>
       <div class="ms-auto d-flex align-items-center gap-2">
+        <a href="quay_thuoc.html" class="btn btn-sm btn-outline-light"><i class="fa-solid fa-prescription-bottle-medical me-1"></i> Quầy Thuốc</a>
         <a href="ke_toan.html" class="btn btn-sm btn-light fw-bold text-primary"><i class="fa-solid fa-coins me-1"></i> Kế toán Tổng hợp</a>
         <a href="danh_sach_benh_nhan.html" class="btn btn-sm btn-outline-light"><i class="fa-solid fa-users me-1"></i> DS Bệnh nhân</a>
         <a href="lap_phieu_kham.html" class="btn btn-sm btn-outline-light"><i class="fa-solid fa-stethoscope me-1"></i> Lập phiếu khám</a>
@@ -295,15 +296,71 @@
               </div>
 
               <!-- Chọn Hình thức Thanh toán -->
-              <div class="mb-4">
+              <div class="mb-3">
                 <label for="selectHinhThucTT" class="form-label fw-bold small text-uppercase text-secondary">
                   Hình thức thanh toán <span class="text-danger">*</span>
                 </label>
-                <select id="selectHinhThucTT" class="form-select form-select-lg border-2 border-primary-subtle text-dark fw-semibold" style="font-size: 15px;">
+                <select id="selectHinhThucTT" class="form-select form-select-lg border-2 border-primary-subtle text-dark fw-semibold" style="font-size: 15px;" onchange="updateQRCodeDisplay()">
                   <option value="tien_mat" selected>💵 Tiền mặt (tien_mat)</option>
                   <option value="chuyen_khoan">🏦 Chuyển khoản ngân hàng (chuyen_khoan)</option>
                   <option value="qr">📱 Quét mã QR Code (qr)</option>
                 </select>
+              </div>
+
+              <!-- VietQR Container (Hiển thị khi chọn Chuyển khoản hoặc Quét mã QR) -->
+              <div id="boxVietQR" class="card border border-primary-subtle bg-light-subtle rounded-3 p-3 mb-4 shadow-sm" style="display: none;">
+                <div class="d-flex align-items-center justify-content-between mb-2 pb-2 border-bottom">
+                  <div class="d-flex align-items-center gap-2">
+                    <div class="bg-primary text-white rounded p-1 d-flex align-items-center justify-content-center" style="width:26px; height:26px;">
+                      <i class="fa-solid fa-qrcode fs-6"></i>
+                    </div>
+                    <strong class="text-primary small">Mã QR Thanh Toán Viện Phí</strong>
+                  </div>
+                  <span class="badge bg-primary-subtle text-primary border border-primary-subtle">VietQR Chuẩn 24/7</span>
+                </div>
+
+                <div class="text-center my-2">
+                  <div class="position-relative d-inline-block p-2 bg-white rounded-3 border shadow-sm">
+                    <img id="imgVietQR" src="" alt="VietQR Thanh toán" class="img-fluid rounded-2" style="max-height: 220px; min-height: 180px; width: auto; object-fit: contain;">
+                  </div>
+                  <div class="small text-muted mt-2">
+                    <i class="fa-solid fa-mobile-screen-button me-1 text-primary"></i> Mở ứng dụng Ngân hàng / Ví điện tử để quét mã
+                  </div>
+                </div>
+
+                <!-- Thông tin tài khoản ngân hàng -->
+                <div class="bg-white p-3 rounded-2 border mt-2 small">
+                  <div class="d-flex justify-content-between align-items-center mb-1 pb-1 border-bottom">
+                    <span class="text-muted">Ngân hàng:</span>
+                    <strong class="text-dark">MB Bank (Quân Đội)</strong>
+                  </div>
+                  <div class="d-flex justify-content-between align-items-center mb-1 pb-1 border-bottom">
+                    <span class="text-muted">Số tài khoản:</span>
+                    <span class="d-flex align-items-center gap-2">
+                      <strong class="text-primary font-monospace fs-6" id="qrDisplaySTK">1234567890</strong>
+                      <button type="button" class="btn btn-xs btn-outline-secondary py-0 px-2 rounded-pill" onclick="copyToClipboard('1234567890', 'Số tài khoản')">
+                        <i class="fa-regular fa-copy"></i>
+                      </button>
+                    </span>
+                  </div>
+                  <div class="d-flex justify-content-between align-items-center mb-1 pb-1 border-bottom">
+                    <span class="text-muted">Chủ tài khoản:</span>
+                    <strong class="text-dark">PHONG KHAM CLINOVA</strong>
+                  </div>
+                  <div class="d-flex justify-content-between align-items-center mb-1 pb-1 border-bottom">
+                    <span class="text-muted">Số tiền:</span>
+                    <strong class="text-danger fs-6" id="qrDisplayAmount">0 đ</strong>
+                  </div>
+                  <div class="d-flex justify-content-between align-items-center">
+                    <span class="text-muted">Nội dung CK:</span>
+                    <span class="d-flex align-items-center gap-2">
+                      <strong class="text-dark font-monospace" id="qrDisplayContent">TT PK</strong>
+                      <button type="button" class="btn btn-xs btn-outline-secondary py-0 px-2 rounded-pill" onclick="copyToClipboard(document.getElementById('qrDisplayContent').innerText, 'Nội dung chuyển khoản')">
+                        <i class="fa-regular fa-copy"></i>
+                      </button>
+                    </span>
+                  </div>
+                </div>
               </div>
 
               <!-- Nút xác nhận -->
@@ -455,29 +512,75 @@
       // Chi tiết đơn thuốc
       const boxThuoc = document.getElementById("boxChiTietThuoc");
       if (chiTietThuoc && chiTietThuoc.length > 0) {
-        boxThuoc.innerHTML = chiTietThuoc.map(t => 
-          `<div class="d-flex justify-content-between"><span>• ${escapeHtml(t.ten_thuoc)} (x${t.so_luong})</span><span>${formatCurrency(t.thanh_tien)}</span></div>`
-        ).join("");
+        boxThuoc.innerHTML = `
+          <div class="table-responsive">
+            <table class="table table-sm table-borderless mb-1" style="font-size: 12px;">
+              <tbody>
+                ${chiTietThuoc.map((t, idx) => `
+                  <tr class="border-bottom">
+                    <td class="ps-0 py-1">
+                      <strong>${idx + 1}. ${escapeHtml(t.ten_thuoc)}</strong> (x${t.so_luong} ${t.don_vi_tinh || 'viên'})
+                      <div class="text-muted" style="font-size: 11px;"><i class="fa-solid fa-clock me-1"></i>${escapeHtml(t.lieu_dung || 'Uống sau ăn')}</div>
+                    </td>
+                    <td class="text-end pe-0 py-1 fw-bold text-dark">${formatCurrency(t.thanh_tien)}</td>
+                  </tr>
+                `).join("")}
+              </tbody>
+            </table>
+          </div>
+          <a href="quay_thuoc.html" class="btn btn-sm btn-outline-teal w-100 mt-2 fw-semibold" style="font-size: 12px; color: #0D9488; border: 1px solid #0D9488;">
+            <i class="fa-solid fa-prescription-bottle-medical me-1"></i> Mở Quầy Thuốc để Cấp Phát Thuốc
+          </a>
+        `;
       } else {
-        boxThuoc.innerHTML = `<span class="italic">Không kê đơn thuốc</span>`;
+        boxThuoc.innerHTML = `<div class="p-2 text-center text-muted fst-italic">Bác sĩ không kê đơn thuốc cho bệnh nhân này</div>`;
+      }
+
+      // Cập nhật lại mã QR theo thông tin phiếu khám vừa chọn
+      updateQRCodeDisplay();
+    }
+
+    /**
+     * Cập nhật và hiển thị / ẩn mã VietQR theo hình thức thanh toán
+     */
+    function updateQRCodeDisplay() {
+      const selectTT = document.getElementById("selectHinhThucTT");
+      const boxQR = document.getElementById("boxVietQR");
+      const imgQR = document.getElementById("imgVietQR");
+      const qrDisplayAmount = document.getElementById("qrDisplayAmount");
+      const qrDisplayContent = document.getElementById("qrDisplayContent");
+
+      if (!selectTT || !boxQR) return;
+
+      const method = selectTT.value;
+      if (method === "chuyen_khoan" || method === "qr") {
+        if (!currentSelectedPhieu) {
+          boxQR.style.display = "none";
+          return;
+        }
+        const amount = currentSelectedPhieu.tong_tien || 0;
+        const addInfo = encodeURIComponent(`TT PK${currentSelectedPhieu.id} ${currentSelectedPhieu.hoTen || ''}`.trim());
+        const qrUrl = `https://img.vietqr.io/image/970422-1234567890-compact.png?amount=${amount}&addInfo=${addInfo}&accountName=PHONG%20KHAM%20CLINOVA`;
+
+        imgQR.src = qrUrl;
+        if (qrDisplayAmount) qrDisplayAmount.innerText = formatCurrency(amount);
+        if (qrDisplayContent) qrDisplayContent.innerText = `TT PK${currentSelectedPhieu.id} ${currentSelectedPhieu.hoTen || ''}`.trim();
+        boxQR.style.display = "block";
+      } else {
+        boxQR.style.display = "none";
       }
     }
 
     /**
-     * Chọn hình thức thanh toán (Tiền mặt / Chuyển khoản)
+     * Sao chép nội dung vào Clipboard
      */
-    function selectPaymentMethod(method) {
-      document.getElementById("inputHinhThucTT").value = method;
-      const optMat = document.getElementById("optTienMat");
-      const optCk = document.getElementById("optChuyenKhoan");
-
-      if (method === "tien_mat") {
-        optMat.classList.add("selected");
-        optCk.classList.remove("selected");
-      } else {
-        optCk.classList.add("selected");
-        optMat.classList.remove("selected");
-      }
+    function copyToClipboard(text, label) {
+      if (!text) return;
+      navigator.clipboard.writeText(text).then(() => {
+        showToast(`Đã sao chép ${label || ''}: ${text}`, "success");
+      }).catch(err => {
+        console.error("Lỗi copy:", err);
+      });
     }
 
     /**
