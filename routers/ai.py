@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
+from typing import Optional, List
 from sqlalchemy.orm import Session
 import logging
 import asyncio
@@ -210,4 +211,99 @@ Hãy viết bản nháp Hướng dẫn sau khám ngắn gọn, rõ ràng, dễ h
         )
 
     return AIGuideResponse(guide=guide_result)
+
+
+# ─── AI CHATBOT TƯ VẤN QUY TRÌNH HÀNH CHÍNH (FR-AI-02, UC-09 & SEC-AI-02) ───
+class AIChatbotRequest(BaseModel):
+    message: str
+    session_id: Optional[str] = None
+
+class AIChatbotResponse(BaseModel):
+    reply: str
+    suggested_actions: Optional[List[str]] = None
+
+@router.post("/chatbot", response_model=AIChatbotResponse)
+async def ai_chatbot_consult(request: AIChatbotRequest):
+    """
+    API AI Chatbot tư vấn hành chính y tế cho Bệnh nhân (FR-AI-02 / UC-09).
+    - Giải đáp: Giờ khám, bảng giá dịch vụ, thủ tục BHYT, quy trình khám bệnh.
+    - Tuân thủ Guardrails nghiêm ngặt: Từ chối chẩn đoán, không kê đơn thuốc.
+    - Tự động chuyển đổi đa mô hình (Multi-model Fallback) & Fallback nội bộ an toàn.
+    """
+    user_msg = (request.message or "").strip()
+    if not user_msg:
+        raise HTTPException(status_code=400, detail="Nội dung câu hỏi không được để trống.")
+
+    system_prompt = f"""
+Bạn là Trợ lý AI Hành chính của Hệ thống Phòng khám Đa khoa Clinova AI Hospital (Hospital-AI).
+Nhiệm vụ: Tư vấn, giải đáp thân thiện, ngắn gọn và chính xác các thông tin hành chính, quy trình và dịch vụ của phòng khám cho bệnh nhân.
+
+THÔNG TIN CHÍNH THỨC CỦA PHÒNG KHÁM CLINOVA:
+1. Thời gian làm việc:
+   - Thứ Hai đến Thứ Bảy:
+     * Buổi sáng: 07:30 - 11:30
+     * Buổi chiều: 13:30 - 17:00
+   - Chủ Nhật: Nghỉ khám định kỳ (Khoa Cấp cứu tiếp nhận 24/7).
+2. Chi phí & Giá dịch vụ:
+   - Giá khám chuyên khoa tiêu chuẩn: 100.000 VNĐ / lượt khám.
+   - Các gói khám tổng quát, xét nghiệm và chẩn đoán hình ảnh từ 150.000 VNĐ tùy chỉ định.
+   - Có hỗ trợ tiếp nhận Bảo hiểm Y tế (BHYT) và bảo lãnh viện phí tư nhân.
+3. Quy trình khám bệnh chuẩn 4 bước:
+   - Bước 1: Đăng ký đặt lịch trực tuyến (tại website) hoặc lấy số tiếp nhận tại Quầy Lễ tân.
+   - Bước 2: Chờ gọi số thứ tự (STT) vào phòng khám bác sĩ chuyên khoa.
+   - Bước 3: Bác sĩ thăm khám, chẩn đoán và kê đơn thuốc điện tử.
+   - Bước 4: Thanh toán viện phí tại Quầy Kế toán và nhận thuốc tại Quầy Dược (hỗ trợ tiền mặt, chuyển khoản VietQR, quẹt thẻ).
+4. Địa chỉ & Liên hệ:
+   - Địa chỉ: 123 Đường Sức Khỏe, Quận 1, TP. Hồ Chí Minh.
+   - Hotline hỗ trợ & Cấp cứu: 1900 6868.
+   - Website: Đặt lịch trực tuyến 24/7 qua cổng "Đặt lịch khám".
+
+RÀNG BUỘC Y ĐỨC & BẢO MẬT (SEC-AI-02 - TUYỆT ĐỐI TUÂN THỦ 3 QUY TẮC):
+1. TUYỆT ĐỐI KHÔNG TỰ CHẨN ĐOÁN BỆNH: Nếu người dùng mô tả các triệu chứng bệnh hoặc hỏi bệnh gì, hãy đồng cảm nhưng TỪ CHỐI chẩn đoán, đồng thời khuyên họ bấm "Đặt lịch khám" để gặp bác sĩ chuyên khoa hoặc gọi cấp cứu 115 nếu có triệu chứng nguy kịch (khó thở, đau thắt ngực...).
+2. TUYỆT ĐỐI KHÔNG KÊ ĐƠN THUỐC: Không gợi ý hoặc đề xuất tên bất kỳ loại thuốc điều trị nào.
+3. PHONG CÁCH TRẢ LỜI: Tiếng Việt văn minh, ấm áp, rõ ràng, gạch đầu dòng súc tích (dưới 150 từ).
+
+CÂU HỎI CỦA BỆNH NHÂN:
+{user_msg}
+"""
+    suggested = ["Giờ làm việc", "Bảng giá khám", "Quy trình khám", "Đặt lịch ngay"]
+    
+    try:
+        reply_text = await call_llm_api(system_prompt)
+    except Exception as e:
+        logger.error(f"[AI Chatbot Fallback] {str(e)}")
+        # Cơ chế Fallback thông minh dựa trên từ khóa nếu mất kết nối LLM
+        lower_msg = user_msg.lower()
+        if "giờ" in lower_msg or "mấy giờ" in lower_msg or "thời gian" in lower_msg or "lịch làm" in lower_msg:
+            reply_text = (
+                "🕒 **Thời gian làm việc của Clinova:**\n"
+                "- Thứ 2 - Thứ 7: Sáng 07:30 - 11:30 | Chiều 13:30 - 17:00.\n"
+                "- Chủ Nhật: Nghỉ định kỳ (Cấp cứu trực 24/7).\n"
+                "Bạn có thể đặt lịch trước trên website để chọn khung giờ phù hợp nhé!"
+            )
+        elif "giá" in lower_msg or "chi phí" in lower_msg or "bao nhiêu" in lower_msg or "tiền" in lower_msg:
+            reply_text = (
+                "💰 **Bảng giá khám tại Clinova:**\n"
+                "- Khám chuyên khoa tiêu chuẩn: 100.000 VNĐ / lượt.\n"
+                "- Phòng khám có áp dụng Bảo hiểm Y tế (BHYT) theo quy định hiện hành."
+            )
+        elif "quy trình" in lower_msg or "các bước" in lower_msg or "thủ tục" in lower_msg:
+            reply_text = (
+                "📝 **Quy trình khám bệnh 4 bước tại Clinova:**\n"
+                "1. Đặt lịch khám online hoặc lấy số tại Lễ tân.\n"
+                "2. Nhận số thứ tự (STT) và vào phòng khám bác sĩ.\n"
+                "3. Bác sĩ thăm khám và kê đơn thuốc điện tử.\n"
+                "4. Thanh toán viện phí và nhận thuốc tại quầy dược."
+            )
+        elif any(k in lower_msg for k in ["đau", "bệnh", "thuốc", "sốt", "uống gì", "bị làm sao"]):
+            reply_text = (
+                "⚠️ **Lưu ý Y tế:** Trợ lý AI không được phép đưa ra chẩn đoán y khoa hoặc kê đơn thuốc. "
+                "Để đảm bảo an toàn sức khỏe, bạn vui lòng nhấn nút **Đặt lịch khám** để được các bác sĩ chuyên khoa thăm khám trực tiếp, hoặc liên hệ Hotline 1900 6868 nếu cần hỗ trợ khẩn cấp."
+            )
+        else:
+            reply_text = (
+                "Chào bạn, tôi là Trợ lý AI của Clinova. Tôi có thể hỗ trợ bạn tìm hiểu giờ làm việc, giá dịch vụ khám, quy trình khám và hướng dẫn đặt lịch khám. Bạn cần thông tin gì ạ?"
+            )
+
+    return AIChatbotResponse(reply=reply_text, suggested_actions=suggested)
 
