@@ -25,10 +25,33 @@ GMAIL_USER        = os.getenv("GMAIL_USER") or os.getenv("MAIL_USERNAME") or ""
 GMAIL_APP_PASSWORD= os.getenv("GMAIL_APP_PASSWORD") or os.getenv("MAIL_PASSWORD") or ""
 SENDER_NAME       = os.getenv("EMAIL_SENDER_NAME", "CLINOVA Smart Clinic")
 
-# ─── BỘ ĐỆM LƯU MÃ OTP TRONG BỘ NHỚ (In-memory Store) ──────────────────────────
-# Cấu trúc: { email: { "otp": "123456", "expires_at": datetime, "data": {...} } }
+# ─── BỘ ĐỆM LƯU MÃ OTP & RATE LIMITING TRONG BỘ NHỚ ──────────────────────────
+# Cấu trúc OTP: { email: { "otp": "123456", "expires_at": datetime, "data": {...} } }
 _otp_lock = threading.Lock()
 _otp_store: Dict[str, Dict[str, Any]] = {}
+_otp_rate_store: Dict[str, list] = {}
+
+
+def check_otp_rate_limit(email: str, max_requests: int = 3, window_minutes: int = 60) -> Tuple[bool, str]:
+    """
+    Kiểm tra giới hạn tần suất gửi OTP (Rate Limiting - FR-09 / AC-09-01).
+    Tối đa 3 lần / email / 1 giờ để chống spam và phá hoại hệ thống.
+    """
+    clean_email = email.strip().lower()
+    now = datetime.now()
+    threshold = now - timedelta(minutes=window_minutes)
+
+    with _otp_lock:
+        timestamps = _otp_rate_store.get(clean_email, [])
+        valid_ts = [ts for ts in timestamps if ts > threshold]
+        _otp_rate_store[clean_email] = valid_ts
+
+        if len(valid_ts) >= max_requests:
+            return False, f"Bạn đã gửi quá {max_requests} mã OTP trong vòng 1 giờ. Vui lòng thử lại sau hoặc liên hệ Hotline 1900 6868."
+
+        valid_ts.append(now)
+        _otp_rate_store[clean_email] = valid_ts
+        return True, ""
 
 
 def save_otp(email: str, otp_code: str, booking_details: Dict[str, Any], ttl_minutes: int = 10) -> None:

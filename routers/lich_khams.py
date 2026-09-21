@@ -18,7 +18,8 @@ router = APIRouter()
 
 from email_service import (
     save_otp, verify_stored_otp,
-    send_booking_otp_email, send_booking_confirmation_email
+    send_booking_otp_email, send_booking_confirmation_email,
+    check_otp_rate_limit
 )
 import random
 
@@ -103,14 +104,207 @@ def get_public_doctors(
     ]
 
 
+@router.get("/public/queue-display", status_code=status.HTTP_200_OK)
+def get_queue_display(
+    phong_kham: Optional[str] = Query(None, description="Tên hoặc mã phòng khám, ví dụ: 'Phòng 101'"),
+    chuyen_khoa: Optional[str] = Query(None, description="Tên chuyên khoa"),
+    bac_si_id: Optional[int] = Query(None, description="ID bác sĩ hoặc user_id"),
+    db: Session = Depends(get_db)
+):
+    """
+    API Công khai cho Màn hình Kiosk hiển thị hàng đợi phòng khám:
+    - Bệnh nhân ĐANG KHÁM (hiển thị số thứ tự STT, đầy đủ Họ tên, Ngày tháng năm sinh/Năm sinh).
+    - DANH SÁCH CHUẨN BỊ (3 - 5 ca tiếp theo).
+    - Thống kê ca khám trong ngày.
+    """
+    today = date.today()
+    
+    # 1. Tìm thông tin Bác sĩ / Phòng khám
+    doc_info = None
+    room_title = phong_kham or "Phòng Khám Đa Khoa"
+    spec_title = chuyen_khoa or "Khám Tổng Quát"
+    doc_name = "Bác sĩ phụ trách"
+
+    if bac_si_id:
+        doc = db.query(models.BacSi).filter(or_(models.BacSi.id == bac_si_id, models.BacSi.user_id == bac_si_id)).first()
+        if doc:
+            doc_info = doc
+            doc_name = f"{doc.hoc_vi or 'BS.'} {doc.ho_ten}"
+            if not phong_kham and doc.phong_kham:
+                room_title = doc.phong_kham
+            if not chuyen_khoa and doc.chuyen_khoa:
+                spec_title = doc.chuyen_khoa
+    elif phong_kham:
+        doc = db.query(models.BacSi).filter(models.BacSi.phong_kham.ilike(f"%{phong_kham.strip()}%")).first()
+        if doc:
+            doc_info = doc
+            doc_name = f"{doc.hoc_vi or 'BS.'} {doc.ho_ten}"
+            spec_title = doc.chuyen_khoa or spec_title
+
+    # 2. Xây dựng query lịch khám hôm nay
+    query = db.query(models.LichKham).filter(func.date(models.LichKham.thoi_gian) == today)
+    if doc_info and doc_info.user_id:
+        query = query.filter(models.LichKham.bac_si_id == doc_info.user_id)
+    elif chuyen_khoa:
+        query = query.filter(models.LichKham.chuyen_khoa.has(ten_chuyen_khoa=chuyen_khoa))
+
+    all_today = query.all()
+
+    def format_patient_info(lk):
+        bn = lk.benh_nhan
+        dob_str = ""
+        nam_sinh = None
+        if bn and bn.ngay_sinh:
+            dob_str = bn.ngay_sinh.strftime("%d/%m/%Y")
+            nam_sinh = bn.ngay_sinh.year
+        return {
+            "id": lk.id,
+            "stt": lk.stt,
+            "ma_lich": f"LK{lk.id:04d}",
+            "ho_ten": bn.ho_ten if bn else "Bệnh nhân",
+            "ngay_sinh": dob_str,
+            "nam_sinh": nam_sinh,
+            "gioi_tinh": bn.gio_tinh if bn else "Khác",
+            "thoi_gian": lk.thoi_gian.strftime("%H:%M"),
+            "trang_thai": lk.trang_thai
+        }
+
+    # 3. Lấy ca ĐANG KHÁM (trang_thai == 'dang_kham')
+    dang_kham_item = next((lk for lk in all_today if lk.trang_thai == "dang_kham"), None)
+    current_exam = format_patient_info(dang_kham_item) if dang_kham_item else None
+
+    # 4. Danh sách CHUẨN BỊ (trang_thai == 'cho_kham'), sắp xếp theo STT
+    cho_kham_list = [lk for lk in all_today if lk.trang_thai == "cho_kham"]
+    cho_kham_list.sort(key=lambda x: (x.stt or 9999, x.thoi_gian))
+    waiting_queue = [format_patient_info(lk) for lk in cho_kham_list[:6]]
+
+    # 5. Thống kê ca khám trong ngày
+    da_kham_count = sum(1 for lk in all_today if lk.trang_thai == "hoan_thanh")
+    dang_cho_count = len(cho_kham_list)
+
+    return {
+        "phong_kham": room_title,
+        "chuyen_khoa": spec_title,
+        "bac_si": doc_name,
+        "dang_kham": current_exam,
+        "danh_sach_cho": waiting_queue,
+        "thong_ke": {
+            "da_kham": da_kham_count,
+            "dang_cho": dang_cho_count,
+            "tong_ca": len(all_today)
+        }
+    }
+
+
+@router.get("/public/tra-cuu", status_code=status.HTTP_200_OK)
+def public_tra_cuu_lich_kham(
+    sdt: str = Query(..., description="Số điện thoại bệnh nhân đã đăng ký"),
+    ma_lich: Optional[str] = Query(None, description="Mã lịch hẹn (VD: LK0005 hoặc 5)"),
+    db: Session = Depends(get_db)
+):
+    """
+    API Công khai cho Bệnh nhân tra cứu lịch khám & kết quả khám cá nhân (FR-10 / UC-11).
+    """
+    clean_phone = sdt.strip()
+    if not clean_phone:
+        raise HTTPException(status_code=400, detail="Vui lòng cung cấp số điện thoại.")
+
+    benh_nhan = db.query(models.BenhNhan).filter(models.BenhNhan.so_dien_thoai == clean_phone).first()
+    if not benh_nhan:
+        return {
+            "success": True,
+            "found": False,
+            "message": f"Không tìm thấy hồ sơ bệnh nhân với số điện thoại {clean_phone}.",
+            "lich_khams": []
+        }
+
+    query = db.query(models.LichKham).filter(models.LichKham.benh_nhan_id == benh_nhan.id)
+
+    if ma_lich and ma_lich.strip():
+        clean_code = ma_lich.strip().upper().replace("LK", "")
+        if clean_code.isdigit():
+            query = query.filter(models.LichKham.id == int(clean_code))
+
+    records = query.order_by(models.LichKham.thoi_gian.desc()).all()
+
+    STATUS_MAP = {
+        "cho_xac_nhan": {"text": "Chờ duyệt", "badge": "warning"},
+        "da_dat_lich": {"text": "Đã xác nhận", "badge": "info"},
+        "cho_kham": {"text": "Đã tiếp nhận (Chờ khám)", "badge": "primary"},
+        "dang_kham": {"text": "Đang khám trong phòng", "badge": "success"},
+        "hoan_thanh": {"text": "Đã hoàn thành khám", "badge": "secondary"},
+        "huy": {"text": "Đã hủy", "badge": "danger"}
+    }
+
+    results = []
+    for lk in records:
+        # Tên Bác sĩ
+        ten_bs = "Chưa phân công"
+        phong = "Phòng Khám"
+        if lk.bac_si_id:
+            bs = db.query(models.BacSi).filter(or_(models.BacSi.id == lk.bac_si_id, models.BacSi.user_id == lk.bac_si_id)).first()
+            if bs:
+                ten_bs = f"{bs.hoc_vi or 'BS.'} {bs.ho_ten}"
+                phong = bs.phong_kham or phong
+
+        # Chuyên khoa
+        ten_ck = "Đa khoa"
+        if lk.chuyen_khoa:
+            ten_ck = lk.chuyen_khoa.ten_chuyen_khoa
+
+        # Phiếu khám (nếu có)
+        pk_info = None
+        if lk.phieu_kham:
+            pk_info = {
+                "trieu_chung": lk.phieu_kham.trieu_chung,
+                "chan_doan": lk.phieu_kham.chan_doan,
+                "ai_summary": lk.phieu_kham.ai_summary
+            }
+
+        st_info = STATUS_MAP.get(lk.trang_thai, {"text": lk.trang_thai, "badge": "secondary"})
+
+        results.append({
+            "id": lk.id,
+            "ma_lich": f"LK{lk.id:04d}",
+            "stt": lk.stt,
+            "thoi_gian": lk.thoi_gian.strftime("%H:%M ngày %d/%m/%Y"),
+            "trang_thai": lk.trang_thai,
+            "trang_thai_text": st_info["text"],
+            "trang_thai_badge": st_info["badge"],
+            "bac_si": ten_bs,
+            "phong_kham": phong,
+            "chuyen_khoa": ten_ck,
+            "ly_do_kham": lk.ly_do_kham,
+            "phieu_kham": pk_info
+        })
+
+    return {
+        "success": True,
+        "found": True,
+        "benh_nhan": {
+            "ho_ten": benh_nhan.ho_ten,
+            "so_dien_thoai": benh_nhan.so_dien_thoai,
+            "ngay_sinh": benh_nhan.ngay_sinh.strftime("%d/%m/%Y") if benh_nhan.ngay_sinh else "",
+            "ma_bhyt": benh_nhan.ma_bhyt
+        },
+        "lich_khams": results
+    }
+
+
 @router.post("/send-otp", status_code=status.HTTP_200_OK)
 def send_booking_otp(data: PatientSendOtpInput):
     """
     Tạo mã OTP 6 chữ số và gửi về Gmail của bệnh nhân để xác thực trước khi hoàn thành đặt lịch.
+    Có bảo vệ Rate Limiting: tối đa 3 lần/email/giờ (FR-09 / AC-09-01).
     """
     clean_email = data.email.strip().lower()
     if not clean_email or "@" not in clean_email:
         raise HTTPException(status_code=400, detail="Địa chỉ email không hợp lệ!")
+
+    # 0. Kiểm tra Rate Limiting chống spam email
+    allowed, rate_msg = check_otp_rate_limit(clean_email, max_requests=3, window_minutes=60)
+    if not allowed:
+        raise HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail=rate_msg)
 
     # 1. Phát sinh mã OTP ngẫu nhiên 6 chữ số
     otp_code = f"{random.randint(100000, 999999)}"
