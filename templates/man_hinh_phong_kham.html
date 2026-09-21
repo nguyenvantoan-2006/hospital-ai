@@ -1,0 +1,784 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Màn Hình Gọi Số Khám Bệnh | CLINOVA AI Hospital</title>
+  
+  <!-- Bootstrap 5 CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <!-- Google Font: Inter & Outfit -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Outfit:wght@600;700;800;900&display=swap" rel="stylesheet" />
+  <!-- FontAwesome Icons -->
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet" />
+
+  <style>
+    :root {
+      --bg-dark: #0B132B;
+      --bg-card: #1C2541;
+      --bg-card-light: #243054;
+      --primary: #3A86FF;
+      --accent-green: #00F5D4;
+      --accent-yellow: #FFBE0B;
+      --accent-red: #FF006E;
+      --text-main: #FFFFFF;
+      --text-muted: #94A3B8;
+      --border: rgba(255, 255, 255, 0.12);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      min-height: 100vh;
+      overflow-x: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* HEADER */
+    .kiosk-header {
+      background: rgba(28, 37, 65, 0.85);
+      backdrop-filter: blur(12px);
+      border-bottom: 2px solid var(--border);
+      padding: 14px 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .brand-group {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .hospital-logo {
+      width: 52px;
+      height: 52px;
+      background: linear-gradient(135deg, var(--primary), #7C3AED);
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 26px;
+      color: #fff;
+      box-shadow: 0 6px 20px rgba(58, 134, 255, 0.4);
+    }
+
+    .hospital-info h1 {
+      font-family: 'Outfit', sans-serif;
+      font-size: 24px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      margin: 0;
+      background: linear-gradient(to right, #ffffff, #93C5FD);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .hospital-info p {
+      font-size: 13px;
+      color: var(--accent-green);
+      margin: 0;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .room-badge-banner {
+      background: linear-gradient(135deg, #1E3A8A 0%, #3B82F6 100%);
+      padding: 10px 24px;
+      border-radius: 16px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      text-align: center;
+      box-shadow: 0 4px 20px rgba(30, 58, 138, 0.5);
+    }
+
+    .room-badge-banner h2 {
+      font-family: 'Outfit', sans-serif;
+      font-size: 26px;
+      font-weight: 900;
+      margin: 0;
+      color: #ffffff;
+      text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+    }
+
+    .room-badge-banner span {
+      font-size: 13px;
+      color: #E0E7FF;
+      font-weight: 500;
+    }
+
+    .clock-doctor-group {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      text-align: right;
+    }
+
+    .digital-clock {
+      font-family: 'Outfit', monospace;
+      font-size: 32px;
+      font-weight: 800;
+      color: var(--accent-yellow);
+      line-height: 1;
+    }
+
+    .current-date {
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+
+    /* MAIN CONTAINER */
+    .kiosk-main {
+      flex: 1;
+      padding: 24px 32px;
+      display: flex;
+      gap: 24px;
+    }
+
+    /* LEFT: CURRENT PATIENT CARD (ĐANG KHÁM) */
+    .current-patient-col {
+      flex: 1.15;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .current-card {
+      flex: 1;
+      background: radial-gradient(circle at 50% 20%, #1e293b 0%, var(--bg-card) 100%);
+      border: 2px solid var(--accent-green);
+      border-radius: 24px;
+      padding: 32px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: space-between;
+      text-align: center;
+      position: relative;
+      box-shadow: 0 10px 40px rgba(0, 245, 212, 0.18);
+      overflow: hidden;
+    }
+
+    .current-card::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 6px;
+      background: linear-gradient(90deg, #00F5D4, #3A86FF, #00F5D4);
+      background-size: 200% 100%;
+      animation: gradientMove 3s infinite linear;
+    }
+
+    @keyframes gradientMove {
+      0% { background-position: 0% 0%; }
+      100% { background-position: 200% 0%; }
+    }
+
+    .live-status-pill {
+      background: rgba(0, 245, 212, 0.15);
+      border: 1.5px solid var(--accent-green);
+      color: var(--accent-green);
+      padding: 8px 24px;
+      border-radius: 30px;
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .pulse-dot {
+      width: 12px;
+      height: 12px;
+      background: var(--accent-green);
+      border-radius: 50%;
+      box-shadow: 0 0 12px var(--accent-green);
+      animation: pulse 1.5s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.4); opacity: 0.5; }
+    }
+
+    .giant-stt-box {
+      margin: 20px 0;
+    }
+
+    .giant-stt-label {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 2px;
+    }
+
+    .giant-stt-number {
+      font-family: 'Outfit', sans-serif;
+      font-size: 118px;
+      font-weight: 900;
+      color: var(--accent-green);
+      line-height: 1;
+      text-shadow: 0 0 35px rgba(0, 245, 212, 0.45);
+      letter-spacing: -2px;
+    }
+
+    .patient-details-box {
+      background: rgba(11, 19, 43, 0.6);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 22px 32px;
+      width: 100%;
+      backdrop-filter: blur(8px);
+    }
+
+    .patient-name-display {
+      font-size: 34px;
+      font-weight: 800;
+      color: #FFFFFF;
+      letter-spacing: 0.5px;
+      margin-bottom: 8px;
+      text-transform: uppercase;
+    }
+
+    .patient-meta-display {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 24px;
+      font-size: 18px;
+      color: #CBD5E1;
+    }
+
+    .patient-meta-display span {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .patient-meta-display strong {
+      color: var(--accent-yellow);
+    }
+
+    /* RIGHT: UPCOMING QUEUE (DANH SÁCH CHUẨN BỊ) */
+    .upcoming-col {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .upcoming-card {
+      flex: 1;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      padding: 24px 28px;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.25);
+    }
+
+    .upcoming-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 16px;
+      margin-bottom: 16px;
+    }
+
+    .upcoming-header h3 {
+      font-size: 20px;
+      font-weight: 700;
+      color: #ffffff;
+      margin: 0;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .upcoming-header span {
+      font-size: 13px;
+      color: var(--accent-yellow);
+      background: rgba(255, 190, 11, 0.12);
+      padding: 4px 12px;
+      border-radius: 12px;
+      border: 1px solid rgba(255, 190, 11, 0.3);
+    }
+
+    .queue-list {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      overflow-y: auto;
+    }
+
+    .queue-row {
+      background: var(--bg-card-light);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 16px;
+      padding: 14px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      transition: transform 0.2s, border-color 0.2s;
+    }
+
+    .queue-row:hover {
+      border-color: var(--primary);
+      transform: translateX(4px);
+    }
+
+    .queue-row-left {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .queue-stt-badge {
+      width: 48px;
+      height: 48px;
+      border-radius: 14px;
+      background: linear-gradient(135deg, var(--primary), #1D4ED8);
+      color: #ffffff;
+      font-family: 'Outfit', sans-serif;
+      font-size: 22px;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 14px rgba(58, 134, 255, 0.35);
+    }
+
+    .queue-info .name {
+      font-size: 18px;
+      font-weight: 700;
+      color: #ffffff;
+      margin-bottom: 2px;
+      text-transform: uppercase;
+    }
+
+    .queue-info .dob {
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    .queue-row-right {
+      text-align: right;
+    }
+
+    .queue-row-right .ready-pill {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--accent-green);
+      background: rgba(0, 245, 212, 0.1);
+      padding: 4px 10px;
+      border-radius: 8px;
+      border: 1px solid rgba(0, 245, 212, 0.25);
+    }
+
+    .queue-row-right .time {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+
+    /* STATS STRIP */
+    .stats-strip {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-around;
+      text-align: center;
+    }
+
+    .stat-box .num {
+      font-family: 'Outfit', sans-serif;
+      font-size: 26px;
+      font-weight: 800;
+      color: #ffffff;
+    }
+
+    .stat-box .lbl {
+      font-size: 12px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    /* FOOTER TICKER */
+    .kiosk-footer {
+      background: #060B18;
+      border-top: 1px solid var(--border);
+      padding: 10px 32px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      font-size: 14px;
+    }
+
+    .ticker-tag {
+      background: var(--accent-red);
+      color: #ffffff;
+      padding: 4px 12px;
+      border-radius: 8px;
+      font-weight: 700;
+      font-size: 12px;
+      white-space: nowrap;
+      text-transform: uppercase;
+    }
+
+    .ticker-content {
+      flex: 1;
+      overflow: hidden;
+      white-space: nowrap;
+      color: #E2E8F0;
+    }
+
+    /* AUDIO CONTROLLER MODAL / FLOATING BAR */
+    .audio-control-btn {
+      position: fixed;
+      top: 18px;
+      right: 320px;
+      background: rgba(255, 255, 255, 0.15);
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      color: #ffffff;
+      padding: 8px 16px;
+      border-radius: 30px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      z-index: 1000;
+      transition: all 0.2s;
+    }
+
+    .audio-control-btn.active {
+      background: #10B981;
+      border-color: #10B981;
+      box-shadow: 0 0 15px rgba(16, 185, 129, 0.5);
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- HEADER -->
+  <header class="kiosk-header">
+    <div class="brand-group">
+      <div class="hospital-logo">
+        <i class="fa-solid fa-hospital"></i>
+      </div>
+      <div class="hospital-info">
+        <h1>CLINOVA AI HOSPITAL</h1>
+        <p><i class="fa-solid fa-satellite-dish me-1"></i>HỆ THỐNG GỌI SỐ TỰ ĐỘNG</p>
+      </div>
+    </div>
+
+    <!-- BANNER PHÒNG KHÁM -->
+    <div class="room-badge-banner">
+      <h2 id="displayRoomName">PHÒNG KHÁM 101</h2>
+      <span id="displaySpecialty">CHUYÊN KHOA TIM MẠCH</span>
+    </div>
+
+    <!-- ĐỒNG HỒ & BÁC SĨ -->
+    <div class="clock-doctor-group">
+      <div>
+        <div class="digital-clock" id="clockTime">--:--:--</div>
+        <div class="current-date" id="clockDate">Đang tải thời gian...</div>
+      </div>
+    </div>
+  </header>
+
+  <!-- NÚT BẬT ÂM THANH LOA (AUDIO TOGGLE) -->
+  <button id="btnAudioToggle" class="audio-control-btn" onclick="toggleAudio()">
+    <i class="fa-solid fa-volume-xmark" id="audioIcon"></i>
+    <span id="audioText">Bật Loa Gọi Số (Muted)</span>
+  </button>
+
+  <!-- MAIN VIEW -->
+  <main class="kiosk-main">
+    
+    <!-- CỘT TRÁI: BỆNH NHÂN ĐANG KHÁM (CHÍNH) -->
+    <section class="current-patient-col">
+      <div class="current-card">
+        
+        <!-- Live Status Pill -->
+        <div class="live-status-pill">
+          <div class="pulse-dot"></div>
+          <span>ĐANG TRONG PHÒNG KHÁM</span>
+        </div>
+
+        <!-- Giant STT Box -->
+        <div class="giant-stt-box">
+          <div class="giant-stt-label">SỐ THỨ TỰ HIỆN TẠI</div>
+          <div class="giant-stt-number" id="currentStt">--</div>
+        </div>
+
+        <!-- Patient Details Box -->
+        <div class="patient-details-box">
+          <div class="patient-name-display" id="currentPatientName">ĐANG CHỜ GỌI BỆNH NHÂN</div>
+          
+          <div class="patient-meta-display">
+            <span>
+              <i class="fa-solid fa-cake-candles text-warning"></i>
+              Ngày sinh: <strong id="currentPatientDob">--/--/----</strong>
+            </span>
+            <span>
+              <i class="fa-solid fa-ticket text-info"></i>
+              Mã lịch: <strong id="currentBookingCode">--</strong>
+            </span>
+            <span>
+              <i class="fa-solid fa-user-doctor text-primary"></i>
+              Bác sĩ: <strong id="currentDoctorName">Bác sĩ phụ trách</strong>
+            </span>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- CỘT PHẢI: DANH SÁCH CHUẨN BỊ & THỐNG KÊ -->
+    <section class="upcoming-col">
+      <div class="upcoming-card">
+        
+        <div class="upcoming-header">
+          <h3><i class="fa-solid fa-list-ol text-primary"></i> DANH SÁCH CHUẨN BỊ</h3>
+          <span>Vui lòng chuẩn bị sẵn BHYT & Sổ</span>
+        </div>
+
+        <div class="queue-list" id="queueListContainer">
+          <div class="text-center text-muted py-5">
+            <i class="fa-solid fa-spinner fa-spin fs-2 mb-2"></i>
+            <div>Đang cập nhật hàng đợi...</div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Thống kê ca khám -->
+      <div class="stats-strip">
+        <div class="stat-box">
+          <div class="num text-success" id="statCompleted">0</div>
+          <div class="lbl">Đã khám xong</div>
+        </div>
+        <div style="width: 1px; height: 32px; background: var(--border);"></div>
+        <div class="stat-box">
+          <div class="num text-warning" id="statWaiting">0</div>
+          <div class="lbl">Đang chờ khám</div>
+        </div>
+        <div style="width: 1px; height: 32px; background: var(--border);"></div>
+        <div class="stat-box">
+          <div class="num text-info" id="statTotal">0</div>
+          <div class="lbl">Tổng ca hôm nay</div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- FOOTER TICKER -->
+  <footer class="kiosk-footer">
+    <div class="ticker-tag"><i class="fa-solid fa-bullhorn me-1"></i> THÔNG BÁO</div>
+    <div class="ticker-content">
+      <marquee behavior="scroll" direction="left" scrollamount="6">
+        Quý bệnh nhân vui lòng chú ý theo dõi màn hình hiển thị và lắng nghe loa phát thanh gọi số thứ tự. Bệnh nhân có triệu chứng khẩn cấp (khó thở, đau tức ngực dữ dội) xin vui lòng báo ngay nhân viên y tế tại cửa phòng để được hỗ trợ ưu tiên!
+      </marquee>
+    </div>
+  </footer>
+
+  <!-- JAVASCRIPT: LOGIC POLLING & WEB SPEECH API -->
+  <script>
+    // Lấy tham số phòng từ URL (Ví dụ: /man_hinh_phong_kham.html?phong=Phòng 101)
+    const urlParams = new URLSearchParams(window.location.search);
+    const roomParam = urlParams.get("phong") || urlParams.get("phong_kham") || "Phòng 101";
+    const doctorIdParam = urlParams.get("bac_si_id") || "";
+
+    let isAudioEnabled = false;
+    let lastAnnouncedStt = null;
+    let previousCurrentId = null;
+
+    // 1. Đồng hồ thời gian thực
+    function updateClock() {
+      const now = new Date();
+      const timeStr = now.toLocaleTimeString("vi-VN", { hour12: false });
+      const dateStr = now.toLocaleDateString("vi-VN", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
+      document.getElementById("clockTime").textContent = timeStr;
+      document.getElementById("clockDate").textContent = dateStr;
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
+
+    // 2. Bật / Tắt Loa gọi số
+    function toggleAudio() {
+      isAudioEnabled = !isAudioEnabled;
+      const btn = document.getElementById("btnAudioToggle");
+      const icon = document.getElementById("audioIcon");
+      const text = document.getElementById("audioText");
+
+      if (isAudioEnabled) {
+        btn.classList.add("active");
+        icon.className = "fa-solid fa-volume-high";
+        text.textContent = "Loa Gọi Số: Đang Bật";
+        // Phát thử âm thanh test
+        speakText("Hệ thống âm thanh gọi số đã sẵn sàng.");
+      } else {
+        btn.classList.remove("active");
+        icon.className = "fa-solid fa-volume-xmark";
+        text.textContent = "Bật Loa Gọi Số (Muted)";
+      }
+    }
+
+    // 3. Web Speech API (Phát giọng đọc tiếng Việt)
+    function speakText(text) {
+      if (!isAudioEnabled) return;
+      if (!('speechSynthesis' in window)) return;
+
+      window.speechSynthesis.cancel(); // Hủy giọng cũ nếu đang nói dở
+
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = "vi-VN";
+      utterance.rate = 0.95; // Tốc độ nói vừa phải, truyền cảm
+      utterance.pitch = 1.0;
+
+      // Ưu tiên chọn voice tiếng Việt
+      const voices = window.speechSynthesis.getVoices();
+      const viVoice = voices.find(v => v.lang.startsWith("vi") || v.name.includes("Vietnamese"));
+      if (viVoice) utterance.voice = viVoice;
+
+      window.speechSynthesis.speak(utterance);
+    }
+
+    function announcePatient(stt, hoTen, namSinh, phong) {
+      const yearText = namSinh ? `, sinh năm ${namSinh}` : "";
+      const message = `Xin mời bệnh nhân số ${stt}, ${hoTen}${yearText}, vào ${phong}.`;
+      speakText(message);
+    }
+
+    // 4. Lấy dữ liệu Hàng đợi từ Backend API
+    async function fetchQueueData() {
+      try {
+        let apiUrl = `/api/v1/lich-khams/public/queue-display?phong_kham=${encodeURIComponent(roomParam)}`;
+        if (doctorIdParam) {
+          apiUrl += `&bac_si_id=${encodeURIComponent(doctorIdParam)}`;
+        }
+
+        const res = await fetch(apiUrl);
+        if (!res.ok) throw new Error("Không thể tải dữ liệu hàng đợi");
+
+        const data = await res.json();
+        renderQueue(data);
+
+      } catch (err) {
+        console.error("Lỗi cập nhật hàng đợi:", err);
+      }
+    }
+
+    // 5. Render dữ liệu lên màn hình
+    function renderQueue(data) {
+      // Header thông tin phòng & bác sĩ
+      document.getElementById("displayRoomName").textContent = (data.phong_kham || roomParam).toUpperCase();
+      document.getElementById("displaySpecialty").textContent = (data.chuyen_khoa || "CHUYÊN KHOA ĐA KHOA").toUpperCase();
+      document.getElementById("currentDoctorName").textContent = data.bac_si || "Bác sĩ phụ trách";
+
+      // ─── BỆNH NHÂN ĐANG KHÁM ───
+      const current = data.dang_kham;
+      const sttEl = document.getElementById("currentStt");
+      const nameEl = document.getElementById("currentPatientName");
+      const dobEl = document.getElementById("currentPatientDob");
+      const codeEl = document.getElementById("currentBookingCode");
+
+      if (current) {
+        sttEl.textContent = String(current.stt || "--").padStart(2, "0");
+        nameEl.textContent = current.ho_ten || "BỆNH NHÂN VÔ DANH";
+        dobEl.textContent = current.ngay_sinh || (current.nam_sinh ? `Năm sinh ${current.nam_sinh}` : "Chưa rõ");
+        codeEl.textContent = current.ma_lich || "--";
+
+        // Tự động phát âm thanh loa nếu có bệnh nhân mới được gọi
+        if (current.stt && current.stt !== lastAnnouncedStt) {
+          lastAnnouncedStt = current.stt;
+          announcePatient(current.stt, current.ho_ten, current.nam_sinh, data.phong_kham || roomParam);
+        }
+      } else {
+        sttEl.textContent = "--";
+        nameEl.textContent = "ĐANG CHỜ GỌI BỆNH NHÂN";
+        dobEl.textContent = "--/--/----";
+        codeEl.textContent = "--";
+      }
+
+      // ─── DANH SÁCH CHUẨN BỊ ───
+      const listEl = document.getElementById("queueListContainer");
+      const waiting = data.danh_sach_cho || [];
+
+      if (waiting.length === 0) {
+        listEl.innerHTML = `
+          <div class="text-center text-muted py-5">
+            <i class="fa-solid fa-mug-hot fs-2 mb-2 text-secondary"></i>
+            <div class="fs-6">Hiện không có bệnh nhân nào đang chờ</div>
+          </div>
+        `;
+      } else {
+        listEl.innerHTML = waiting.map(item => `
+          <div class="queue-row">
+            <div class="queue-row-left">
+              <div class="queue-stt-badge">${String(item.stt || "--").padStart(2, "0")}</div>
+              <div class="queue-info">
+                <div class="name">${escapeHtml(item.ho_ten)}</div>
+                <div class="dob"><i class="fa-solid fa-cake-candles me-1"></i>${item.ngay_sinh || (item.nam_sinh ? `Năm sinh ${item.nam_sinh}` : "Chưa rõ")}</div>
+              </div>
+            </div>
+            <div class="queue-row-right">
+              <span class="ready-pill"><i class="fa-solid fa-bell me-1"></i>Chuẩn bị</span>
+              <div class="time"><i class="fa-regular fa-clock me-1"></i>${item.thoi_gian || "--:--"}</div>
+            </div>
+          </div>
+        `).join("");
+      }
+
+      // ─── THỐNG KÊ ───
+      if (data.thong_ke) {
+        document.getElementById("statCompleted").textContent = data.thong_ke.da_kham || 0;
+        document.getElementById("statWaiting").textContent = data.thong_ke.dang_cho || 0;
+        document.getElementById("statTotal").textContent = data.thong_ke.tong_ca || 0;
+      }
+    }
+
+    function escapeHtml(str) {
+      if (!str) return "";
+      return String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    }
+
+    // Polling tự động mỗi 3.5 giây để cập nhật realtime
+    fetchQueueData();
+    setInterval(fetchQueueData, 3500);
+
+    // Kích hoạt nạp danh sách giọng nói của trình duyệt
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.onvoiceschanged = () => {
+        window.speechSynthesis.getVoices();
+      };
+    }
+  </script>
+</body>
+
+</html>
