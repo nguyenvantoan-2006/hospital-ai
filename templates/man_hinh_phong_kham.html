@@ -478,6 +478,41 @@
       border-color: #10B981;
       box-shadow: 0 0 15px rgba(16, 185, 129, 0.5);
     }
+
+    /* ROOM SELECTOR BOX */
+    .room-selector-box {
+      position: fixed;
+      top: 18px;
+      right: 560px;
+      background: rgba(255, 255, 255, 0.12);
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      border-radius: 30px;
+      padding: 4px 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      z-index: 1000;
+      backdrop-filter: blur(8px);
+      color: #E2E8F0;
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .room-select-dropdown {
+      background: transparent;
+      color: #00F5D4;
+      border: none;
+      font-weight: 700;
+      font-size: 13px;
+      outline: none;
+      cursor: pointer;
+    }
+
+    .room-select-dropdown option {
+      background: #0B132B;
+      color: #ffffff;
+      padding: 8px;
+    }
   </style>
 </head>
 
@@ -509,6 +544,15 @@
       </div>
     </div>
   </header>
+
+  <!-- CHỌN PHÒNG KHÁM TRỰC TIẾP -->
+  <div class="room-selector-box">
+    <i class="fa-solid fa-door-open text-info"></i>
+    <span>Phòng:</span>
+    <select id="roomSelect" class="room-select-dropdown" onchange="onRoomSelectChanged(this.value)">
+      <option value="Phòng 101">Phòng 101 - Khám Đa Khoa</option>
+    </select>
+  </div>
 
   <!-- NÚT BẬT ÂM THANH LOA (AUDIO TOGGLE) -->
   <button id="btnAudioToggle" class="audio-control-btn" onclick="toggleAudio()">
@@ -609,14 +653,48 @@
 
   <!-- JAVASCRIPT: LOGIC POLLING & WEB SPEECH API -->
   <script>
-    // Lấy tham số phòng từ URL (Ví dụ: /man_hinh_phong_kham.html?phong=Phòng 101)
+    // Lấy tham số phòng từ URL hoặc mặc định Phòng 101
     const urlParams = new URLSearchParams(window.location.search);
-    const roomParam = urlParams.get("phong") || urlParams.get("phong_kham") || "Phòng 101";
-    const doctorIdParam = urlParams.get("bac_si_id") || "";
+    let currentRoom = urlParams.get("phong") || urlParams.get("phong_kham") || "Phòng 101";
+    let doctorIdParam = urlParams.get("bac_si_id") || "";
 
     let isAudioEnabled = false;
     let lastAnnouncedStt = null;
     let previousCurrentId = null;
+
+    // Tải danh sách các phòng khám & cận lâm sàng vào dropdown
+    async function loadAvailableRooms() {
+      try {
+        const res = await fetch("/api/v1/lich-khams/public/phong-khams");
+        if (!res.ok) return;
+        const rooms = await res.json();
+        const sel = document.getElementById("roomSelect");
+        if (!sel || rooms.length === 0) return;
+
+        sel.innerHTML = rooms.map(r => `
+          <option value="${escapeHtml(r.phong_kham)}" ${r.phong_kham === currentRoom ? "selected" : ""}>
+            ${escapeHtml(r.phong_kham)} (${escapeHtml(r.chuyen_khoa)})
+          </option>
+        `).join("");
+
+        // Nếu currentRoom chưa có trong danh sách, thêm vào
+        if (!rooms.some(r => r.phong_kham === currentRoom)) {
+          const opt = document.createElement("option");
+          opt.value = currentRoom;
+          opt.textContent = currentRoom;
+          opt.selected = true;
+          sel.prepend(opt);
+        }
+      } catch (e) {
+        console.warn("Không thể tải danh sách phòng khám:", e);
+      }
+    }
+
+    function onRoomSelectChanged(newRoom) {
+      currentRoom = newRoom;
+      lastAnnouncedStt = null; // Reset để gọi lại bệnh nhân khi đổi phòng
+      fetchQueueData();
+    }
 
     // 1. Đồng hồ thời gian thực
     function updateClock() {
@@ -640,7 +718,6 @@
         btn.classList.add("active");
         icon.className = "fa-solid fa-volume-high";
         text.textContent = "Loa Gọi Số: Đang Bật";
-        // Phát thử âm thanh test
         speakText("Hệ thống âm thanh gọi số đã sẵn sàng.");
       } else {
         btn.classList.remove("active");
@@ -654,14 +731,13 @@
       if (!isAudioEnabled) return;
       if (!('speechSynthesis' in window)) return;
 
-      window.speechSynthesis.cancel(); // Hủy giọng cũ nếu đang nói dở
+      window.speechSynthesis.cancel();
 
       const utterance = new SpeechSynthesisUtterance(text);
       utterance.lang = "vi-VN";
-      utterance.rate = 0.95; // Tốc độ nói vừa phải, truyền cảm
+      utterance.rate = 0.95;
       utterance.pitch = 1.0;
 
-      // Ưu tiên chọn voice tiếng Việt
       const voices = window.speechSynthesis.getVoices();
       const viVoice = voices.find(v => v.lang.startsWith("vi") || v.name.includes("Vietnamese"));
       if (viVoice) utterance.voice = viVoice;
@@ -678,7 +754,7 @@
     // 4. Lấy dữ liệu Hàng đợi từ Backend API
     async function fetchQueueData() {
       try {
-        let apiUrl = `/api/v1/lich-khams/public/queue-display?phong_kham=${encodeURIComponent(roomParam)}`;
+        let apiUrl = `/api/v1/lich-khams/public/queue-display?phong_kham=${encodeURIComponent(currentRoom)}`;
         if (doctorIdParam) {
           apiUrl += `&bac_si_id=${encodeURIComponent(doctorIdParam)}`;
         }
@@ -768,7 +844,8 @@
       return String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
     }
 
-    // Polling tự động mỗi 3.5 giây để cập nhật realtime
+    // Khởi tạo danh sách phòng và polling tự động mỗi 3.5 giây
+    loadAvailableRooms();
     fetchQueueData();
     setInterval(fetchQueueData, 3500);
 
