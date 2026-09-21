@@ -196,41 +196,56 @@
   </nav>
 
   <!-- Main Container -->
-  <div class="container py-5 flex-grow-1">
+  <div class="container py-4 flex-grow-1">
 
-    <!-- Stepper indicator -->
-    <div class="step-indicator">
-      <div class="step-item active" id="stepIndicator1">
-        <div class="step-circle">1</div>
-        <span>Chọn Khoa & Bác Sĩ</span>
-      </div>
-      <div class="step-line"></div>
-      <div class="step-item" id="stepIndicator2">
-        <div class="step-circle">2</div>
-        <span>Thông Tin Bệnh Nhân</span>
-      </div>
-      <div class="step-line"></div>
-      <div class="step-item" id="stepIndicator3">
-        <div class="step-circle">3</div>
-        <span>Xác Thực OTP Gmail</span>
+    <!-- TAB SWITCHER: ĐẶT LỊCH | TRA CỨU -->
+    <div class="d-flex justify-content-center mb-4">
+      <div class="bg-white p-1 rounded-pill shadow-sm border d-inline-flex">
+        <button id="tabBtnBooking" class="btn btn-primary rounded-pill px-4 py-2 fw-semibold" onclick="switchPortalTab('booking')">
+          <i class="fa-solid fa-calendar-plus me-1"></i> Đặt Lịch Khám Mới
+        </button>
+        <button id="tabBtnLookup" class="btn btn-light rounded-pill px-4 py-2 fw-semibold text-muted" onclick="switchPortalTab('lookup')">
+          <i class="fa-solid fa-magnifying-glass me-1"></i> Tra Cứu Lịch Hẹn & Kết Quả
+        </button>
       </div>
     </div>
 
-    <!-- Booking Form Container -->
-    <div class="row justify-content-center">
-      <div class="col-lg-10 col-xl-9">
-        <div class="booking-card">
+    <!-- KHỐI 1: ĐẶT LỊCH KHÁM MỚI -->
+    <div id="bookingSection">
 
-          <!-- Card Header -->
-          <div class="card-header-gradient d-flex justify-content-between align-items-center">
-            <div>
-              <h4 class="fw-extrabold font-outfit mb-1" id="formHeaderTitle">Phiếu Đăng Ký Khám Bệnh</h4>
-              <p class="mb-0 text-white-50 small">Không cần tài khoản — Xác thực bảo mật tức thì qua hộp thư Gmail của bạn</p>
+      <!-- Stepper indicator -->
+      <div class="step-indicator">
+        <div class="step-item active" id="stepIndicator1">
+          <div class="step-circle">1</div>
+          <span>Chọn Khoa & Bác Sĩ</span>
+        </div>
+        <div class="step-line"></div>
+        <div class="step-item" id="stepIndicator2">
+          <div class="step-circle">2</div>
+          <span>Thông Tin Bệnh Nhân</span>
+        </div>
+        <div class="step-line"></div>
+        <div class="step-item" id="stepIndicator3">
+          <div class="step-circle">3</div>
+          <span>Xác Thực OTP Gmail</span>
+        </div>
+      </div>
+
+      <!-- Booking Form Container -->
+      <div class="row justify-content-center">
+        <div class="col-lg-10 col-xl-9">
+          <div class="booking-card">
+
+            <!-- Card Header -->
+            <div class="card-header-gradient d-flex justify-content-between align-items-center">
+              <div>
+                <h4 class="fw-extrabold font-outfit mb-1" id="formHeaderTitle">Phiếu Đăng Ký Khám Bệnh</h4>
+                <p class="mb-0 text-white-50 small">Không cần tài khoản — Xác thực bảo mật tức thì qua hộp thư Gmail của bạn</p>
+              </div>
+              <div class="d-none d-sm-block text-end">
+                <span class="badge bg-white text-primary fw-bold px-3 py-2 rounded-pill">37 Chuyên Khoa • 185 Bác Sĩ</span>
+              </div>
             </div>
-            <div class="d-none d-sm-block text-end">
-              <span class="badge bg-white text-primary fw-bold px-3 py-2 rounded-pill">37 Chuyên Khoa • 185 Bác Sĩ</span>
-            </div>
-          </div>
 
           <!-- Card Body Form -->
           <div class="p-4 p-md-5" id="bookingFormSection">
@@ -461,7 +476,61 @@
         </div>
       </div>
     </div>
+  </div> <!-- /#bookingSection -->
+
+  <!-- KHỐI 2: TRA CỨU LỊCH HẸN & KẾT QUẢ KHÁM (FR-10) -->
+  <div id="lookupSection" style="display: none;">
+    <div class="row justify-content-center">
+      <div class="col-lg-10 col-xl-9">
+        <div class="booking-card">
+          
+          <!-- Card Header -->
+          <div class="card-header-gradient d-flex justify-content-between align-items-center">
+            <div>
+              <h4 class="fw-extrabold font-outfit mb-1">Tra Cứu Lịch Khám & Kết Quả</h4>
+              <p class="mb-0 text-white-50 small">Tra cứu nhanh chóng tình trạng duyệt lịch, số thứ tự và kết quả khám bệnh của bạn</p>
+            </div>
+            <div class="d-none d-sm-block text-end">
+              <span class="badge bg-white text-primary fw-bold px-3 py-2 rounded-pill"><i class="fa-solid fa-shield-check me-1"></i>Bảo Mật Y Tế</span>
+            </div>
+          </div>
+
+          <!-- Card Body: Form Tra Cứu -->
+          <div class="p-4 p-md-5">
+            <form id="lookupForm" onsubmit="handleLookupSubmit(event)">
+              <div class="row g-3 align-items-end">
+                <div class="col-md-6">
+                  <label class="form-label fw-bold text-dark">Số Điện Thoại Đăng Ký <span class="text-danger">*</span></label>
+                  <div class="input-group">
+                    <span class="input-group-text bg-light"><i class="fa-solid fa-phone text-muted"></i></span>
+                    <input type="tel" class="form-control" id="lookupPhoneInput" placeholder="Ví dụ: 0912345678" required />
+                  </div>
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label fw-bold text-dark">Mã Lịch Hẹn (Tùy chọn)</label>
+                  <div class="input-group">
+                    <span class="input-group-text bg-light"><i class="fa-solid fa-ticket text-muted"></i></span>
+                    <input type="text" class="form-control" id="lookupCodeInput" placeholder="Ví dụ: LK0005 hoặc để trống" />
+                  </div>
+                </div>
+                <div class="col-md-2">
+                  <button type="submit" id="btnLookupSubmit" class="btn btn-primary w-100 fw-bold py-2">
+                    <i class="fa-solid fa-magnifying-glass me-1"></i> Tra Cứu
+                  </button>
+                </div>
+              </div>
+            </form>
+
+            <!-- Khung Hiển Thị Kết Quả Tra Cứu -->
+            <div id="lookupResultContainer" class="mt-4" style="display: none;"></div>
+          </div>
+
+        </div>
+      </div>
+    </div>
   </div>
+
+  </div> <!-- /.container py-4 flex-grow-1 -->
 
   <!-- Toast Container -->
   <div class="toast-container position-fixed bottom-0 end-0 p-3" id="toastBox"></div>
@@ -760,6 +829,137 @@
       `;
       container.appendChild(toast);
       setTimeout(() => toast.remove(), 5000);
+    }
+
+    // ─── TAB SWITCHER: ĐẶT LỊCH / TRA CỨU ───
+    function switchPortalTab(tab) {
+      const btnBooking = document.getElementById("tabBtnBooking");
+      const btnLookup = document.getElementById("tabBtnLookup");
+      const bookingSec = document.getElementById("bookingSection");
+      const lookupSec = document.getElementById("lookupSection");
+
+      if (tab === "booking") {
+        btnBooking.className = "btn btn-primary rounded-pill px-4 py-2 fw-semibold";
+        btnLookup.className = "btn btn-light rounded-pill px-4 py-2 fw-semibold text-muted";
+        bookingSec.style.display = "block";
+        lookupSec.style.display = "none";
+      } else {
+        btnBooking.className = "btn btn-light rounded-pill px-4 py-2 fw-semibold text-muted";
+        btnLookup.className = "btn btn-primary rounded-pill px-4 py-2 fw-semibold";
+        bookingSec.style.display = "none";
+        lookupSec.style.display = "block";
+        document.getElementById("lookupPhoneInput").focus();
+      }
+    }
+
+    // ─── TRA CỨU LỊCH HẸN & KẾT QUẢ KHÁM (FR-10) ───
+    async function handleLookupSubmit(e) {
+      e.preventDefault();
+      const phone = document.getElementById("lookupPhoneInput").value.trim();
+      const code = document.getElementById("lookupCodeInput").value.trim();
+      const btn = document.getElementById("btnLookupSubmit");
+      const resContainer = document.getElementById("lookupResultContainer");
+
+      if (!phone) {
+        showToast("Vui lòng nhập số điện thoại để tra cứu!", "warning");
+        return;
+      }
+
+      btn.disabled = true;
+      btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin me-1"></i> Đang tra...`;
+      resContainer.style.display = "block";
+      resContainer.innerHTML = `<div class="text-center py-4 text-primary"><i class="fa-solid fa-spinner fa-spin fs-3 mb-2"></i><div>Đang tra cứu hồ sơ khám bệnh...</div></div>`;
+
+      try {
+        let url = `/api/v1/lich-khams/public/tra-cuu?sdt=${encodeURIComponent(phone)}`;
+        if (code) url += `&ma_lich=${encodeURIComponent(code)}`;
+
+        const res = await fetch(url);
+        const data = await res.json();
+
+        if (!data.found || !data.lich_khams || data.lich_khams.length === 0) {
+          resContainer.innerHTML = `
+            <div class="alert alert-warning border-0 shadow-sm rounded-3 py-4 text-center">
+              <i class="fa-solid fa-circle-exclamation fs-2 text-warning mb-2 d-block"></i>
+              <h6 class="fw-bold">Không tìm thấy lịch hẹn phù hợp</h6>
+              <p class="small text-muted mb-0">Không có dữ liệu lịch khám nào ứng với số điện thoại <strong>${escapeHtml(phone)}</strong> ${code ? `và mã <strong>${escapeHtml(code)}</strong>` : ''}. Vui lòng kiểm tra lại thông tin hoặc đặt lịch mới.</p>
+            </div>
+          `;
+          return;
+        }
+
+        // Render hồ sơ bệnh nhân và danh sách lịch hẹn
+        const bn = data.benh_nhan;
+        let html = `
+          <div class="card border border-primary-subtle bg-primary-subtle bg-opacity-10 rounded-3 p-3 mb-3">
+            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+              <div>
+                <span class="text-muted small d-block">Hồ Sơ Bệnh Nhân:</span>
+                <h5 class="fw-bold text-dark mb-0">${escapeHtml(bn.ho_ten)}</h5>
+              </div>
+              <div class="text-md-end small">
+                <div><i class="fa-solid fa-phone me-1 text-primary"></i>${escapeHtml(bn.so_dien_thoai)}</div>
+                ${bn.ngay_sinh ? `<div><i class="fa-solid fa-cake-candles me-1 text-warning"></i>Ngày sinh: ${bn.ngay_sinh}</div>` : ''}
+              </div>
+            </div>
+          </div>
+          <h6 class="fw-bold text-dark mb-3"><i class="fa-solid fa-clock-rotate-left me-2 text-primary"></i>Lịch Sử & Tiến Trình Đặt Khám (${data.lich_khams.length})</h6>
+          <div class="d-flex flex-column gap-3">
+        `;
+
+        data.lich_khams.forEach(lk => {
+          html += `
+            <div class="card border rounded-3 p-3 shadow-sm">
+              <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 border-bottom pb-2 mb-2">
+                <div>
+                  <span class="badge bg-light text-dark border font-outfit fs-6 me-2">${lk.ma_lich}</span>
+                  ${lk.stt ? `<span class="badge bg-primary fs-6 font-outfit">STT: #${String(lk.stt).padStart(2, '0')}</span>` : ''}
+                </div>
+                <span class="badge bg-${lk.trang_thai_badge} px-3 py-2 fw-semibold">${lk.trang_thai_text}</span>
+              </div>
+              <div class="row g-2 small">
+                <div class="col-sm-6">
+                  <div class="text-muted">Thời gian khám:</div>
+                  <div class="fw-bold text-dark">${lk.thoi_gian}</div>
+                </div>
+                <div class="col-sm-6">
+                  <div class="text-muted">Chuyên khoa & Phòng khám:</div>
+                  <div class="fw-bold text-primary">${lk.chuyen_khoa} — ${lk.phong_kham}</div>
+                </div>
+                <div class="col-sm-6">
+                  <div class="text-muted">Bác sĩ phụ trách:</div>
+                  <div class="fw-bold text-dark">${lk.bac_si}</div>
+                </div>
+                <div class="col-sm-6">
+                  <div class="text-muted">Lý do khám:</div>
+                  <div class="text-secondary">${escapeHtml(lk.ly_do_kham || 'Khám bệnh theo yêu cầu')}</div>
+                </div>
+              </div>
+              ${lk.phieu_kham ? `
+                <div class="mt-3 pt-2 border-top bg-light p-2 rounded">
+                  <div class="fw-bold text-success small"><i class="fa-solid fa-stethoscope me-1"></i>Kết quả chẩn đoán của Bác sĩ:</div>
+                  <div class="small text-dark mt-1"><strong>Chẩn đoán:</strong> ${escapeHtml(lk.phieu_kham.chan_doan || 'Chưa ghi nhận')}</div>
+                  ${lk.phieu_kham.trieu_chung ? `<div class="small text-muted"><strong>Triệu chứng:</strong> ${escapeHtml(lk.phieu_kham.trieu_chung)}</div>` : ''}
+                </div>
+              ` : ''}
+            </div>
+          `;
+        });
+
+        html += `</div>`;
+        resContainer.innerHTML = html;
+
+      } catch (err) {
+        resContainer.innerHTML = `<div class="alert alert-danger">Đã có lỗi xảy ra trong quá trình tra cứu. Vui lòng thử lại sau!</div>`;
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = `<i class="fa-solid fa-magnifying-glass me-1"></i> Tra Cứu`;
+      }
+    }
+
+    function escapeHtml(str) {
+      if (!str) return "";
+      return String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
     }
   </script>
   <!-- AI Chatbot Script -->
