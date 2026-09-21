@@ -38,6 +38,15 @@ class LichKhamStatusUpdate(BaseModel):
     trang_thai: str  # cho_xac_nhan | da_dat_lich | cho_kham | dang_kham | hoan_thanh | huy
 
 
+class ChuyenPhongInput(BaseModel):
+    lich_kham_hien_tai_id: int
+    phong_kham_dich: str
+    chuyen_khoa_dich_id: Optional[int] = None
+    bac_si_dich_id: Optional[int] = None
+    chi_dinh_dich_vu: str
+    ghi_chu: Optional[str] = None
+
+
 class PatientSendOtpInput(BaseModel):
     email: str
     ho_ten: str
@@ -102,6 +111,51 @@ def get_public_doctors(
         }
         for d in docs
     ]
+
+
+@router.get("/public/phong-khams", status_code=status.HTTP_200_OK)
+def get_public_phong_khams(db: Session = Depends(get_db)):
+    """
+    Danh sách toàn bộ các phòng khám & phòng cận lâm sàng trong bệnh viện:
+    - Phòng khám chuyên khoa (có bác sĩ phụ trách)
+    - Phòng cận lâm sàng (X-Quang, Xét nghiệm, Siêu âm, Nội soi...)
+    """
+    docs = db.query(models.BacSi).filter(models.BacSi.trang_thai == True).all()
+    rooms_map = {}
+    for d in docs:
+        if d.phong_kham:
+            room_clean = d.phong_kham.strip()
+            if room_clean not in rooms_map:
+                rooms_map[room_clean] = {
+                    "phong_kham": room_clean,
+                    "chuyen_khoa": d.chuyen_khoa or "Đa khoa",
+                    "bac_si_id": d.id,
+                    "user_id": d.user_id,
+                    "bac_si_ho_ten": f"{d.hoc_vi or 'BS.'} {d.ho_ten}",
+                    "loai_phong": "kham_chuyen_khoa",
+                    "vi_tri": "Tầng 1 - Khu Khám Bệnh" if "1" in room_clean else "Tầng 2 - Khu Chuyên Khoa"
+                }
+
+    paraclinical_rooms = [
+        {"phong_kham": "Phòng 202 - Chẩn Đoán Hình Ảnh (X-Quang)", "chuyen_khoa": "Chẩn đoán hình ảnh", "loai_phong": "can_lam_sang", "vi_tri": "Tầng 2 - Khu Kỹ Thuật Cao", "bac_si_ho_ten": "BS. CKI Lê Hoàng Long"},
+        {"phong_kham": "Phòng 105 - Xét Nghiệm Sinh Hóa - Huyết Học", "chuyen_khoa": "Xét nghiệm", "loai_phong": "can_lam_sang", "vi_tri": "Tầng 1 - Dãy Hành Lang B", "bac_si_ho_ten": "ThS. BS Phạm Minh Tuấn"},
+        {"phong_kham": "Phòng 108 - Siêu Âm Màu Doopler & 4D", "chuyen_khoa": "Thăm dò chức năng", "loai_phong": "can_lam_sang", "vi_tri": "Tầng 1 - Dãy Hành Lang A", "bac_si_ho_ten": "BS. Nguyễn Thị Lan"},
+        {"phong_kham": "Phòng 206 - Nội Soi Tiêu Hóa & Tai Mũi Họng", "chuyen_khoa": "Nội soi", "loai_phong": "can_lam_sang", "vi_tri": "Tầng 2 - Phòng Vô Trùng", "bac_si_ho_ten": "BS. CKI Trần Văn Nam"}
+    ]
+
+    for pr in paraclinical_rooms:
+        if pr["phong_kham"] not in rooms_map:
+            rooms_map[pr["phong_kham"]] = {
+                "phong_kham": pr["phong_kham"],
+                "chuyen_khoa": pr["chuyen_khoa"],
+                "bac_si_id": None,
+                "user_id": None,
+                "bac_si_ho_ten": pr["bac_si_ho_ten"],
+                "loai_phong": pr["loai_phong"],
+                "vi_tri": pr["vi_tri"]
+            }
+
+    return list(rooms_map.values())
 
 
 @router.get("/public/queue-display", status_code=status.HTTP_200_OK)
@@ -700,3 +754,169 @@ def delete_lich_kham(
     db.commit()
 
     return {"message": f"Đã xóa thành công lịch khám #{lich_kham_id}"}
+
+
+@router.post("/{lich_kham_id}/goi-vao-kham")
+def goi_vao_kham(
+    lich_kham_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(require_roles(["bac_si", "le_tan", "admin"]))
+):
+    """
+    POST /{lich_kham_id}/goi-vao-kham
+    Bác sĩ gọi bệnh nhân vào phòng khám:
+    1. Cập nhật trạng thái lịch khám sang 'dang_kham' (nếu chưa có STT thì tự động cấp STT).
+    2. Chuyển các ca đang khám trước đó của bác sĩ này sang 'hoan_thanh'.
+    3. Màn hình Kiosk phòng khám và loa Web Speech API sẽ tự động đọc số và hiển thị tên bệnh nhân.
+    """
+    lich_kham = db.query(models.LichKham).filter(models.LichKham.id == lich_kham_id).first()
+    if not lich_kham:
+        raise HTTPException(status_code=404, detail="Không tìm thấy lịch khám!")
+
+    today_date = date.today()
+    if not lich_kham.stt:
+        max_stt = db.query(func.max(models.LichKham.stt)).filter(
+            func.date(models.LichKham.thoi_gian) == today_date
+        ).scalar() or 0
+        lich_kham.stt = max_stt + 1
+
+    if lich_kham.bac_si_id:
+        db.query(models.LichKham).filter(
+            models.LichKham.bac_si_id == lich_kham.bac_si_id,
+            models.LichKham.id != lich_kham.id,
+            models.LichKham.trang_thai == "dang_kham"
+        ).update({"trang_thai": "hoan_thanh"})
+
+    lich_kham.trang_thai = "dang_kham"
+    db.commit()
+    db.refresh(lich_kham)
+
+    bn = lich_kham.benh_nhan
+    dob_str = bn.ngay_sinh.strftime("%d/%m/%Y") if (bn and bn.ngay_sinh) else ""
+    nam_sinh = bn.ngay_sinh.year if (bn and bn.ngay_sinh) else None
+
+    phong_kham_name = "Phòng Khám"
+    doc = db.query(models.BacSi).filter(models.BacSi.user_id == current_user.id).first()
+    if doc and doc.phong_kham:
+        phong_kham_name = doc.phong_kham
+
+    audit = models.AuditLog(
+        user_id=current_user.id,
+        action="UPDATE",
+        target_table="lich_khams",
+        target_id=lich_kham.id,
+        mo_ta=f"Bác sĩ {current_user.username} gọi số khám #{lich_kham.stt} - BN {bn.ho_ten if bn else ''} vào {phong_kham_name}"
+    )
+    db.add(audit)
+    db.commit()
+
+    return {
+        "message": f"Đã gọi bệnh nhân {bn.ho_ten if bn else ''} (STT #{lich_kham.stt}) vào phòng khám!",
+        "id": lich_kham.id,
+        "stt": lich_kham.stt,
+        "ho_ten": bn.ho_ten if bn else "Bệnh nhân",
+        "ngay_sinh": dob_str,
+        "nam_sinh": nam_sinh,
+        "phong_kham": phong_kham_name,
+        "trang_thai": lich_kham.trang_thai
+    }
+
+
+@router.post("/dieu-phoi-chuyen-phong")
+def dieu_phoi_chuyen_phong(
+    data: ChuyenPhongInput,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(require_roles(["bac_si", "admin"]))
+):
+    """
+    POST /dieu-phoi-chuyen-phong
+    Actor Bác Sĩ điều phối / chuyển bệnh nhân sang phòng khám hoặc phòng cận lâm sàng tiếp theo:
+    1. Hoàn tất lượt khám tại phòng hiện tại.
+    2. Tự động sinh lịch khám mới tại phòng đích với trạng thái 'cho_kham' và cấp STT mới.
+    3. Trả về thông tin đầy đủ để in 'Phiếu Hướng Dẫn Điều Phối Bệnh Nhân' (khổ giấy A5).
+    """
+    cur_lich = db.query(models.LichKham).filter(models.LichKham.id == data.lich_kham_hien_tai_id).first()
+    if not cur_lich:
+        raise HTTPException(status_code=404, detail="Không tìm thấy lượt khám hiện tại!")
+
+    bn = cur_lich.benh_nhan
+    if not bn:
+        raise HTTPException(status_code=400, detail="Bệnh nhân không hợp lệ!")
+
+    doc_current = db.query(models.BacSi).filter(models.BacSi.user_id == current_user.id).first()
+    phong_hien_tai = doc_current.phong_kham if (doc_current and doc_current.phong_kham) else "Phòng khám lâm sàng"
+    bac_si_chi_dinh = f"{doc_current.hoc_vi or 'BS.'} {doc_current.ho_ten}" if doc_current else current_user.username
+
+    target_room = data.phong_kham_dich.strip()
+    target_user_id = data.bac_si_dich_id
+    target_spec_id = data.chuyen_khoa_dich_id
+
+    if not target_user_id:
+        doc_target = db.query(models.BacSi).filter(models.BacSi.phong_kham.ilike(f"%{target_room.split(' - ')[0]}%")).first()
+        if doc_target:
+            target_user_id = doc_target.user_id
+            if not target_spec_id and doc_target.chuyen_khoa:
+                ck_target = db.query(models.ChuyenKhoa).filter(models.ChuyenKhoa.ten_chuyen_khoa == doc_target.chuyen_khoa).first()
+                if ck_target:
+                    target_spec_id = ck_target.id
+
+    today_date = date.today()
+    max_stt_today = db.query(func.max(models.LichKham.stt)).filter(
+        func.date(models.LichKham.thoi_gian) == today_date
+    ).scalar() or 0
+    new_stt = max_stt_today + 1
+
+    new_lich = models.LichKham(
+        benh_nhan_id=bn.id,
+        bac_si_id=target_user_id,
+        chuyen_khoa_id=target_spec_id,
+        thoi_gian=datetime.now(),
+        stt=new_stt,
+        trang_thai="cho_kham",
+        ly_do_kham=f"Điều phối từ {phong_hien_tai}: {data.chi_dinh_dich_vu}"
+    )
+    db.add(new_lich)
+
+    cur_lich.trang_thai = "hoan_thanh"
+    db.commit()
+    db.refresh(new_lich)
+
+    vi_tri_phong = "Tầng 2 - Khu Cận Lâm Sàng & Kỹ Thuật Cao" if any(k in target_room for k in ["201", "202", "203", "204", "205", "206", "X-Quang", "Nội soi"]) else "Tầng 1 - Khu Khám Lâm Sàng & Xét Nghiệm"
+
+    dob_str = bn.ngay_sinh.strftime("%d/%m/%Y") if bn.ngay_sinh else ""
+    nam_sinh = bn.ngay_sinh.year if bn.ngay_sinh else None
+
+    audit = models.AuditLog(
+        user_id=current_user.id,
+        action="CREATE",
+        target_table="lich_khams",
+        target_id=new_lich.id,
+        mo_ta=f"Bác sĩ {current_user.username} điều phối BN {bn.ho_ten} từ {phong_hien_tai} sang {target_room} (Chỉ định: {data.chi_dinh_dich_vu})"
+    )
+    db.add(audit)
+    db.commit()
+
+    return {
+        "message": f"Chuyển phòng thành công! Bệnh nhân đã được đưa vào hàng chờ {target_room}",
+        "phieu_dieu_phoi": {
+            "ma_phieu": f"DP{new_lich.id:04d}",
+            "lich_kham_moi_id": new_lich.id,
+            "stt_moi": new_lich.stt,
+            "thoi_gian_tao": datetime.now().strftime("%H:%M ngày %d/%m/%Y"),
+            "benh_nhan": {
+                "id": bn.id,
+                "ho_ten": bn.ho_ten,
+                "ngay_sinh": dob_str,
+                "nam_sinh": nam_sinh,
+                "gioi_tinh": bn.gio_tinh or "Khác",
+                "so_dien_thoai": bn.so_dien_thoai or "",
+                "ma_bhyt": bn.ma_bhyt or "Không"
+            },
+            "phong_hien_tai": phong_hien_tai,
+            "bac_si_chi_dinh": bac_si_chi_dinh,
+            "phong_dich": target_room,
+            "vi_tri_phong": vi_tri_phong,
+            "chi_dinh_dich_vu": data.chi_dinh_dich_vu,
+            "ghi_chu": data.ghi_chu or "Mang theo phiếu này đến thẳng phòng chỉ định để được gọi theo STT."
+        }
+    }
