@@ -290,15 +290,15 @@ def run_tests():
     print("\n[8] 📊 KIỂM TRA PHÂN HỆ QUẢN TRỊ VIÊN ADMIN")
 
     # 8.1 Thống kê KPI Dashboard
-    stats_res = session.get(f"{BASE_URL}/api/v1/admin/stats")
+    stats_res = session.get(f"{BASE_URL}/api/v1/admin/stats", headers=admin_headers)
     check("Lấy KPI thống kê Admin Dashboard", stats_res.status_code == 200 and "total_patients" in stats_res.json())
 
     # 8.2 Biểu đồ Doanh thu (Revenue Chart)
-    chart_res = session.get(f"{BASE_URL}/api/v1/admin/revenue-chart")
+    chart_res = session.get(f"{BASE_URL}/api/v1/admin/revenue-chart", headers=admin_headers)
     check("Lấy dữ liệu biểu đồ doanh thu (Line & Doughnut)", chart_res.status_code == 200 and "line_chart" in chart_res.json())
 
     # 8.3 Báo cáo tổng quan Overview
-    overview_res = session.get(f"{BASE_URL}/api/v1/admin/reports/overview")
+    overview_res = session.get(f"{BASE_URL}/api/v1/admin/reports/overview", headers=admin_headers)
     check("Lấy báo cáo tổng quan phòng khám", overview_res.status_code == 200 and "tong_doanh_thu" in overview_res.json())
 
     # 8.4 Quản lý Bác sĩ (Thêm Bác sĩ mới)
@@ -311,23 +311,23 @@ def run_tests():
         "lich_truc": "Thứ 2 - Thứ 7",
         "password": "123"
     }
-    doc_res = session.post(f"{BASE_URL}/api/v1/admin/doctors", json=doc_payload)
+    doc_res = session.post(f"{BASE_URL}/api/v1/admin/doctors", json=doc_payload, headers=admin_headers)
     check("Admin thêm Bác sĩ mới & cấp tài khoản", doc_res.status_code == 201, f"Status: {doc_res.status_code}")
 
     # 8.5 Danh sách Bác sĩ
-    docs_list = session.get(f"{BASE_URL}/api/v1/admin/doctors")
+    docs_list = session.get(f"{BASE_URL}/api/v1/admin/doctors", headers=admin_headers)
     check("Lấy danh sách bác sĩ", docs_list.status_code == 200 and len(docs_list.json()) > 0)
 
     # 8.6 Quản lý Chuyên khoa
-    spec_res = session.get(f"{BASE_URL}/api/v1/admin/specialties")
+    spec_res = session.get(f"{BASE_URL}/api/v1/admin/specialties", headers=admin_headers)
     check("Lấy danh sách chuyên khoa", spec_res.status_code == 200)
 
     # 8.7 Nhật ký hoạt động Audit Logs
-    audit_res = session.get(f"{BASE_URL}/api/v1/admin/logs/audit")
+    audit_res = session.get(f"{BASE_URL}/api/v1/admin/logs/audit", headers=admin_headers)
     check("Truy xuất nhật ký Audit Logs", audit_res.status_code == 200 and len(audit_res.json()) > 0)
 
     # 8.8 Nhật ký AI Logs
-    ai_logs = session.get(f"{BASE_URL}/api/v1/admin/logs/ai")
+    ai_logs = session.get(f"{BASE_URL}/api/v1/admin/logs/ai", headers=admin_headers)
     check("Truy xuất nhật ký AI Logs", ai_logs.status_code == 200)
 
     # ──────────────────────────────────────────────────────────────────────────
