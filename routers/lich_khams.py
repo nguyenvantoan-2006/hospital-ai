@@ -146,7 +146,9 @@ def get_queue_display(
     if doc_info and doc_info.user_id:
         query = query.filter(models.LichKham.bac_si_id == doc_info.user_id)
     elif chuyen_khoa:
-        query = query.filter(models.LichKham.chuyen_khoa.has(ten_chuyen_khoa=chuyen_khoa))
+        ck_item = db.query(models.ChuyenKhoa).filter(models.ChuyenKhoa.ten_chuyen_khoa == chuyen_khoa).first()
+        if ck_item:
+            query = query.filter(models.LichKham.chuyen_khoa_id == ck_item.id)
 
     all_today = query.all()
 
@@ -249,8 +251,10 @@ def public_tra_cuu_lich_kham(
 
         # Chuyên khoa
         ten_ck = "Đa khoa"
-        if lk.chuyen_khoa:
-            ten_ck = lk.chuyen_khoa.ten_chuyen_khoa
+        if lk.chuyen_khoa_id:
+            ck = db.query(models.ChuyenKhoa).filter(models.ChuyenKhoa.id == lk.chuyen_khoa_id).first()
+            if ck:
+                ten_ck = ck.ten_chuyen_khoa
 
         # Phiếu khám (nếu có)
         pk_info = None
