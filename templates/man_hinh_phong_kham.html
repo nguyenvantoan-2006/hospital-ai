@@ -745,9 +745,10 @@
       window.speechSynthesis.speak(utterance);
     }
 
-    function announcePatient(stt, hoTen, namSinh, phong) {
+    function announcePatient(stt, hoTen, namSinh, phong, trangThai) {
       const yearText = namSinh ? `, sinh năm ${namSinh}` : "";
-      const message = `Xin mời bệnh nhân số ${stt}, ${hoTen}${yearText}, vào ${phong}.`;
+      const extraCls = (trangThai === "da_co_ket_qua") ? ", đã có kết quả cận lâm sàng," : "";
+      const message = `Xin mời bệnh nhân số ${stt}, ${hoTen}${yearText}${extraCls} vào ${phong}.`;
       speakText(message);
     }
 
@@ -793,7 +794,7 @@
         // Tự động phát âm thanh loa nếu có bệnh nhân mới được gọi
         if (current.stt && current.stt !== lastAnnouncedStt) {
           lastAnnouncedStt = current.stt;
-          announcePatient(current.stt, current.ho_ten, current.nam_sinh, data.phong_kham || roomParam);
+          announcePatient(current.stt, current.ho_ten, current.nam_sinh, data.phong_kham || roomParam, current.trang_thai);
         }
       } else {
         sttEl.textContent = "--";
@@ -814,21 +815,29 @@
           </div>
         `;
       } else {
-        listEl.innerHTML = waiting.map(item => `
-          <div class="queue-row">
+        listEl.innerHTML = waiting.map(item => {
+          const isDaCoKQ = item.trang_thai === "da_co_ket_qua";
+          const badgeHtml = isDaCoKQ
+            ? `<span class="ready-pill" style="background: linear-gradient(135deg, #7C3AED, #2563EB); color: #fff; border: none;"><i class="fa-solid fa-star me-1 text-warning"></i>Ưu tiên KQ CLS</span>`
+            : `<span class="ready-pill"><i class="fa-solid fa-bell me-1"></i>Chuẩn bị</span>`;
+          const rowBorder = isDaCoKQ ? 'style="border: 2px solid #7C3AED; box-shadow: 0 0 15px rgba(124, 58, 237, 0.3);"' : '';
+
+          return `
+          <div class="queue-row" ${rowBorder}>
             <div class="queue-row-left">
-              <div class="queue-stt-badge">${String(item.stt || "--").padStart(2, "0")}</div>
+              <div class="queue-stt-badge" style="${isDaCoKQ ? 'background: #EF4444; color: #fff;' : ''}">${String(item.stt || "--").padStart(2, "0")}</div>
               <div class="queue-info">
                 <div class="name">${escapeHtml(item.ho_ten)}</div>
                 <div class="dob"><i class="fa-solid fa-cake-candles me-1"></i>${item.ngay_sinh || (item.nam_sinh ? `Năm sinh ${item.nam_sinh}` : "Chưa rõ")}</div>
               </div>
             </div>
             <div class="queue-row-right">
-              <span class="ready-pill"><i class="fa-solid fa-bell me-1"></i>Chuẩn bị</span>
+              ${badgeHtml}
               <div class="time"><i class="fa-regular fa-clock me-1"></i>${item.thoi_gian || "--:--"}</div>
             </div>
           </div>
-        `).join("");
+          `;
+        }).join("");
       }
 
       // ─── THỐNG KÊ ───
