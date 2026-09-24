@@ -138,11 +138,17 @@ def _send_email_smtp(to_email: str, subject: str, html_body: str) -> Tuple[bool,
             server.login(gmail_user, clean_pwd)
             server.sendmail(gmail_user, [to_email], msg.as_string())
 
-        print(f"✅ [GMAIL SMTP THẬT] Đã gửi email thành công tới: {to_email} (Từ: {gmail_user})")
+        try:
+            print(f"[GMAIL SMTP THẬT] Đã gửi email thành công tới: {to_email} (Từ: {gmail_user})")
+        except Exception:
+            pass
         return True, "Email đã được gửi thành công qua Gmail SMTP."
     except Exception as e:
         err_str = str(e)
-        print(f"❌ [GMAIL SMTP LỖI] Không thể gửi email tới {to_email}: {err_str}")
+        try:
+            print(f"[GMAIL SMTP LỖI] Không thể gửi email tới {to_email}: {err_str}")
+        except Exception:
+            pass
         return False, f"Lỗi gửi email qua máy chủ Gmail: {err_str}"
 
 
