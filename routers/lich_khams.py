@@ -38,6 +38,11 @@ class LichKhamStatusUpdate(BaseModel):
     trang_thai: str  # cho_xac_nhan | da_dat_lich | cho_kham | dang_kham | hoan_thanh | huy
 
 
+class LichKhamAssignDoctorInput(BaseModel):
+    bac_si_id: int
+    phong_kham: Optional[str] = None
+
+
 class ChuyenPhongInput(BaseModel):
     lich_kham_hien_tai_id: int
     phong_kham_dich: str
@@ -806,6 +811,66 @@ def delete_lich_kham(
     db.commit()
 
     return {"message": f"Đã xóa thành công lịch khám #{lich_kham_id}"}
+
+
+@router.put("/{lich_kham_id}/phan-cong-bac-si")
+def phan_cong_bac_si_lich_kham(
+    lich_kham_id: int,
+    data: LichKhamAssignDoctorInput,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(require_roles(["le_tan", "admin", "bac_si"]))
+):
+    """
+    PUT /{lich_kham_id}/phan-cong-bac-si
+    Lễ tân / Admin phân công hoặc đổi bác sĩ phụ trách và phòng khám cho lịch khám.
+    """
+    lich_kham = db.query(models.LichKham).filter(models.LichKham.id == lich_kham_id).first()
+    if not lich_kham:
+        raise HTTPException(status_code=404, detail="Không tìm thấy lịch khám!")
+
+    doc = db.query(models.BacSi).filter(
+        or_(models.BacSi.id == data.bac_si_id, models.BacSi.user_id == data.bac_si_id)
+    ).first()
+    if not doc:
+        raise HTTPException(status_code=404, detail=f"Không tìm thấy bác sĩ với ID={data.bac_si_id}!")
+
+    lich_kham.bac_si_id = doc.user_id if doc.user_id else doc.id
+
+    # Nếu lịch khám chưa có chuyên khoa hoặc chuyên khoa chưa khớp, tự động gán theo chuyên khoa của bác sĩ
+    if doc.chuyen_khoa:
+        ck = db.query(models.ChuyenKhoa).filter(
+            or_(
+                models.ChuyenKhoa.ten_chuyen_khoa.ilike(f"%{doc.chuyen_khoa.strip()}%"),
+                func.lower(doc.chuyen_khoa).contains(func.lower(models.ChuyenKhoa.ten_chuyen_khoa))
+            )
+        ).first()
+        if ck:
+            lich_kham.chuyen_khoa_id = ck.id
+
+    db.commit()
+    db.refresh(lich_kham)
+
+    doc_name = f"{doc.hoc_vi or 'BS.'} {doc.ho_ten}"
+    phong_name = doc.phong_kham or data.phong_kham or "Phòng khám"
+
+    audit = models.AuditLog(
+        user_id=current_user.id,
+        action="UPDATE",
+        target_table="lich_khams",
+        target_id=lich_kham.id,
+        mo_ta=f"Phân công {doc_name} ({phong_name}) cho lịch khám #{lich_kham.id}"
+    )
+    db.add(audit)
+    db.commit()
+
+    return {
+        "message": f"Đã phân công {doc_name} ({phong_name}) cho lịch khám #{lich_kham.id} thành công!",
+        "id": lich_kham.id,
+        "bac_si_id": lich_kham.bac_si_id,
+        "ten_bac_si": doc_name,
+        "phong_kham": phong_name,
+        "chuyen_khoa": doc.chuyen_khoa or "Chuyên khoa"
+    }
 
 
 @router.post("/{lich_kham_id}/goi-vao-kham")
