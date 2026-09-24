@@ -212,6 +212,30 @@
       right: 20px;
       z-index: 1080;
     }
+
+    /* Đảm bảo Dropdown kho thuốc luôn nổi trên cùng và không bị cắt */
+    .card-custom {
+      overflow: visible !important;
+    }
+
+    .table-responsive {
+      overflow: visible !important;
+    }
+
+    .med-autocomplete-dropdown {
+      position: absolute !important;
+      top: calc(100% + 4px) !important;
+      left: 0 !important;
+      min-width: 380px !important;
+      max-width: 520px !important;
+      max-height: 280px !important;
+      overflow-y: auto !important;
+      z-index: 99999 !important;
+      background: #ffffff !important;
+      border: 1px solid #94a3b8 !important;
+      border-radius: 8px !important;
+      box-shadow: 0 12px 32px rgba(15, 23, 42, 0.28) !important;
+    }
   </style>
 </head>
 
@@ -653,6 +677,15 @@
 
     document.addEventListener("DOMContentLoaded", () => {
       loadInitialMedicines();
+
+      // Đóng dropdown khi click ra ngoài
+      document.addEventListener("click", (e) => {
+        if (!e.target.closest(".position-relative")) {
+          document.querySelectorAll(".med-autocomplete-dropdown").forEach(d => {
+            d.style.display = "none";
+          });
+        }
+      });
     });
 
     /**
@@ -670,9 +703,21 @@
       tr.innerHTML = `
         <td>
           <div class="position-relative">
-            <input type="text" class="form-control form-control-sm med-search-input fw-semibold text-dark" placeholder="Gõ tên thuốc để tìm kiếm..." oninput="handleMedSearch(this, '${rowId}')" autocomplete="off" required />
+            <div class="input-group input-group-sm">
+              <input type="text" class="form-control form-control-sm med-search-input fw-semibold text-dark" 
+                     placeholder="🔍 Click xem kho thuốc hoặc gõ tìm..." 
+                     onfocus="handleMedSearch(this, '${rowId}', true)" 
+                     onclick="handleMedSearch(this, '${rowId}', true)" 
+                     oninput="handleMedSearch(this, '${rowId}', false)" 
+                     autocomplete="off" required />
+              <button class="btn btn-outline-primary btn-sm px-2" type="button" 
+                      onclick="const inp = this.previousElementSibling; inp.focus(); handleMedSearch(inp, '${rowId}', true);" 
+                      title="Mở danh mục kho thuốc">
+                <i class="fa-solid fa-boxes-stacked"></i> Kho
+              </button>
+            </div>
             <input type="hidden" class="med-id-val" value="" />
-            <div class="med-autocomplete-dropdown list-group position-absolute shadow-lg w-100" style="display: none; z-index: 1050; max-height: 200px; overflow-y: auto;"></div>
+            <div class="med-autocomplete-dropdown list-group position-absolute shadow-lg" style="display: none; z-index: 99999; max-height: 260px; overflow-y: auto;"></div>
           </div>
         </td>
         <td>
@@ -696,53 +741,120 @@
       `;
       tbody.appendChild(tr);
 
-      // Focus ngay vào ô tìm kiếm thuốc vừa tạo
+      // Focus ngay vào ô tìm kiếm thuốc vừa tạo và mở danh sách đề xuất
       const input = tr.querySelector(".med-search-input");
-      if (input) input.focus();
+      if (input) {
+        input.focus();
+        setTimeout(() => handleMedSearch(input, rowId, true), 50);
+      }
     }
 
     /**
-     * Xử lý tìm kiếm thuốc khi gõ (Autocomplete)
+     * Xử lý tìm kiếm & Đề xuất thuốc từ kho (Autocomplete & Warehouse Recommendation)
      */
-    async function handleMedSearch(inputEl, rowId) {
+    async function handleMedSearch(inputEl, rowId, isFocusOrClick = false) {
       const q = inputEl.value.trim();
       const tr = document.getElementById(rowId);
       if (!tr) return;
 
       const dropdown = tr.querySelector(".med-autocomplete-dropdown");
+      
+      // Đóng tất cả các dropdown khác đang mở
+      document.querySelectorAll(".med-autocomplete-dropdown").forEach(d => {
+        if (d !== dropdown) d.style.display = "none";
+      });
+
+      // Đảm bảo cache đã có dữ liệu
+      if (availableMedicinesCache.length === 0) {
+        await loadInitialMedicines();
+      }
+
+      // TRƯỜNG HỢP 1: Click / Focus khi ô còn trống -> Hiển thị toàn bộ kho thuốc có sẵn
       if (!q) {
-        dropdown.style.display = "none";
+        dropdown.innerHTML = "";
+        const header = document.createElement("div");
+        header.className = "list-group-item bg-primary-subtle text-primary py-1 px-3 small fw-bold border-bottom d-flex justify-content-between align-items-center";
+        header.innerHTML = `<span><i class="fa-solid fa-boxes-stacked me-1"></i> Kho Dược (${availableMedicinesCache.length} mặt hàng sẵn có):</span><span class="badge bg-primary text-white">Click chọn nhanh</span>`;
+        dropdown.appendChild(header);
+
+        if (availableMedicinesCache.length === 0) {
+          dropdown.innerHTML += `<div class="list-group-item text-muted small p-2">Kho thuốc đang trống.</div>`;
+        } else {
+          availableMedicinesCache.forEach(m => {
+            dropdown.appendChild(createMedDropdownItem(m, rowId));
+          });
+        }
+        dropdown.style.display = "block";
         return;
       }
 
+      // TRƯỜNG HỢP 2: Đang gõ tìm kiếm từ khóa
       try {
-        const res = await fetch(`/api/v1/phieu-khams/thuocs/search?q=${encodeURIComponent(q)}&limit=15`);
-        if (!res.ok) return;
-        const meds = await res.json();
+        const res = await fetch(`/api/v1/phieu-khams/thuocs/search?q=${encodeURIComponent(q)}&limit=30`);
+        let meds = [];
+        if (res.ok) {
+          meds = await res.json();
+        }
+
+        // Lọc phụ bằng cache nếu API trả về rỗng (hỗ trợ tìm kiếm không dấu / mở rộng)
+        if (meds.length === 0 && availableMedicinesCache.length > 0) {
+          const lowerQ = q.toLowerCase();
+          meds = availableMedicinesCache.filter(m => 
+            (m.ten_thuoc && m.ten_thuoc.toLowerCase().includes(lowerQ))
+          );
+        }
 
         dropdown.innerHTML = "";
         if (meds.length === 0) {
-          dropdown.innerHTML = `<div class="list-group-item list-group-item-action text-muted small fst-italic">Không tìm thấy thuốc "${escapeHtml(q)}"</div>`;
+          // Không tìm thấy: Thông báo và gợi ý lại danh mục kho thuốc
+          dropdown.innerHTML = `
+            <div class="list-group-item list-group-item-light text-secondary small py-2 px-3 border-bottom">
+              <i class="fa-solid fa-magnifying-glass me-1"></i> Không tìm thấy thuốc chứa từ khóa "<strong>${escapeHtml(q)}</strong>".
+              <div class="fw-bold text-primary mt-1"><i class="fa-solid fa-arrow-down-short-wide me-1"></i> Gợi ý danh mục thuốc có sẵn trong kho:</div>
+            </div>
+          `;
+          // Gợi ý danh sách có sẵn
+          availableMedicinesCache.slice(0, 10).forEach(m => {
+            dropdown.appendChild(createMedDropdownItem(m, rowId));
+          });
         } else {
+          const header = document.createElement("div");
+          header.className = "list-group-item bg-light text-dark py-1 px-3 small fw-bold border-bottom";
+          header.innerHTML = `<i class="fa-solid fa-filter me-1 text-primary"></i> Kết quả tìm thấy (${meds.length} thuốc):`;
+          dropdown.appendChild(header);
+
           meds.forEach(m => {
-            const btn = document.createElement("button");
-            btn.type = "button";
-            btn.className = "list-group-item list-group-item-action d-flex justify-content-between align-items-center py-2";
-            btn.innerHTML = `
-              <div>
-                <div class="fw-bold text-dark">${escapeHtml(m.ten_thuoc)}</div>
-                <div class="small text-muted">${m.don_vi_tinh || 'Đơn vị'} - Giá: ${Number(m.don_gia).toLocaleString()} đ</div>
-              </div>
-              <span class="badge ${m.so_luong_ton > 0 ? 'bg-success' : 'bg-danger'} rounded-pill">Tồn: ${m.so_luong_ton}</span>
-            `;
-            btn.onclick = () => selectMedicineForRow(rowId, m);
-            dropdown.appendChild(btn);
+            dropdown.appendChild(createMedDropdownItem(m, rowId));
           });
         }
         dropdown.style.display = "block";
       } catch (e) {
         console.error("Lỗi tìm thuốc:", e);
       }
+    }
+
+    /**
+     * Tạo phần tử hiển thị thuốc trong dropdown đề xuất
+     */
+    function createMedDropdownItem(m, rowId) {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "list-group-item list-group-item-action d-flex justify-content-between align-items-center py-2 px-3";
+      btn.innerHTML = `
+        <div class="text-start me-2">
+          <div class="fw-bold text-dark"><i class="fa-solid fa-capsules text-primary me-1"></i>${escapeHtml(m.ten_thuoc)}</div>
+          <div class="small text-muted">${m.don_vi_tinh || 'Đơn vị'} &bull; Đơn giá: <span class="text-danger fw-semibold">${Number(m.don_gia || 0).toLocaleString()} đ</span></div>
+        </div>
+        <span class="badge ${m.so_luong_ton > 10 ? 'bg-success' : (m.so_luong_ton > 0 ? 'bg-warning text-dark' : 'bg-danger')} rounded-pill px-2 py-1">
+          Tồn: ${m.so_luong_ton}
+        </span>
+      `;
+      btn.onclick = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        selectMedicineForRow(rowId, m);
+      };
+      return btn;
     }
 
     /**
