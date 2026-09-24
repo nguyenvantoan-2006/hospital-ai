@@ -130,11 +130,16 @@ def send_booking_otp(data: PatientSendOtpInput):
     # 3. Gửi email qua Gmail SMTP
     success, msg = send_booking_otp_email(clean_email, data.ho_ten, otp_code, booking_details)
 
+    if not success:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Lỗi gửi email xác thực qua Gmail: {msg}"
+        )
+
     return {
         "success": True,
         "message": f"Mã xác thực OTP đã được gửi đến hộp thư {clean_email}.",
-        "email": clean_email,
-        "debug_otp": otp_code  # Hỗ trợ hiển thị gợi ý / kiểm thử nhanh
+        "email": clean_email
     }
 
 
