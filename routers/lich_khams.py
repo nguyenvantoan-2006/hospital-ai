@@ -916,6 +916,16 @@ def goi_vao_kham(
     doc = db.query(models.BacSi).filter(models.BacSi.user_id == current_user.id).first()
     if doc and doc.phong_kham:
         phong_kham_name = doc.phong_kham
+    elif lich_kham.bac_si_id:
+        doc_assigned = db.query(models.BacSi).filter(
+            or_(models.BacSi.user_id == lich_kham.bac_si_id, models.BacSi.id == lich_kham.bac_si_id)
+        ).first()
+        if doc_assigned and doc_assigned.phong_kham:
+            phong_kham_name = doc_assigned.phong_kham
+    elif lich_kham.chuyen_khoa_id:
+        ck = db.query(models.ChuyenKhoa).filter(models.ChuyenKhoa.id == lich_kham.chuyen_khoa_id).first()
+        if ck:
+            phong_kham_name = f"Phòng khám {ck.ten_chuyen_khoa}"
 
     audit = models.AuditLog(
         user_id=current_user.id,
