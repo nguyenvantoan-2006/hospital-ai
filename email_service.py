@@ -71,39 +71,56 @@ def verify_stored_otp(clean_email: str, clean_otp: str) -> Tuple[bool, Optional[
         return True, saved_data, ""
 
 
+def get_smtp_config():
+    load_dotenv(override=True)
+    server = os.getenv("SMTP_SERVER", "smtp.gmail.com")
+    port = int(os.getenv("SMTP_PORT", 587))
+    user = os.getenv("GMAIL_USER") or os.getenv("MAIL_USERNAME") or ""
+    pwd = os.getenv("GMAIL_APP_PASSWORD") or os.getenv("MAIL_PASSWORD") or ""
+    sender = os.getenv("EMAIL_SENDER_NAME", "CLINOVA Smart Clinic")
+    return server, port, user, pwd, sender
+
+
 def _send_email_smtp(to_email: str, subject: str, html_body: str) -> Tuple[bool, str]:
     """
     Hàm nội bộ gửi email qua Gmail SMTP.
-    Hỗ trợ graceful fallback khi chưa thiết lập GMAIL_USER/PASSWORD.
+    Tự động đọc cấu hình mới nhất từ .env và gửi email thực tế đến hộp thư bệnh nhân.
     """
-    if not GMAIL_USER or not GMAIL_APP_PASSWORD:
-        print(f"\n[EMAIL SIMULATION] Đến: {to_email} | Tiêu đề: {subject}")
-        print("  --> Chưa cấu hình GMAIL_USER hoặc GMAIL_APP_PASSWORD trong .env. Email được mô phỏng thành công!")
-        return True, "Chưa cấu hình tài khoản Gmail. Đang chạy chế độ mô phỏng gửi email."
+    server_host, server_port, gmail_user, app_pwd, sender_name = get_smtp_config()
+
+    if not gmail_user or not app_pwd:
+        warning_msg = (
+            "Chưa cấu hình tài khoản gửi Gmail thật (GMAIL_USER & GMAIL_APP_PASSWORD trong .env). "
+            "Email đang chạy ở chế độ mô phỏng."
+        )
+        print(f"\n⚠️ [EMAIL SIMULATION] Đến: {to_email} | Tiêu đề: {subject}")
+        print(f"   --> {warning_msg}")
+        return True, warning_msg
 
     try:
         msg = MIMEMultipart("alternative")
         msg["Subject"] = subject
-        msg["From"] = f"{SENDER_NAME} <{GMAIL_USER}>"
+        msg["From"] = f"{sender_name} <{gmail_user}>"
         msg["To"] = to_email
 
         html_part = MIMEText(html_body, "html", "utf-8")
         msg.attach(html_part)
 
-        with smtplib.SMTP(SMTP_SERVER, SMTP_PORT, timeout=12) as server:
+        # Kết nối tới máy chủ SMTP Gmail với TLS
+        with smtplib.SMTP(server_host, server_port, timeout=15) as server:
             server.ehlo()
             server.starttls()
             server.ehlo()
-            server.login(GMAIL_USER, GMAIL_APP_PASSWORD.replace(" ", ""))
-            server.sendmail(GMAIL_USER, [to_email], msg.as_string())
+            clean_pwd = app_pwd.replace(" ", "")
+            server.login(gmail_user, clean_pwd)
+            server.sendmail(gmail_user, [to_email], msg.as_string())
 
-        print(f"✅ Đã gửi email thành công tới: {to_email}")
+        print(f"✅ [GMAIL SMTP THẬT] Đã gửi email thành công tới: {to_email} (Từ: {gmail_user})")
         return True, "Email đã được gửi thành công qua Gmail SMTP."
     except Exception as e:
         err_str = str(e)
-        print(f"⚠️ Lỗi khi kết nối Gmail SMTP ({err_str}). Kiểm tra App Password!")
-        # Không làm sập luồng đặt lịch, trả về thông báo lỗi chi tiết
-        return False, f"Lỗi gửi email qua máy chủ: {err_str}"
+        print(f"❌ [GMAIL SMTP LỖI] Không thể gửi email tới {to_email}: {err_str}")
+        return False, f"Lỗi gửi email qua máy chủ Gmail: {err_str}"
 
 
 def send_booking_otp_email(
@@ -234,7 +251,7 @@ def send_booking_confirmation_email(
           </ul>
         </div>
         <div class="footer">
-          © 2026 CLINOVA Smart Clinic — Địa chỉ: 123 Đường Y Tế, TP. Hồ Chí Minh — Hotline: 1900 8888
+          © 2026 CLINOVA Smart Clinic — Địa chỉ: 123 Tuyến Y Tế Trọng Điểm, TP.Thái Nguyên — Hotline: 1900 8888
         </div>
       </div>
     </body>
