@@ -82,13 +82,19 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 
 @app.get("/", tags=["Frontend"])
 def read_root():
-    return FileResponse("templates/index.html")
+    return FileResponse(
+        "templates/index.html",
+        headers={"Cache-Control": "no-cache, no-store, must-revalidate", "Pragma": "no-cache", "Expires": "0"}
+    )
 
 @app.get("/{page_name}.html", tags=["Frontend"])
 def read_html_page(page_name: str):
     file_path = os.path.join("templates", f"{page_name}.html")
     if os.path.exists(file_path):
-        return FileResponse(file_path)
+        return FileResponse(
+            file_path,
+            headers={"Cache-Control": "no-cache, no-store, must-revalidate", "Pragma": "no-cache", "Expires": "0"}
+        )
     raise HTTPException(status_code=404, detail="Page not found")
 
 
