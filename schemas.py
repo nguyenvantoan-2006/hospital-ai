@@ -188,22 +188,43 @@ class LichKhamDetailResponse(LichKhamResponse):
 
 class PhieuKhamBase(OrmBase):
     """Các trường cơ bản của phiếu khám."""
-    lich_kham_id: int
-    trieu_chung:  Optional[str] = None
-    chan_doan:    Optional[str] = None
-    ai_summary:   Optional[str] = None  # Do AI sinh ra, không phải Bác sĩ nhập trực tiếp
+    lich_kham_id:        int
+    trieu_chung:         Optional[str] = None
+    chan_doan:           Optional[str] = None
+    ai_summary:          Optional[str] = None  # Do AI sinh ra, không phải Bác sĩ nhập trực tiếp
+    huong_dan_sau_kham:  Optional[str] = None  # Lời dặn dò, hướng dẫn chăm sóc sau khám
+
+
+class ChiTietDonThuocInput(BaseModel):
+    """Chi tiết 1 loại thuốc khi Bác sĩ kê đơn."""
+    thuoc_id:  int
+    so_luong:  int = 1
+    lieu_dung: Optional[str] = None
 
 
 class PhieuKhamCreate(PhieuKhamBase):
-    """Schema tạo phiếu khám mới (Bác sĩ lập sau khi khám)."""
-    pass
+    """Schema tạo phiếu khám mới kèm đơn thuốc (Bác sĩ lập sau khi khám)."""
+    don_thuocs: Optional[List[ChiTietDonThuocInput]] = []
+
+
+class PhieuKhamCreateInput(BaseModel):
+    """Schema đầu vào linh hoạt cho Bác sĩ lập phiếu khám từ Frontend."""
+    benh_nhan_id:       Optional[int] = None
+    lich_kham_id:       Optional[int] = None
+    trieu_chung:        Optional[str] = None
+    chan_doan:          Optional[str] = None
+    bac_si:             Optional[str] = None
+    ai_summary:         Optional[str] = None
+    huong_dan_sau_kham: Optional[str] = None
+    don_thuocs:         Optional[List[ChiTietDonThuocInput]] = []
 
 
 class PhieuKhamUpdate(OrmBase):
     """Schema cập nhật phiếu khám — tất cả field đều Optional."""
-    trieu_chung: Optional[str] = None
-    chan_doan:   Optional[str] = None
-    ai_summary:  Optional[str] = None
+    trieu_chung:        Optional[str] = None
+    chan_doan:          Optional[str] = None
+    ai_summary:         Optional[str] = None
+    huong_dan_sau_kham: Optional[str] = None
 
 
 class PhieuKhamResponse(PhieuKhamBase):
@@ -223,9 +244,11 @@ class PhieuKhamDetailResponse(PhieuKhamResponse):
 
 class ThuocBase(OrmBase):
     """Các trường cơ bản của thuốc trong danh mục."""
-    ten_thuoc:   str
-    don_vi_tinh: Optional[str]  = None  # Ví dụ: viên, chai, ống, gói
-    don_gia:     float = 0.0
+    ten_thuoc:    str
+    don_vi_tinh:  Optional[str]   = None  # Ví dụ: viên, chai, ống, gói
+    gia_nhap:     Optional[float] = 0.0   # Giá vốn nhập kho
+    don_gia:      float = 0.0             # Giá bán lẻ ra cho bệnh nhân
+    so_luong_ton: int = 0                 # Số lượng tồn kho hiện tại
 
 
 class ThuocCreate(ThuocBase):
@@ -235,14 +258,39 @@ class ThuocCreate(ThuocBase):
 
 class ThuocUpdate(OrmBase):
     """Schema cập nhật thông tin thuốc — tất cả field đều Optional."""
-    ten_thuoc:   Optional[str]   = None
-    don_vi_tinh: Optional[str]   = None
-    don_gia:     Optional[float] = None
+    ten_thuoc:    Optional[str]   = None
+    don_vi_tinh:  Optional[str]   = None
+    gia_nhap:     Optional[float] = None
+    don_gia:      Optional[float] = None
+    so_luong_ton: Optional[int]   = None
 
 
 class ThuocResponse(ThuocBase):
     """Schema trả về thông tin thuốc."""
     id: int
+
+
+# ════════════════════════════════════════════════════════════════════════════════
+#  10. AI LOG SCHEMAS (SEC-AI-04 & NFR-SEC-01)
+# ════════════════════════════════════════════════════════════════════════════════
+class AILogBase(OrmBase):
+    user_id:          Optional[int] = None
+    chuc_nang:        str  # ai_summary | ai_post_exam | ai_chatbot
+    prompt_masked:    str
+    response_text:    Optional[str] = None
+    model_name:       Optional[str] = None
+    response_time_ms: Optional[int] = None
+    trang_thai:       str = "success"
+
+
+class AILogCreate(AILogBase):
+    pass
+
+
+class AILogResponse(AILogBase):
+    id:        int
+    thoi_gian: datetime
+
 
 
 # ════════════════════════════════════════════════════════════════════════════════
