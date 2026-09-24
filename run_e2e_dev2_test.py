@@ -1,5 +1,6 @@
 import sys
 import os
+import random
 
 # Đảm bảo in tiếng Việt và Emoji trên Windows Console không bị lỗi charmap
 sys.stdout.reconfigure(encoding='utf-8')
@@ -86,13 +87,18 @@ def run_dev2_e2e_tests():
         print("\n[3] 🩺 KIỂM TRA BÁC SĨ LẬP PHIẾU KHÁM & KÊ ĐƠN THUỐC")
         
         # 3.1 Tạo bệnh nhân test
+        random_phone = f"0988{random.randint(100000, 999999)}"
         res_bn = client.post("/api/v1/benh-nhans/", json={
             "ho_ten": "Nguyễn Văn Test Dev2",
-            "so_dien_thoai": "0988776655",
+            "so_dien_thoai": random_phone,
             "gio_tinh": "Nam",
             "dia_chi": "Hà Nội"
         })
-        bn_id = res_bn.json().get("id") if res_bn.status_code in [200, 201] else 1
+        if res_bn.status_code in [200, 201]:
+            bn_id = res_bn.json().get("id")
+        else:
+            first_bn = db.query(models.BenhNhan).first()
+            bn_id = first_bn.id if first_bn else 1
 
         # 3.2 Test ràng buộc: Chặn kê vượt quá số lượng tồn kho (Hiện có 50 hộp, cố tình kê 100 hộp)
         res_over_prescribe = client.post("/api/v1/phieu-khams/", json={
