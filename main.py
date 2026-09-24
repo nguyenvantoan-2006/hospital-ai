@@ -63,7 +63,7 @@ def health_check():
 # app.include_router(lich_khams.router,  prefix="/api/v1/lich-khams",  tags=["Lịch khám"])
 # app.include_router(phieu_khams.router, prefix="/api/v1/phieu-khams", tags=["Phiếu khám"])
 
-from routers import ai, benh_nhans, phieu_khams, hoa_dons, lich_khams, auth, admin
+from routers import ai, benh_nhans, phieu_khams, hoa_dons, lich_khams, auth, admin, ke_toan
 app.include_router(ai.router,         prefix="/api/ai",              tags=["AI Trợ lý"])
 app.include_router(auth.router,       prefix="/api/v1/auth",         tags=["Xác thực & Đăng nhập"])
 app.include_router(benh_nhans.router, prefix="/api/v1/benh-nhans",   tags=["Bệnh nhân"])
@@ -71,6 +71,7 @@ app.include_router(phieu_khams.router,prefix="/api/v1/phieu-khams",  tags=["Phi�
 app.include_router(hoa_dons.router,   prefix="/api/v1/hoa-dons",     tags=["Hóa đơn - Thanh toán"])
 app.include_router(lich_khams.router, prefix="/api/v1/lich-khams",   tags=["Lịch khám"])
 app.include_router(admin.router,      prefix="/api/v1/admin",        tags=["Quản trị viên (Admin)"])
+app.include_router(ke_toan.router,    prefix="/api/v1/ke-toan",      tags=["Kế toán Tổng hợp & Tài chính"])
 
 # ─── Mount Static Files & HTML Page Routes ─────────────────────────────────────
 from fastapi.staticfiles import StaticFiles

@@ -1,41 +1,50 @@
-# Git Workflow Rules — Hospital-AI
+# Git & Workflow Rules — Hospital-AI
 # Áp dụng cho TẤT CẢ Antigravity agents làm việc trong repo này.
 
-## Bắt buộc kiểm tra branch trước khi code
+## LUỒNG XỬ LÝ BẮT BUỘC — 6 BƯỚC TUẦN TỰ
 
-Trước khi bắt đầu BẤT KỲ tác vụ nào liên quan đến viết hoặc sửa code, agent PHẢI:
+Với MỌI yêu cầu chức năng hoặc fix bug, agent phải đi theo đúng thứ tự:
 
-1. Chạy lệnh `git branch --show-current` để xác định branch hiện tại
-2. Thông báo kết quả cho user: "Hiện tại đang ở branch: <tên branch>"
-3. Nếu đang ở `main` → DỪNG LẠI, đề xuất tạo feature branch phù hợp, hỏi user xác nhận
-4. Chỉ tiếp tục code sau khi đã ở đúng feature branch
+  BƯỚC 1: Phân tích yêu cầu — hỏi lại nếu chưa rõ, KHÔNG tự đoán rồi code ngay
+  BƯỚC 2: Tạo/chuyển sang đúng feature branch — thông báo branch đang dùng
+  BƯỚC 3: Tạo file kế hoạch tại docs/plans/<ten-feature>.md — DỪNG chờ user xác nhận
+  BƯỚC 4: Code sau khi được xác nhận — commit TỪNG NHÓM FILE, không gộp tất cả
+  BƯỚC 5: Tự kiểm tra bugs — báo cáo những gì đã thay đổi — DỪNG chờ user test
+  BƯỚC 6: Push/PR/Merge — CHỈ thực hiện khi user nói rõ cho phép
 
-## Cấm tuyệt đối
+## ĐIỂM DỪNG BẮT BUỘC (HUMAN GATE)
 
-- KHÔNG commit trực tiếp lên `main`
-- KHÔNG push lên `main` bằng `git push origin main` trừ khi đang thực hiện squash merge đã được user xác nhận
-- KHÔNG tạo branch với tên không theo convention (main, temp, test, fix1, v.v.)
-- KHÔNG commit file: .env, __pycache__/, *.db, *.pyc, clinic.db
+Agent PHẢI dừng và chờ xác nhận của user tại 2 điểm:
+  - Sau BƯỚC 3: Chờ user duyệt kế hoạch trước khi bắt đầu code
+  - Sau BƯỚC 5: Chờ user test xong trước khi push/merge
 
-## Convention đặt tên branch
+## KHÔNG BAO GIỜ tự thực hiện các hành động sau khi chưa có lệnh rõ ràng:
+  - git push origin main
+  - git merge --squash
+  - Tạo Pull Request
 
-Chỉ chấp nhận các prefix sau:
-- feat/   — tính năng mới
-- fix/    — sửa lỗi
-- refactor/ — cấu trúc lại
-- docs/   — tài liệu
-- test/   — kiểm thử
+## QUY TẮC COMMIT — TÁCH TỪNG NHÓM FILE
 
-## Convention commit message
+Mỗi commit chỉ chứa 1 nhóm thay đổi logic:
+  Nhóm 1 (Model/Schema): models.py, schemas.py
+  Nhóm 2 (Backend): routers/*.py
+  Nhóm 3 (Frontend): templates/*.html
+  Nhóm 4 (Static): static/js/*.js, static/css/*.css
+  Nhóm 5 (Docs): docs/plans/*.md
 
-Format bắt buộc: `<type>(<scope>): <mô tả>`
-Ví dụ: `feat(benh-nhan): them trang dat lich online FR-09`
+## QUY TẮC BRANCH
 
-## Khi được yêu cầu merge / hoàn thành feature
+  - Kiểm tra branch trước mỗi tác vụ: git branch --show-current
+  - Nếu đang ở main → DỪNG, tạo/chuyển sang feature branch trước
+  - Convention: feat/* | fix/* | refactor/* | docs/* | test/*
+  - Cấm: main, temp, test123, my-branch, và bất kỳ tên không có prefix chuẩn
 
-Agent phải hướng dẫn user chạy squash merge theo đúng workflow trong docs/git-workflow.md
-KHÔNG tự ý merge mà không có sự xác nhận của user.
+## QUY TẮC COMMIT MESSAGE
 
-## Tham khảo chi tiết
+  Format: <type>(<scope>): <mo ta ngan gon>
+  Ví dụ: feat(bac-si): them trang dashboard quan ly lich kham FR-05
 
-Xem đầy đủ trong: docs/git-workflow.md và AGENTS.md
+## XEM CHI TIẾT
+
+  Xem đầy đủ tại: AGENTS.md và docs/git-workflow.md
+
