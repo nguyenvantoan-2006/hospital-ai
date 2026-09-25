@@ -170,7 +170,12 @@
     <!-- Toolbar Filters -->
     <div class="card-custom mb-4">
       <div class="p-3 bg-light d-flex align-items-center justify-content-between gap-3 flex-wrap">
-        <div class="d-flex align-items-center gap-2 flex-wrap">
+        <div class="d-flex align-items-center gap-2 flex-wrap flex-grow-1">
+          <!-- Quick Search -->
+          <div style="min-width: 200px;">
+            <label class="form-label small fw-semibold text-secondary mb-1"><i class="fa-solid fa-magnifying-glass me-1"></i>Tìm bệnh nhân</label>
+            <input type="text" id="searchKeyword" class="form-control form-control-sm" placeholder="Nhập họ tên hoặc SĐT..." oninput="filterLocalAppointments()" />
+          </div>
           <!-- Filter Date -->
           <div>
             <label class="form-label small fw-semibold text-secondary mb-1">Ngày khám</label>
@@ -195,6 +200,12 @@
               <option value="hoan_thanh">Hoàn thành</option>
               <option value="huy">Đã hủy</option>
             </select>
+          </div>
+          <!-- Quick Filters Buttons -->
+          <div class="d-flex align-items-center gap-1 mt-auto">
+            <button type="button" class="btn btn-sm btn-outline-primary rounded-3" onclick="setQuickDate('today')" title="Xem lịch hẹn hôm nay"><i class="fa-regular fa-calendar me-1"></i>Hôm nay</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary rounded-3" onclick="setQuickDate('all')" title="Xem tất cả các ngày"><i class="fa-solid fa-calendar-days me-1"></i>Tất cả ngày</button>
+            <button type="button" class="btn btn-sm btn-warning text-dark fw-bold rounded-3 shadow-sm" onclick="setQuickStatus('can_tiep_nhan')" title="Lọc các bệnh nhân cần xác nhận / tiếp nhận"><i class="fa-solid fa-bell me-1"></i>Cần tiếp nhận</button>
           </div>
         </div>
         <button class="btn btn-sm btn-outline-secondary rounded-3 mt-auto" onclick="fetchAppointments()">
@@ -288,11 +299,16 @@
             </div>
 
           </div>
-          <div class="modal-footer bg-light rounded-bottom-4">
-            <button type="button" class="btn btn-outline-secondary px-4 rounded-3" data-bs-dismiss="modal">Hủy</button>
-            <button type="submit" id="btnBooking" class="btn btn-primary px-4 rounded-3 fw-semibold">
-              <i class="fa-solid fa-check-circle me-1"></i> Xác nhận Đặt Lịch
-            </button>
+          <div class="modal-footer bg-light rounded-bottom-4 d-flex justify-content-between align-items-center">
+            <button type="button" class="btn btn-outline-secondary px-3 rounded-3" data-bs-dismiss="modal">Hủy</button>
+            <div class="d-flex gap-2">
+              <button type="button" id="btnBookingNormal" onclick="submitBookingForm('da_dat_lich')" class="btn btn-outline-primary px-3 rounded-3 fw-semibold">
+                <i class="fa-regular fa-calendar-check me-1"></i> Chỉ lưu hẹn trước
+              </button>
+              <button type="button" id="btnBookingDirect" onclick="submitBookingForm('cho_kham')" class="btn btn-success px-4 rounded-3 fw-bold shadow">
+                <i class="fa-solid fa-ticket me-1"></i> Tiếp nhận ngay & Cấp STT
+              </button>
+            </div>
           </div>
         </form>
       </div>
@@ -571,37 +587,119 @@
           return;
         }
 
+          loadingState.style.display = "none";
+          renderAppointmentsTable(data);
+        } catch (error) {
+          console.error("Lỗi tải lịch khám:", error);
+          loadingState.innerHTML = `<span class="text-danger">Lỗi tải dữ liệu (${error.message})</span>`;
+        } finally {
+          if (reloadIcon) reloadIcon.classList.remove("fa-spin");
+        }
+      }
+
+      function filterLocalAppointments() {
+        const kw = (document.getElementById("searchKeyword").value || "").trim().toLowerCase();
+        if (!kw) {
+          renderAppointmentsTable(currentAppointmentsList);
+          return;
+        }
+        const filtered = currentAppointmentsList.filter(item => {
+          const name = (item.ho_ten || "").toLowerCase();
+          const phone = (item.so_dien_thoai || "").toLowerCase();
+          const id = String(item.id);
+          const stt = String(item.stt || "");
+          return name.includes(kw) || phone.includes(kw) || id.includes(kw) || stt.includes(kw);
+        });
+        renderAppointmentsTable(filtered);
+      }
+
+      function setQuickDate(type) {
+        if (type === 'today') {
+          const today = new Date().toISOString().split('T')[0];
+          document.getElementById("filterDate").value = today;
+        } else {
+          document.getElementById("filterDate").value = "";
+        }
+        document.getElementById("filterStatus").value = "";
+        fetchAppointments();
+      }
+
+      function setQuickStatus(type) {
+        if (type === 'can_tiep_nhan') {
+          // Lọc không giới hạn ngày để xem toàn bộ bệnh nhân cần xử lý
+          document.getElementById("filterDate").value = "";
+          document.getElementById("filterStatus").value = "";
+          fetchAppointments().then(() => {
+            const needAttention = currentAppointmentsList.filter(x => x.trang_thai === 'cho_xac_nhan' || x.trang_thai === 'da_dat_lich');
+            renderAppointmentsTable(needAttention);
+            showToast(`Đã lọc ${needAttention.length} lịch hẹn cần Xác nhận / Tiếp nhận`, "info");
+          });
+        }
+      }
+
+      function renderAppointmentsTable(list) {
+        const tbody = document.getElementById("bodyLichKham");
+        const loadingState = document.getElementById("loadingState");
+        tbody.innerHTML = "";
+
+        if (!list || list.length === 0) {
+          loadingState.style.display = "block";
+          loadingState.innerHTML = `<span class="text-muted">Không tìm thấy lịch khám nào khớp với điều kiện</span>`;
+          return;
+        }
         loadingState.style.display = "none";
-        data.forEach(item => {
+
+        list.forEach(item => {
           const tr = document.createElement("tr");
 
           // Status Badges & Action Buttons
           let statusBadge = '';
           let actionBtns = '';
+          let directConfirmBadge = '';
 
           if (item.trang_thai === "cho_xac_nhan") {
-            statusBadge = '<span class="badge bg-secondary-subtle text-secondary border">Chờ xác nhận</span>';
-            actionBtns = `<button class="btn btn-sm btn-outline-primary rounded-2 py-0 px-2" onclick="updateAppointmentStatus(${item.id}, 'da_dat_lich')">Xác nhận lịch</button>`;
+            statusBadge = '<span class="badge bg-warning-subtle text-dark border border-warning px-2 py-1"><i class="fa-solid fa-hourglass-start me-1 text-warning"></i>Chờ xác nhận</span>';
+            actionBtns = `<button class="btn btn-sm btn-warning text-dark fw-bold rounded-3 px-3 py-1 shadow-sm text-nowrap" onclick="updateAppointmentStatus(${item.id}, 'da_dat_lich')"><i class="fa-solid fa-check me-1"></i>Xác nhận lịch</button>`;
+            directConfirmBadge = `
+              <div class="mt-1">
+                <button class="btn btn-xs btn-outline-warning text-dark fw-bold rounded px-2 py-1 shadow-sm text-nowrap" onclick="updateAppointmentStatus(${item.id}, 'da_dat_lich')">
+                  <i class="fa-solid fa-circle-check me-1 text-warning"></i> Bấm xác nhận lịch Online
+                </button>
+              </div>`;
           } else if (item.trang_thai === "da_dat_lich") {
-            statusBadge = '<span class="badge bg-info-subtle text-info border border-info-subtle">Đã đặt lịch</span>';
-            actionBtns = `<button class="btn btn-sm btn-success rounded-2 py-0 px-2 fw-semibold" onclick="updateAppointmentStatus(${item.id}, 'cho_kham')"><i class="fa-solid fa-user-check me-1"></i> Tiếp nhận (Cấp STT)</button>`;
+            statusBadge = '<span class="badge bg-info-subtle text-info border border-info-subtle px-2 py-1"><i class="fa-regular fa-calendar-check me-1"></i>Đã đặt lịch</span>';
+            actionBtns = `<button class="btn btn-sm btn-success rounded-3 px-3 py-1 fw-bold shadow text-nowrap" onclick="updateAppointmentStatus(${item.id}, 'cho_kham')"><i class="fa-solid fa-user-check me-1"></i>Tiếp nhận (Cấp STT)</button>`;
+            directConfirmBadge = `
+              <div class="mt-1">
+                <button class="btn btn-xs btn-success text-white fw-bold rounded-pill px-2 py-1 shadow-sm text-nowrap" onclick="updateAppointmentStatus(${item.id}, 'cho_kham')">
+                  <i class="fa-solid fa-ticket me-1"></i> Tiếp nhận tại quầy (Cấp STT)
+                </button>
+              </div>`;
           } else if (item.trang_thai === "cho_kham") {
-            statusBadge = '<span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle">Chờ khám</span>';
-            actionBtns = `<button class="btn btn-sm btn-primary rounded-2 py-0 px-2" onclick="updateAppointmentStatus(${item.id}, 'dang_kham')">Vào khám</button>`;
+            statusBadge = '<span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle px-2 py-1"><i class="fa-solid fa-stopwatch me-1"></i>Chờ khám</span>';
+            actionBtns = `
+              <button class="btn btn-sm btn-outline-primary rounded-3 px-2 py-1 fw-semibold text-nowrap" onclick="openTicketById(${item.id})" title="Xem lại phiếu STT"><i class="fa-solid fa-print me-1"></i>In phiếu STT</button>
+              <button class="btn btn-sm btn-primary rounded-3 px-2 py-1 fw-semibold text-nowrap" onclick="updateAppointmentStatus(${item.id}, 'dang_kham')">Vào khám</button>
+            `;
           } else if (item.trang_thai === "dang_kham") {
-            statusBadge = '<span class="badge bg-primary-subtle text-primary border border-primary-subtle">Đang khám</span>';
-            actionBtns = `<a href="lap_phieu_kham.html" class="btn btn-sm btn-outline-success rounded-2 py-0 px-2">Lập phiếu khám</a>`;
+            statusBadge = '<span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1"><i class="fa-solid fa-spinner fa-spin me-1"></i>Đang khám</span>';
+            actionBtns = `<a href="lap_phieu_kham.html" class="btn btn-sm btn-outline-success rounded-3 px-2 py-1 fw-semibold text-nowrap"><i class="fa-solid fa-stethoscope me-1"></i>Lập phiếu khám</a>`;
           } else if (item.trang_thai === "hoan_thanh") {
-            statusBadge = '<span class="badge bg-success-subtle text-success border border-success-subtle">Hoàn thành</span>';
-            actionBtns = `<span class="text-muted small">Đã khám xong</span>`;
+            statusBadge = '<span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1">Hoàn thành</span>';
+            actionBtns = `<span class="badge bg-light text-muted border py-1 px-2">Đã khám xong</span>`;
           } else if (item.trang_thai === "huy") {
-            statusBadge = '<span class="badge bg-danger-subtle text-danger border border-danger-subtle">Đã hủy</span>';
-            actionBtns = `<span class="text-muted small">Đã hủy</span>`;
+            statusBadge = '<span class="badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-1">Đã hủy</span>';
+            actionBtns = `<span class="badge bg-light text-muted border py-1 px-2">Đã hủy</span>`;
           }
 
-          const queueNumber = item.stt 
-            ? `<button type="button" class="btn btn-sm btn-outline-primary fw-bold rounded-pill px-2 py-0 shadow-sm" onclick="openTicketById(${item.id})" title="Xem / In Phiếu Gọi Khám"><i class="fa-solid fa-ticket me-1"></i>STT #${item.stt}</button>` 
-            : '<span class="text-muted small">--</span>';
+          let queueNumber = '';
+          if (item.stt) {
+            queueNumber = `<button type="button" class="btn btn-sm btn-outline-primary fw-bold rounded-pill px-2 py-0 shadow-sm" onclick="openTicketById(${item.id})" title="Xem / In Phiếu Gọi Khám"><i class="fa-solid fa-ticket me-1"></i>STT #${String(item.stt).padStart(2, '0')}</button>`;
+          } else if (item.trang_thai === 'cho_xac_nhan' || item.trang_thai === 'da_dat_lich') {
+            queueNumber = `<button type="button" class="btn btn-sm btn-success fw-bold rounded-pill px-2 py-0 shadow-sm text-nowrap" onclick="updateAppointmentStatus(${item.id}, 'cho_kham')" title="Bệnh nhân đã tới quầy - Bấm để cấp STT vào phòng"><i class="fa-solid fa-plus-circle me-1"></i>Cấp STT</button>`;
+          } else {
+            queueNumber = '<span class="text-muted small">--</span>';
+          }
 
           const isUnassigned = (item.ten_bac_si === "Chưa phân công" || !item.bac_si_id);
           const docDisplay = isUnassigned
@@ -624,6 +722,7 @@
             <td>
               <div class="fw-bold text-dark">${escapeHtml(item.ho_ten)}</div>
               <small class="text-muted">${item.so_dien_thoai ? 'SĐT: ' + escapeHtml(item.so_dien_thoai) : 'BN ID: #' + item.benh_nhan_id}</small>
+              ${directConfirmBadge}
             </td>
             <td>
               ${docDisplay}
@@ -649,14 +748,7 @@
           `;
           tbody.appendChild(tr);
         });
-
-      } catch (error) {
-        console.error("Lỗi tải lịch khám:", error);
-        loadingState.innerHTML = `<span class="text-danger">Lỗi tải dữ liệu (${error.message})</span>`;
-      } finally {
-        if (reloadIcon) reloadIcon.classList.remove("fa-spin");
       }
-    }
 
     function openBookingModal() {
       document.getElementById("formDatLich").reset();
@@ -669,9 +761,7 @@
     /**
      * Gửi request tạo lịch hẹn mới (POST /api/v1/lich-khams/)
      */
-    async function handleConfirmBooking(event) {
-      event.preventDefault();
-
+    async function submitBookingForm(desiredStatus = 'cho_kham') {
       const benhNhanId = document.getElementById("benh_nhan_id").value;
       const bacSiId = document.getElementById("bac_si_id").value;
       const chuyenKhoaId = document.getElementById("chuyen_khoa_id").value;
@@ -691,13 +781,14 @@
         bac_si_id: bacSiId ? parseInt(bacSiId) : null,
         chuyen_khoa_id: chuyenKhoaId ? parseInt(chuyenKhoaId) : null,
         thoi_gian: thoiGianISO,
-        ly_do_kham: lyDoKham || "Khám bệnh",
-        trang_thai: "da_dat_lich"
+        ly_do_kham: lyDoKham || "Khám bệnh tại quầy",
+        trang_thai: desiredStatus
       };
 
-      const btn = document.getElementById("btnBooking");
-      btn.disabled = true;
-      btn.innerHTML = `<i class="fa-solid fa-circle-notch fa-spin me-1"></i> Đang kiểm tra lịch trùng...`;
+      const btnDirect = document.getElementById("btnBookingDirect");
+      const btnNormal = document.getElementById("btnBookingNormal");
+      if (btnDirect) btnDirect.disabled = true;
+      if (btnNormal) btnNormal.disabled = true;
 
       try {
         const response = await fetch(API_LICH_KHAM_URL, {
@@ -711,16 +802,35 @@
           throw new Error(errData.detail || `Lỗi HTTP ${response.status}`);
         }
 
-        showToast("🎉 Đặt lịch khám thành công!", "success");
+        const resData = await response.json();
         bookingModal.hide();
-        fetchAppointments();
+
+        if (desiredStatus === 'cho_kham') {
+          showToast(`🎉 Tiếp nhận thành công! Đã cấp Số Thứ Tự STT #${resData.stt || resData.id}`, "success");
+          fetchAppointments().then(() => {
+            const matched = currentAppointmentsList.find(x => x.id === resData.id) || {
+              id: resData.id,
+              stt: resData.stt,
+              ho_ten: document.getElementById("benh_nhan_id").options[document.getElementById("benh_nhan_id").selectedIndex].text,
+              ten_chuyen_khoa: chuyenKhoaId ? document.getElementById("chuyen_khoa_id").options[document.getElementById("chuyen_khoa_id").selectedIndex].text : "Khám tổng quát",
+              ten_bac_si: resData.ten_bac_si || "Chưa phân công",
+              phong_kham: resData.phong_kham || "Phòng khám",
+              thoi_gian: resData.thoi_gian,
+              gio_du_kien: resData.gio_du_kien
+            };
+            openQueueTicketModal(matched);
+          });
+        } else {
+          showToast("🎉 Đặt lịch hẹn thành công!", "success");
+          fetchAppointments();
+        }
 
       } catch (error) {
         console.error("Lỗi đặt lịch khám:", error);
         showToast(error.message, "danger");
       } finally {
-        btn.disabled = false;
-        btn.innerHTML = `<i class="fa-solid fa-check-circle me-1"></i> Xác nhận Đặt Lịch`;
+        if (btnDirect) btnDirect.disabled = false;
+        if (btnNormal) btnNormal.disabled = false;
       }
     }
 
