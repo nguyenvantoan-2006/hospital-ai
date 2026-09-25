@@ -622,6 +622,20 @@ def get_all_lich_khams(
             idx = lk.ly_do_kham.find("[KẾT QUẢ CLS")
             ket_qua_cls = lk.ly_do_kham[idx:].strip()
 
+        # Tính khung giờ dự kiến vào khám cụ thể
+        gio_du_kien = None
+        if lk.stt:
+            base_time = lk.thoi_gian
+            if base_time.hour < 12:
+                session_start = base_time.replace(hour=8, minute=0, second=0, microsecond=0)
+            else:
+                session_start = base_time.replace(hour=13, minute=30, second=0, microsecond=0)
+            est_start = session_start + timedelta(minutes=(lk.stt - 1) * 15)
+            est_end = est_start + timedelta(minutes=15)
+            gio_du_kien = f"{est_start.strftime('%H:%M')} - {est_end.strftime('%H:%M')}"
+        else:
+            gio_du_kien = lk.thoi_gian.strftime("%H:%M")
+
         results.append({
             "id": lk.id,
             "stt": lk.stt,
@@ -642,6 +656,7 @@ def get_all_lich_khams(
             "chuyen_khoa_id": lk.chuyen_khoa_id,
             "ten_chuyen_khoa": ten_chuyen_khoa,
             "thoi_gian": lk.thoi_gian.strftime("%Y-%m-%d %H:%M"),
+            "gio_du_kien": gio_du_kien,
             "ly_do_kham": lk.ly_do_kham,
             "ket_qua_cls": ket_qua_cls,
             "trang_thai": lk.trang_thai
@@ -700,11 +715,21 @@ def create_lich_kham(
             detail="Bệnh nhân đã có lịch hẹn trong cùng khung giờ này."
         )
 
-    # 4. Lưu lịch khám
+    # 4. Tự động sinh STT nếu đặt với trạng thái 'cho_kham' (Tiếp nhận tại chỗ)
+    initial_stt = None
+    if data.trang_thai == "cho_kham":
+        today_date = data.thoi_gian.date()
+        max_stt = db.query(func.max(models.LichKham.stt)).filter(
+            func.date(models.LichKham.thoi_gian) == today_date
+        ).scalar() or 0
+        initial_stt = max_stt + 1
+
+    # Lưu lịch khám
     new_lich_kham = models.LichKham(
         benh_nhan_id=data.benh_nhan_id,
         bac_si_id=data.bac_si_id,
         chuyen_khoa_id=data.chuyen_khoa_id,
+        stt=initial_stt,
         thoi_gian=data.thoi_gian,
         trang_thai=data.trang_thai,
         ly_do_kham=data.ly_do_kham
@@ -719,7 +744,7 @@ def create_lich_kham(
         action="CREATE",
         target_table="lich_khams",
         target_id=new_lich_kham.id,
-        mo_ta=f"Lễ tân {current_user.username} đặt lịch khám #{new_lich_kham.id} cho BN {benh_nhan.ho_ten}"
+        mo_ta=f"Lễ tân {current_user.username} đặt lịch khám #{new_lich_kham.id} cho BN {benh_nhan.ho_ten} (STT: {new_lich_kham.stt})"
     )
     db.add(audit)
     db.commit()
@@ -727,6 +752,7 @@ def create_lich_kham(
     return {
         "message": "Đặt lịch khám thành công!",
         "id": new_lich_kham.id,
+        "stt": new_lich_kham.stt,
         "benh_nhan_id": new_lich_kham.benh_nhan_id,
         "thoi_gian": new_lich_kham.thoi_gian.strftime("%Y-%m-%d %H:%M"),
         "trang_thai": new_lich_kham.trang_thai
@@ -765,6 +791,29 @@ def update_trang_thai_lich_kham(
     db.commit()
     db.refresh(lich_kham)
 
+    # Tính khung giờ dự kiến vào khám cụ thể
+    gio_du_kien = None
+    if lich_kham.stt:
+        base_time = lich_kham.thoi_gian
+        if base_time.hour < 12:
+            session_start = base_time.replace(hour=8, minute=0, second=0, microsecond=0)
+        else:
+            session_start = base_time.replace(hour=13, minute=30, second=0, microsecond=0)
+        est_start = session_start + timedelta(minutes=(lich_kham.stt - 1) * 15)
+        est_end = est_start + timedelta(minutes=15)
+        gio_du_kien = f"{est_start.strftime('%H:%M')} - {est_end.strftime('%H:%M')}"
+
+    # Lấy thông tin phòng khám & bác sĩ
+    phong_kham = "Phòng khám chung"
+    ten_bac_si = "Chưa phân công"
+    if lich_kham.bac_si_id:
+        doc_info = db.query(models.BacSi).filter(
+            or_(models.BacSi.user_id == lich_kham.bac_si_id, models.BacSi.id == lich_kham.bac_si_id)
+        ).first()
+        if doc_info:
+            ten_bac_si = f"{doc_info.hoc_vi or 'BS.'} {doc_info.ho_ten}"
+            phong_kham = doc_info.phong_kham or phong_kham
+
     audit = models.AuditLog(
         user_id=current_user.id,
         action="UPDATE",
@@ -779,6 +828,9 @@ def update_trang_thai_lich_kham(
         "message": f"Đã cập nhật trạng thái lịch khám sang '{new_status}'",
         "id": lich_kham.id,
         "stt": lich_kham.stt,
+        "gio_du_kien": gio_du_kien,
+        "phong_kham": phong_kham,
+        "ten_bac_si": ten_bac_si,
         "trang_thai": lich_kham.trang_thai
     }
 
