@@ -139,9 +139,10 @@ class PhieuKham(Base):
         nullable=False,
         unique=True,  # Đảm bảo quan hệ 1-1 ở cấp CSDL
     )
-    trieu_chung  = Column(Text, nullable=True)  # Triệu chứng bệnh nhân mô tả
-    chan_doan    = Column(Text, nullable=True)  # Chẩn đoán của bác sĩ
-    ai_summary   = Column(Text, nullable=True)  # Tóm tắt do AI sinh ra
+    trieu_chung        = Column(Text, nullable=True)  # Triệu chứng bệnh nhân mô tả
+    chan_doan          = Column(Text, nullable=True)  # Chẩn đoán của bác sĩ
+    ai_summary         = Column(Text, nullable=True)  # Tóm tắt do AI sinh ra
+    huong_dan_sau_kham = Column(Text, nullable=True)  # Lời dặn dò, hướng dẫn chăm sóc sau khám (Bác sĩ duyệt)
 
     # Quan hệ ngược về LichKham
     lich_kham = relationship(
@@ -393,4 +394,25 @@ class BangLuong(Base):
 
     def __repr__(self) -> str:
         return f"<BangLuong id={self.id} ho_ten='{self.ho_ten}' thang={self.thang}/{self.nam} thuc_linh={self.thuc_linh} trang_thai='{self.trang_thai}'>"
+
+
+# ════════════════════════════════════════════════════════════════════════════════
+#  14. AI LOGS — Nhật ký kiểm toán các lượt gọi AI (SEC-AI-04 & NFR-SEC-01)
+# ════════════════════════════════════════════════════════════════════════════════
+class AILog(Base):
+    __tablename__ = "ai_logs"
+
+    id               = Column(Integer, primary_key=True, index=True)
+    user_id          = Column(Integer, nullable=True)        # ID bác sĩ/nhân viên hoặc null nếu là guest
+    chuc_nang        = Column(String(50), nullable=False)    # ai_summary | ai_post_exam | ai_chatbot
+    prompt_masked    = Column(Text, nullable=False)          # Nội dung prompt đã che giấu thông tin PII
+    response_text    = Column(Text, nullable=True)           # Nội dung phản hồi từ AI
+    model_name       = Column(String(100), nullable=True)    # Tên mô hình (vd: gemini-1.5-flash)
+    response_time_ms = Column(Integer, nullable=True)        # Thời gian phản hồi tính bằng mili-giây
+    trang_thai       = Column(String(30), default="success") # success | error | fallback
+    thoi_gian        = Column(DateTime, default=datetime.utcnow)
+
+    def __repr__(self) -> str:
+        return f"<AILog id={self.id} chuc_nang='{self.chuc_nang}' trang_thai='{self.trang_thai}'>"
+
 

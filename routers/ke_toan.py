@@ -155,8 +155,105 @@ def pay_salary(
 
 
 # ════════════════════════════════════════════════════════════════════════════════
-#  2. QUẢN LÝ XUẤT NHẬP HÀNG HÓA & KHO DƯỢC
+#  2. QUẢN LÝ DANH MỤC THUỐC & KHO DƯỢC (CRUD & CẢNH BÁO TỒN KHO)
 # ════════════════════════════════════════════════════════════════════════════════
+
+@router.get("/thuocs/canh-bao-ton-kho", response_model=List[schemas.ThuocResponse])
+def get_low_stock_medicines(
+    threshold: int = Query(10, ge=1, le=100, description="Ngưỡng cảnh báo tồn kho"),
+    db: Session = Depends(get_db)
+):
+    """
+    Lấy danh sách các loại thuốc có số lượng tồn kho thấp hơn ngưỡng quy định (mặc định < 10).
+    Phục vụ cảnh báo cho Thủ kho / Kế toán lập kế hoạch nhập hàng.
+    """
+    low_stocks = db.query(models.Thuoc).filter(models.Thuoc.so_luong_ton < threshold).order_by(models.Thuoc.so_luong_ton.asc()).all()
+    return low_stocks
+
+
+@router.get("/thuocs", response_model=List[schemas.ThuocResponse])
+def get_all_medicines(
+    q: Optional[str] = Query(None, description="Tìm kiếm theo tên thuốc"),
+    db: Session = Depends(get_db)
+):
+    """Lấy danh sách tất cả thuốc trong danh mục kho dược."""
+    query = db.query(models.Thuoc)
+    if q and q.strip():
+        query = query.filter(models.Thuoc.ten_thuoc.ilike(f"%{q.strip()}%"))
+    return query.order_by(models.Thuoc.ten_thuoc.asc()).all()
+
+
+@router.post("/thuocs", response_model=schemas.ThuocResponse, status_code=status.HTTP_201_CREATED)
+def create_medicine(
+    payload: schemas.ThuocCreate,
+    db: Session = Depends(get_db)
+):
+    """Thêm mới 1 loại thuốc vào danh mục."""
+    exist = db.query(models.Thuoc).filter(models.Thuoc.ten_thuoc == payload.ten_thuoc.strip()).first()
+    if exist:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Thuốc '{payload.ten_thuoc}' đã tồn tại trong danh mục với ID #{exist.id}."
+        )
+
+    new_thuoc = models.Thuoc(
+        ten_thuoc=payload.ten_thuoc.strip(),
+        don_vi_tinh=payload.don_vi_tinh or "Viên",
+        gia_nhap=payload.gia_nhap or 0.0,
+        don_gia=payload.don_gia or 0.0,
+        so_luong_ton=payload.so_luong_ton or 0
+    )
+    db.add(new_thuoc)
+    db.commit()
+    db.refresh(new_thuoc)
+    return new_thuoc
+
+
+@router.put("/thuocs/{thuoc_id}", response_model=schemas.ThuocResponse)
+def update_medicine(
+    thuoc_id: int,
+    payload: schemas.ThuocUpdate,
+    db: Session = Depends(get_db)
+):
+    """Cập nhật thông tin thuốc (tên, giá nhập, giá bán, số lượng tồn)."""
+    thuoc = db.query(models.Thuoc).filter(models.Thuoc.id == thuoc_id).first()
+    if not thuoc:
+        raise HTTPException(status_code=404, detail=f"Không tìm thấy thuốc với ID #{thuoc_id}")
+
+    if payload.ten_thuoc is not None:
+        thuoc.ten_thuoc = payload.ten_thuoc.strip()
+    if payload.don_vi_tinh is not None:
+        thuoc.don_vi_tinh = payload.don_vi_tinh
+    if payload.gia_nhap is not None:
+        thuoc.gia_nhap = payload.gia_nhap
+    if payload.don_gia is not None:
+        thuoc.don_gia = payload.don_gia
+    if payload.so_luong_ton is not None:
+        thuoc.so_luong_ton = payload.so_luong_ton
+
+    db.commit()
+    db.refresh(thuoc)
+    return thuoc
+
+
+@router.delete("/thuocs/{thuoc_id}")
+def delete_medicine(thuoc_id: int, db: Session = Depends(get_db)):
+    """Xóa thuốc khỏi danh mục (chỉ xóa khi chưa có đơn thuốc nào sử dụng)."""
+    thuoc = db.query(models.Thuoc).filter(models.Thuoc.id == thuoc_id).first()
+    if not thuoc:
+        raise HTTPException(status_code=404, detail=f"Không tìm thấy thuốc với ID #{thuoc_id}")
+
+    # Kiểm tra ràng buộc
+    if thuoc.don_thuocs and len(thuoc.don_thuocs) > 0:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Thuốc '{thuoc.ten_thuoc}' đã được kê trong {len(thuoc.don_thuocs)} đơn thuốc, không thể xóa để bảo toàn lịch sử bệnh án."
+        )
+
+    db.delete(thuoc)
+    db.commit()
+    return {"message": f"Đã xóa thành công thuốc '{thuoc.ten_thuoc}'"}
+
 
 @router.get("/kho/ton-kho")
 def get_inventory_status(db: Session = Depends(get_db)):
@@ -178,7 +275,7 @@ def get_inventory_status(db: Session = Depends(get_db)):
             "don_gia_ban": t.don_gia,
             "so_luong_ton": t.so_luong_ton or 0,
             "gia_tri_ton_kho": gia_tri_ton,
-            "canh_bao": "Sắp hết hàng" if (t.so_luong_ton or 0) < 20 else "Đủ hàng"
+            "canh_bao": "Sắp hết hàng" if (t.so_luong_ton or 0) < 10 else "Đủ hàng"
         })
 
     return {
@@ -186,6 +283,7 @@ def get_inventory_status(db: Session = Depends(get_db)):
         "tong_mat_hang": len(results),
         "tong_gia_tri_ton_kho": tong_gia_tri_ton
     }
+
 
 
 @router.post("/kho/nhap-kho")
