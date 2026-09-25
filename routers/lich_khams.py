@@ -90,6 +90,23 @@ class PatientVerifyOtpAndBookInput(BaseModel):
     ly_do_kham: Optional[str] = None
 
 
+class TiepDonTaiQuayInput(BaseModel):
+    benh_nhan_id: Optional[int] = None
+    ho_ten: Optional[str] = None
+    so_dien_thoai: Optional[str] = None
+    ngay_sinh: Optional[date] = None
+    gio_tinh: Optional[str] = "Khác"
+    cccd: Optional[str] = None
+    ma_bhyt: Optional[str] = None
+    dia_chi: Optional[str] = None
+    tien_su_benh: Optional[str] = None
+    chuyen_khoa_id: Optional[int] = None
+    bac_si_id: Optional[int] = None
+    thoi_gian: Optional[datetime] = None
+    ly_do_kham: Optional[str] = "Khám bệnh tại quầy"
+    trang_thai: Optional[str] = "cho_kham"
+
+
 def calculate_gio_du_kien(stt: Optional[int], thoi_gian: Optional[datetime]) -> Optional[str]:
     """
     Tính khung giờ dự kiến vào khám cụ thể theo slot 15 phút dựa trên STT:
@@ -776,6 +793,167 @@ def create_lich_kham(
         "phong_kham": phong_kham,
         "ten_bac_si": ten_bac_si,
         "benh_nhan_id": new_lich_kham.benh_nhan_id,
+        "thoi_gian": new_lich_kham.thoi_gian.strftime("%Y-%m-%d %H:%M"),
+        "trang_thai": new_lich_kham.trang_thai
+    }
+
+
+@router.post("/tiep-don-tai-quay", status_code=status.HTTP_201_CREATED)
+def tiep_don_tai_quay(
+    data: TiepDonTaiQuayInput,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(require_roles(["le_tan", "admin"]))
+):
+    """
+    POST /tiep-don-tai-quay
+    Nghiệp vụ Tiếp đón Bệnh nhân Trực tiếp tại Quầy Lễ tân:
+    - Bệnh nhân chưa từng đến khám (chưa có hồ sơ, chưa hẹn trước): Tự động tạo hồ sơ bệnh nhân mới.
+    - Bệnh nhân cũ: Chọn theo ID hoặc tự nhận diện theo Số điện thoại / CCCD.
+    - Cấp ngay STT khám, phân bổ phòng khám & bác sĩ chuyên khoa, tính khung giờ dự kiến vào khám.
+    """
+    benh_nhan = None
+
+    # 1. Nếu chọn bệnh nhân đã có ID
+    if data.benh_nhan_id:
+        benh_nhan = db.query(models.BenhNhan).filter(models.BenhNhan.id == data.benh_nhan_id).first()
+        if not benh_nhan:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Không tìm thấy bệnh nhân có ID #{data.benh_nhan_id}"
+            )
+    else:
+        # Bệnh nhân đến quầy chưa có ID
+        if not data.ho_ten or not data.ho_ten.strip():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Vui lòng nhập Họ và tên bệnh nhân!"
+            )
+        clean_name = data.ho_ten.strip()
+        clean_phone = data.so_dien_thoai.strip() if data.so_dien_thoai else None
+
+        # Tra cứu theo SĐT nếu có để tránh tạo trùng
+        if clean_phone:
+            benh_nhan = db.query(models.BenhNhan).filter(models.BenhNhan.so_dien_thoai == clean_phone).first()
+
+        # Tra cứu theo CCCD nếu có
+        if not benh_nhan and data.cccd and data.cccd.strip():
+            benh_nhan = db.query(models.BenhNhan).filter(models.BenhNhan.cccd == data.cccd.strip()).first()
+
+        # Nếu chưa tồn tại -> Tự động tạo mới hồ sơ bệnh nhân
+        if not benh_nhan:
+            benh_nhan = models.BenhNhan(
+                ho_ten=clean_name,
+                so_dien_thoai=clean_phone,
+                ngay_sinh=data.ngay_sinh,
+                gio_tinh=data.gio_tinh or "Khác",
+                cccd=data.cccd.strip() if data.cccd else None,
+                ma_bhyt=data.ma_bhyt.strip() if data.ma_bhyt else None,
+                dia_chi=data.dia_chi.strip() if data.dia_chi else None,
+                tien_su_benh=data.tien_su_benh.strip() if data.tien_su_benh else None
+            )
+            db.add(benh_nhan)
+            db.commit()
+            db.refresh(benh_nhan)
+        else:
+            # Cập nhật thêm thông tin nếu bệnh nhân cũ bổ sung
+            updated = False
+            if data.cccd and not benh_nhan.cccd:
+                benh_nhan.cccd = data.cccd.strip()
+                updated = True
+            if data.ma_bhyt and not benh_nhan.ma_bhyt:
+                benh_nhan.ma_bhyt = data.ma_bhyt.strip()
+                updated = True
+            if updated:
+                db.commit()
+                db.refresh(benh_nhan)
+
+    # 2. Xác định thời gian khám
+    exam_time = data.thoi_gian or datetime.now()
+
+    # 3. Xác định Bác sĩ & Chuyên khoa
+    assigned_doc_id = data.bac_si_id
+    assigned_ck_id = data.chuyen_khoa_id
+
+    if not assigned_doc_id and assigned_ck_id:
+        active_doc = db.query(models.BacSi).filter(
+            models.BacSi.chuyen_khoa_id == assigned_ck_id,
+            models.BacSi.trang_thai == True
+        ).first()
+        if not active_doc:
+            ck = db.query(models.ChuyenKhoa).filter(models.ChuyenKhoa.id == assigned_ck_id).first()
+            if ck:
+                active_doc = db.query(models.BacSi).filter(
+                    models.BacSi.chuyen_khoa.ilike(f"%{ck.ten_chuyen_khoa}%"),
+                    models.BacSi.trang_thai == True
+                ).first()
+        if active_doc:
+            assigned_doc_id = active_doc.user_id or active_doc.id
+
+    # 4. Sinh STT nếu tiếp nhận khám ngay ('cho_kham')
+    assigned_stt = None
+    target_status = data.trang_thai or "cho_kham"
+    if target_status == "cho_kham":
+        today_date = exam_time.date()
+        max_stt = db.query(func.max(models.LichKham.stt)).filter(
+            func.date(models.LichKham.thoi_gian) == today_date
+        ).scalar() or 0
+        assigned_stt = max_stt + 1
+
+    # 5. Tạo lịch khám
+    new_lich_kham = models.LichKham(
+        benh_nhan_id=benh_nhan.id,
+        bac_si_id=assigned_doc_id,
+        chuyen_khoa_id=assigned_ck_id,
+        stt=assigned_stt,
+        thoi_gian=exam_time,
+        trang_thai=target_status,
+        ly_do_kham=data.ly_do_kham or "Khám bệnh tại quầy"
+    )
+    db.add(new_lich_kham)
+    db.commit()
+    db.refresh(new_lich_kham)
+
+    # 6. Lấy thông tin điều phối đầy đủ
+    gio_du_kien = calculate_gio_du_kien(new_lich_kham.stt, new_lich_kham.thoi_gian)
+    phong_kham = "Phòng khám chung"
+    ten_bac_si = "Chưa phân công (Tự động điều phối)"
+    ten_chuyen_khoa = "Khám tổng quát"
+
+    if new_lich_kham.chuyen_khoa_id:
+        ck = db.query(models.ChuyenKhoa).filter(models.ChuyenKhoa.id == new_lich_kham.chuyen_khoa_id).first()
+        if ck:
+            ten_chuyen_khoa = ck.ten_chuyen_khoa
+
+    if new_lich_kham.bac_si_id:
+        doc = db.query(models.BacSi).filter(or_(models.BacSi.id == new_lich_kham.bac_si_id, models.BacSi.user_id == new_lich_kham.bac_si_id)).first()
+        if doc:
+            ten_bac_si = f"{doc.hoc_vi or 'BS.'} {doc.ho_ten}"
+            phong_kham = doc.phong_kham or phong_kham
+            if doc.chuyen_khoa:
+                ten_chuyen_khoa = doc.chuyen_khoa
+
+    # 7. Ghi Audit Log
+    audit = models.AuditLog(
+        user_id=current_user.id,
+        action="CREATE",
+        target_table="lich_khams",
+        target_id=new_lich_kham.id,
+        mo_ta=f"Lễ tân {current_user.username} tiếp đón tại quầy #{new_lich_kham.id} cho BN {benh_nhan.ho_ten} (STT: {new_lich_kham.stt})"
+    )
+    db.add(audit)
+    db.commit()
+
+    return {
+        "message": "Tiếp đón bệnh nhân tại quầy thành công!",
+        "id": new_lich_kham.id,
+        "stt": new_lich_kham.stt,
+        "benh_nhan_id": benh_nhan.id,
+        "ho_ten": benh_nhan.ho_ten,
+        "so_dien_thoai": benh_nhan.so_dien_thoai,
+        "ten_chuyen_khoa": ten_chuyen_khoa,
+        "ten_bac_si": ten_bac_si,
+        "phong_kham": phong_kham,
+        "gio_du_kien": gio_du_kien,
         "thoi_gian": new_lich_kham.thoi_gian.strftime("%Y-%m-%d %H:%M"),
         "trang_thai": new_lich_kham.trang_thai
     }
