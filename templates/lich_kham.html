@@ -243,45 +243,98 @@
 
   </main>
 
-  <!-- MODAL ĐẶT LỊCH KHÁM MỚI -->
+  <!-- MODAL TIẾP ĐÓN & ĐĂNG KÝ KHÁM TẠI QUẦY -->
   <div class="modal fade" id="bookingModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered">
       <div class="modal-content border-0 shadow-lg rounded-4">
         <div class="modal-header bg-primary text-white rounded-top-4">
-          <h5 class="modal-title fw-bold"><i class="fa-solid fa-calendar-plus me-2"></i>Tạo Lịch Khám Mới</h5>
+          <h5 class="modal-title fw-bold"><i class="fa-solid fa-hospital-user me-2"></i>Tiếp Đón & Đăng Ký Khám Tại Quầy</h5>
           <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
         </div>
-        <form id="formDatLich" onsubmit="handleConfirmBooking(event)">
+        <form id="formDatLich" onsubmit="event.preventDefault(); submitBookingForm('cho_kham');">
           <div class="modal-body p-4">
             
-            <div class="row g-3">
-              <!-- Chọn bệnh nhân -->
-              <div class="col-md-12">
-                <label for="benh_nhan_id" class="form-label fw-semibold small text-secondary">
-                  Chọn Bệnh Nhân <span class="text-danger">*</span>
-                </label>
-                <select id="benh_nhan_id" class="form-select" required>
-                  <option value="">-- Đang tải danh sách bệnh nhân... --</option>
-                </select>
+            <!-- Chuyển đổi Bệnh nhân Mới / Bệnh nhân Cũ -->
+            <ul class="nav nav-pills nav-fill mb-3 bg-light p-1 rounded-3" id="patientTypeTab" role="tablist">
+              <li class="nav-item" role="presentation">
+                <button class="nav-link active fw-bold py-2" id="tab-new-patient-btn" data-bs-toggle="pill" data-bs-target="#tab-new-patient" type="button" role="tab" onclick="switchPatientMode('new')">
+                  <i class="fa-solid fa-user-plus me-1 text-primary"></i> 1. Bệnh Nhân MỚI (Chưa từng có hồ sơ)
+                </button>
+              </li>
+              <li class="nav-item" role="presentation">
+                <button class="nav-link fw-bold py-2" id="tab-existing-patient-btn" data-bs-toggle="pill" data-bs-target="#tab-existing-patient" type="button" role="tab" onclick="switchPatientMode('existing')">
+                  <i class="fa-solid fa-address-book me-1 text-success"></i> 2. Bệnh Nhân CŨ (Đã có hồ sơ tại viện)
+                </button>
+              </li>
+            </ul>
+
+            <div class="tab-content mb-3" id="patientTabContent">
+              <!-- TAB 1: BỆNH NHÂN MỚI -->
+              <div class="tab-pane fade show active p-3 bg-light rounded-3 border" id="tab-new-patient" role="tabpanel">
+                <div class="row g-2">
+                  <div class="col-md-7">
+                    <label class="form-label small fw-bold text-dark mb-1">Họ và tên bệnh nhân <span class="text-danger">*</span></label>
+                    <input type="text" id="new_ho_ten" class="form-control" placeholder="Ví dụ: Nguyễn Văn An" />
+                  </div>
+                  <div class="col-md-5">
+                    <label class="form-label small fw-bold text-dark mb-1">Số điện thoại liên hệ <span class="text-danger">*</span></label>
+                    <input type="tel" id="new_sdt" class="form-control" placeholder="Ví dụ: 0987654321" />
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label small fw-semibold text-secondary mb-1">Ngày sinh</label>
+                    <input type="date" id="new_ngay_sinh" class="form-control" />
+                  </div>
+                  <div class="col-md-3">
+                    <label class="form-label small fw-semibold text-secondary mb-1">Giới tính</label>
+                    <select id="new_gioi_tinh" class="form-select">
+                      <option value="Nam">Nam</option>
+                      <option value="Nữ">Nữ</option>
+                      <option value="Khác">Khác</option>
+                    </select>
+                  </div>
+                  <div class="col-md-5">
+                    <label class="form-label small fw-semibold text-secondary mb-1">Số CCCD / Mã định danh</label>
+                    <input type="text" id="new_cccd" class="form-control" placeholder="12 chữ số căn cước" />
+                  </div>
+                  <div class="col-md-6">
+                    <label class="form-label small fw-semibold text-secondary mb-1">Mã thẻ BHYT (nếu có)</label>
+                    <input type="text" id="new_bhyt" class="form-control" placeholder="Ví dụ: DN401..." />
+                  </div>
+                  <div class="col-md-6">
+                    <label class="form-label small fw-semibold text-secondary mb-1">Địa chỉ thường trú</label>
+                    <input type="text" id="new_dia_chi" class="form-control" placeholder="Quận/Huyện, Tỉnh/TP..." />
+                  </div>
+                </div>
               </div>
 
-              <!-- Chọn Chuyên khoa -->
+              <!-- TAB 2: BỆNH NHÂN CŨ -->
+              <div class="tab-pane fade p-3 bg-light rounded-3 border" id="tab-existing-patient" role="tabpanel">
+                <label for="benh_nhan_id" class="form-label small fw-bold text-dark mb-1">
+                  <i class="fa-solid fa-magnifying-glass me-1 text-success"></i>Chọn Bệnh Nhân Đã Từng Khám <span class="text-danger">*</span>
+                </label>
+                <select id="benh_nhan_id" class="form-select form-select-lg fs-6">
+                  <option value="">-- Đang tải danh sách bệnh nhân... --</option>
+                </select>
+                <div class="small text-muted mt-2"><i class="fa-solid fa-circle-info me-1"></i>Hệ thống tự động liên kết mã hồ sơ, tiền sử dị ứng và thẻ BHYT đã lưu.</div>
+              </div>
+            </div>
+
+            <!-- PHẦN THÔNG TIN CHUYÊN KHOA & BÁC SĨ -->
+            <div class="row g-3">
               <div class="col-md-6">
                 <label for="chuyen_khoa_id" class="form-label fw-semibold small text-secondary">Chuyên khoa khám</label>
                 <select id="chuyen_khoa_id" class="form-select" onchange="onSpecialtyChange()">
-                  <option value="">-- Chọn chuyên khoa --</option>
+                  <option value="">-- Khám tổng quát (Mặc định) --</option>
                 </select>
               </div>
 
-              <!-- Chọn Bác sĩ -->
               <div class="col-md-6">
                 <label for="bac_si_id" class="form-label fw-semibold small text-secondary">Bác sĩ phụ trách</label>
                 <select id="bac_si_id" class="form-select">
-                  <option value="">-- Tất cả Bác sĩ --</option>
+                  <option value="">-- Tự động điều phối theo chuyên khoa --</option>
                 </select>
               </div>
 
-              <!-- Ngày & Giờ khám -->
               <div class="col-md-6">
                 <label for="ngay_kham" class="form-label fw-semibold small text-secondary">Ngày khám <span class="text-danger">*</span></label>
                 <input type="date" id="ngay_kham" class="form-control" required />
@@ -291,10 +344,9 @@
                 <input type="time" id="gio_kham" class="form-control" required />
               </div>
 
-              <!-- Lý do khám -->
               <div class="col-md-12">
                 <label for="ly_do_kham" class="form-label fw-semibold small text-secondary">Lý do khám / Triệu chứng ban đầu</label>
-                <textarea id="ly_do_kham" rows="3" class="form-control" placeholder="Mô tả sơ bộ triệu chứng hoặc nhu cầu khám..."></textarea>
+                <textarea id="ly_do_kham" rows="2" class="form-control" placeholder="Mô tả triệu chứng hoặc lý do đến quầy khám..."></textarea>
               </div>
             </div>
 
@@ -750,40 +802,94 @@
         });
       }
 
+    let currentPatientMode = 'new'; // 'new' hoac 'existing'
+
+    function switchPatientMode(mode) {
+      currentPatientMode = mode;
+      const tabNewBtn = document.getElementById("tab-new-patient-btn");
+      const tabExistBtn = document.getElementById("tab-existing-patient-btn");
+      if (mode === 'new') {
+        tabNewBtn.classList.add("active");
+        tabExistBtn.classList.remove("active");
+      } else {
+        tabExistBtn.classList.add("active");
+        tabNewBtn.classList.remove("active");
+      }
+    }
+
     function openBookingModal() {
       document.getElementById("formDatLich").reset();
       const today = new Date().toISOString().split('T')[0];
       document.getElementById("ngay_kham").value = today;
-      document.getElementById("gio_kham").value = "09:00";
+      const now = new Date();
+      const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+      document.getElementById("gio_kham").value = timeStr;
+
+      // Mặc định chọn tab bệnh nhân mới
+      switchPatientMode('new');
+      const tabNewEl = document.getElementById("tab-new-patient-btn");
+      if (tabNewEl) new bootstrap.Tab(tabNewEl).show();
+
       bookingModal.show();
     }
 
     /**
-     * Gửi request tạo lịch hẹn mới (POST /api/v1/lich-khams/)
+     * Gửi request tiếp đón tại quầy (POST /api/v1/lich-khams/tiep-don-tai-quay)
      */
     async function submitBookingForm(desiredStatus = 'cho_kham') {
-      const benhNhanId = document.getElementById("benh_nhan_id").value;
-      const bacSiId = document.getElementById("bac_si_id").value;
       const chuyenKhoaId = document.getElementById("chuyen_khoa_id").value;
+      const bacSiId = document.getElementById("bac_si_id").value;
       const ngayKham = document.getElementById("ngay_kham").value;
       const gioKham = document.getElementById("gio_kham").value;
       const lyDoKham = document.getElementById("ly_do_kham").value.trim();
 
-      if (!benhNhanId) {
-        showToast("Vui lòng chọn Bệnh nhân!", "warning");
-        return;
-      }
-
       const thoiGianISO = `${ngayKham}T${gioKham}:00`;
 
-      const payload = {
-        benh_nhan_id: parseInt(benhNhanId),
-        bac_si_id: bacSiId ? parseInt(bacSiId) : null,
+      let payload = {
         chuyen_khoa_id: chuyenKhoaId ? parseInt(chuyenKhoaId) : null,
+        bac_si_id: bacSiId ? parseInt(bacSiId) : null,
         thoi_gian: thoiGianISO,
         ly_do_kham: lyDoKham || "Khám bệnh tại quầy",
         trang_thai: desiredStatus
       };
+
+      if (currentPatientMode === 'new') {
+        const hoTen = document.getElementById("new_ho_ten").value.trim();
+        const sdt = document.getElementById("new_sdt").value.trim();
+        const ngaySinh = document.getElementById("new_ngay_sinh").value;
+        const gioiTinh = document.getElementById("new_gioi_tinh").value;
+        const cccd = document.getElementById("new_cccd").value.trim();
+        const bhyt = document.getElementById("new_bhyt").value.trim();
+        const diaChi = document.getElementById("new_dia_chi").value.trim();
+
+        if (!hoTen) {
+          showToast("Vui lòng nhập Họ và tên bệnh nhân mới!", "warning");
+          document.getElementById("new_ho_ten").focus();
+          return;
+        }
+        if (!sdt) {
+          showToast("Vui lòng nhập Số điện thoại bệnh nhân!", "warning");
+          document.getElementById("new_sdt").focus();
+          return;
+        }
+
+        payload.ho_ten = hoTen;
+        payload.so_dien_thoai = sdt;
+        payload.ngay_sinh = ngaySinh || null;
+        payload.gio_tinh = gioiTinh;
+        payload.cccd = cccd || null;
+        payload.ma_bhyt = bhyt || null;
+        payload.dia_chi = diaChi || null;
+
+      } else {
+        const benhNhanId = document.getElementById("benh_nhan_id").value;
+        if (!benhNhanId) {
+          showToast("Vui lòng chọn bệnh nhân từ danh mục!", "warning");
+          document.getElementById("benh_nhan_id").focus();
+          return;
+        }
+        payload.benh_nhan_id = parseInt(benhNhanId);
+      }
 
       const btnDirect = document.getElementById("btnBookingDirect");
       const btnNormal = document.getElementById("btnBookingNormal");
@@ -791,7 +897,7 @@
       if (btnNormal) btnNormal.disabled = true;
 
       try {
-        const response = await fetch(API_LICH_KHAM_URL, {
+        const response = await fetch(`${API_LICH_KHAM_URL}tiep-don-tai-quay`, {
           method: "POST",
           headers: getAuthHeaders(),
           body: JSON.stringify(payload)
@@ -805,14 +911,17 @@
         const resData = await response.json();
         bookingModal.hide();
 
+        // Nạp lại danh mục bệnh nhân đề phòng có bệnh nhân mới vừa được tạo
+        loadPatientsSelect();
+
         if (desiredStatus === 'cho_kham') {
           showToast(`🎉 Tiếp nhận thành công! Đã cấp Số Thứ Tự STT #${resData.stt || resData.id}`, "success");
           fetchAppointments().then(() => {
             const matched = currentAppointmentsList.find(x => x.id === resData.id) || {
               id: resData.id,
               stt: resData.stt,
-              ho_ten: document.getElementById("benh_nhan_id").options[document.getElementById("benh_nhan_id").selectedIndex].text,
-              ten_chuyen_khoa: chuyenKhoaId ? document.getElementById("chuyen_khoa_id").options[document.getElementById("chuyen_khoa_id").selectedIndex].text : "Khám tổng quát",
+              ho_ten: resData.ho_ten,
+              ten_chuyen_khoa: resData.ten_chuyen_khoa || "Khám tổng quát",
               ten_bac_si: resData.ten_bac_si || "Chưa phân công",
               phong_kham: resData.phong_kham || "Phòng khám",
               thoi_gian: resData.thoi_gian,
@@ -826,7 +935,7 @@
         }
 
       } catch (error) {
-        console.error("Lỗi đặt lịch khám:", error);
+        console.error("Lỗi tiếp đón tại quầy:", error);
         showToast(error.message, "danger");
       } finally {
         if (btnDirect) btnDirect.disabled = false;
