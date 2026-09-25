@@ -874,7 +874,7 @@
               <span class="badge ${isDaCoKQ ? 'bg-danger text-white' : 'bg-primary'} fw-bold">STT #${item.stt || item.id}</span>
               ${statusBadge}
             </div>
-            <span class="badge bg-light text-secondary small">${item.thoi_gian}</span>
+            <span class="badge bg-light text-secondary small">${item.gio_du_kien ? `<i class="fa-solid fa-stopwatch me-1 text-primary"></i>${item.gio_du_kien}` : item.thoi_gian}</span>
           </div>
           <div class="d-flex align-items-center justify-content-between">
             <div class="fw-bold text-dark fs-6">${escapeHtml(item.ho_ten)}</div>
@@ -1703,7 +1703,6 @@
 
       const modal = new bootstrap.Modal(document.getElementById("printPrescriptionModal"));
       modal.show();
-    }
     }
 
     function resetForm() {
