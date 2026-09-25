@@ -90,6 +90,25 @@ class PatientVerifyOtpAndBookInput(BaseModel):
     ly_do_kham: Optional[str] = None
 
 
+def calculate_gio_du_kien(stt: Optional[int], thoi_gian: Optional[datetime]) -> Optional[str]:
+    """
+    Tính khung giờ dự kiến vào khám cụ thể theo slot 15 phút dựa trên STT:
+    - Ca sáng: bắt đầu từ 08:00
+    - Ca chiều: bắt đầu từ 13:30
+    """
+    if not thoi_gian:
+        return None
+    if not stt:
+        return thoi_gian.strftime("%H:%M")
+    if thoi_gian.hour < 12:
+        session_start = thoi_gian.replace(hour=8, minute=0, second=0, microsecond=0)
+    else:
+        session_start = thoi_gian.replace(hour=13, minute=30, second=0, microsecond=0)
+    est_start = session_start + timedelta(minutes=(stt - 1) * 15)
+    est_end = est_start + timedelta(minutes=15)
+    return f"{est_start.strftime('%H:%M')} - {est_end.strftime('%H:%M')}"
+
+
 # ════════════════════════════════════════════════════════════════════════════════
 #  ENDPOINTS CÔNG KHAI DÀNH CHO BỆNH NHÂN (KHÔNG CẦN ĐĂNG NHẬP)
 # ════════════════════════════════════════════════════════════════════════════════
@@ -625,18 +644,7 @@ def get_all_lich_khams(
             ket_qua_cls = lk.ly_do_kham[idx:].strip()
 
         # Tính khung giờ dự kiến vào khám cụ thể
-        gio_du_kien = None
-        if lk.stt:
-            base_time = lk.thoi_gian
-            if base_time.hour < 12:
-                session_start = base_time.replace(hour=8, minute=0, second=0, microsecond=0)
-            else:
-                session_start = base_time.replace(hour=13, minute=30, second=0, microsecond=0)
-            est_start = session_start + timedelta(minutes=(lk.stt - 1) * 15)
-            est_end = est_start + timedelta(minutes=15)
-            gio_du_kien = f"{est_start.strftime('%H:%M')} - {est_end.strftime('%H:%M')}"
-        else:
-            gio_du_kien = lk.thoi_gian.strftime("%H:%M")
+        gio_du_kien = calculate_gio_du_kien(lk.stt, lk.thoi_gian)
 
         results.append({
             "id": lk.id,
@@ -794,16 +802,7 @@ def update_trang_thai_lich_kham(
     db.refresh(lich_kham)
 
     # Tính khung giờ dự kiến vào khám cụ thể
-    gio_du_kien = None
-    if lich_kham.stt:
-        base_time = lich_kham.thoi_gian
-        if base_time.hour < 12:
-            session_start = base_time.replace(hour=8, minute=0, second=0, microsecond=0)
-        else:
-            session_start = base_time.replace(hour=13, minute=30, second=0, microsecond=0)
-        est_start = session_start + timedelta(minutes=(lich_kham.stt - 1) * 15)
-        est_end = est_start + timedelta(minutes=15)
-        gio_du_kien = f"{est_start.strftime('%H:%M')} - {est_end.strftime('%H:%M')}"
+    gio_du_kien = calculate_gio_du_kien(lich_kham.stt, lich_kham.thoi_gian)
 
     # Lấy thông tin phòng khám & bác sĩ
     phong_kham = "Phòng khám chung"
