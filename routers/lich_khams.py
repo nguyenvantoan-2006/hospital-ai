@@ -759,10 +759,22 @@ def create_lich_kham(
     db.add(audit)
     db.commit()
 
+    gio_du_kien = calculate_gio_du_kien(new_lich_kham.stt, new_lich_kham.thoi_gian)
+    phong_kham = "Phòng khám chung"
+    ten_bac_si = "Chưa phân công"
+    if new_lich_kham.bac_si_id:
+        doc = db.query(models.BacSi).filter(or_(models.BacSi.id == new_lich_kham.bac_si_id, models.BacSi.user_id == new_lich_kham.bac_si_id)).first()
+        if doc:
+            ten_bac_si = f"{doc.hoc_vi or 'BS.'} {doc.ho_ten}"
+            phong_kham = doc.phong_kham or phong_kham
+
     return {
         "message": "Đặt lịch khám thành công!",
         "id": new_lich_kham.id,
         "stt": new_lich_kham.stt,
+        "gio_du_kien": gio_du_kien,
+        "phong_kham": phong_kham,
+        "ten_bac_si": ten_bac_si,
         "benh_nhan_id": new_lich_kham.benh_nhan_id,
         "thoi_gian": new_lich_kham.thoi_gian.strftime("%Y-%m-%d %H:%M"),
         "trang_thai": new_lich_kham.trang_thai
