@@ -992,6 +992,10 @@
 
     // Khởi chạy khi tải trang
     window.addEventListener('DOMContentLoaded', () => {
+      // Auth Guard: Chỉ ke_toan và admin được truy cập
+      if (typeof initAuthGuard === 'function') {
+        if (!initAuthGuard(["ke_toan", "admin"])) return;
+      }
       const username = localStorage.getItem("username");
       if (username) {
         const el = document.getElementById("displayUser");
