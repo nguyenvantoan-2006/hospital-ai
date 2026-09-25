@@ -225,9 +225,11 @@ def get_queue_display(
         if bn and bn.ngay_sinh:
             dob_str = bn.ngay_sinh.strftime("%d/%m/%Y")
             nam_sinh = bn.ngay_sinh.year
+        gio_du_kien = calculate_gio_du_kien(lk.stt, lk.thoi_gian) if lk.stt else lk.thoi_gian.strftime("%H:%M")
         return {
             "id": lk.id,
             "stt": lk.stt,
+            "gio_du_kien": gio_du_kien,
             "ma_lich": f"LK{lk.id:04d}",
             "ho_ten": bn.ho_ten if bn else "Bệnh nhân",
             "ngay_sinh": dob_str,
