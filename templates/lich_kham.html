@@ -376,6 +376,10 @@
               <span class="text-dark small fw-bold"><i class="fa-solid fa-door-open me-1 text-primary"></i>PHÒNG KHÁM:</span>
               <span class="fw-bold text-primary fs-6" id="ticketRoom">Phòng 101 (Khu B)</span>
             </div>
+            <div class="d-flex justify-content-between py-2 border-bottom bg-info-subtle px-2 rounded-2 mt-2">
+              <span class="text-dark small fw-bold"><i class="fa-solid fa-clock me-1 text-info"></i>GIỜ DỰ KIẾN VÀO KHÁM:</span>
+              <span class="fw-bold text-info fs-6" id="ticketEstimatedTime">08:15 - 08:30</span>
+            </div>
             <div class="d-flex justify-content-between py-1 border-bottom">
               <span class="text-muted small">Thời gian hẹn:</span>
               <span class="small fw-semibold text-dark" id="ticketTime">2026-09-24 15:30</span>
@@ -628,6 +632,7 @@
             </td>
             <td>
               <div class="small fw-semibold"><i class="fa-regular fa-clock me-1 text-primary"></i>${item.thoi_gian}</div>
+              ${item.gio_du_kien ? `<div class="badge bg-info-subtle text-info border border-info-subtle mt-1"><i class="fa-solid fa-stopwatch me-1"></i>Dự kiến: ${escapeHtml(item.gio_du_kien)}</div>` : ''}
             </td>
             <td><small class="text-muted">${escapeHtml(item.ly_do_kham || 'Khám bệnh')}</small></td>
             <td>${statusBadge}</td>
@@ -738,14 +743,16 @@
         const res = await response.json();
         if (newStatus === 'cho_kham') {
           showToast(`🎉 Tiếp nhận thành công! Đã cấp Số Thứ Tự STT #${res.stt}`, "success");
-          fetchAppointments().then(() => {
-            const matched = currentAppointmentsList.find(x => x.id === id);
-            if (matched) {
-              matched.stt = res.stt;
-              matched.trang_thai = "cho_kham";
-              openQueueTicketModal(matched);
-            }
-          });
+          const matched = currentAppointmentsList.find(x => x.id === id);
+          if (matched) {
+            matched.stt = res.stt;
+            matched.trang_thai = "cho_kham";
+            if (res.gio_du_kien) matched.gio_du_kien = res.gio_du_kien;
+            if (res.phong_kham) matched.phong_kham = res.phong_kham;
+            if (res.ten_bac_si) matched.ten_bac_si = res.ten_bac_si;
+            openQueueTicketModal(matched);
+          }
+          fetchAppointments();
           return;
         } else {
           showToast(`Đã chuyển trạng thái lịch khám #${id} sang ${newStatus}`, "success");
@@ -865,6 +872,10 @@
       document.getElementById("ticketDoctor").textContent = (item.ten_bac_si && item.ten_bac_si !== "Chưa phân công") ? item.ten_bac_si : "Chưa phân công (Tự động điều phối)";
       document.getElementById("ticketRoom").textContent = item.phong_kham || "Phòng khám chung";
       document.getElementById("ticketTime").textContent = item.thoi_gian || "";
+      const estElem = document.getElementById("ticketEstimatedTime");
+      if (estElem) {
+        estElem.textContent = item.gio_du_kien || (item.thoi_gian ? item.thoi_gian.substring(11, 16) : "Đang điều phối");
+      }
 
       ticketModal.show();
     }
