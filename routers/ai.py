@@ -16,12 +16,14 @@ if api_key:
 else:
     raise ValueError("GEMINI_API_KEY is missing in environment variables.")
 
-# Danh sách models ưu tiên khả dụng
+# Danh sách models ưu tiên khả dụng (đã được kiểm tra hạn ngạch và hỗ trợ trên API v1beta)
 PREFERRED_MODELS = [
+    "gemini-flash-lite-latest",
+    "gemma-4-26b-a4b-it",
+    "gemini-3.1-flash-lite",
+    "gemini-3.1-flash-lite-preview",
     "gemini-flash-latest",
-    "gemini-pro-latest",
-    "gemini-2.0-flash-exp",
-    "gemini-1.5-flash-latest"
+    "gemini-pro-latest"
 ]
 
 from database import get_db
@@ -156,9 +158,15 @@ Hãy viết một đoạn tóm tắt hành chính ngắn gọn, súc tích (dư�
         logger.info(f"[AI Summary] Hoàn tất tóm tắt cho Bệnh nhân ID: {request.benh_nhan_id}")
         
     except Exception as e:
-        # Fallback: Lỗi kết nối API hoặc timeout
-        logger.error(f"[AI Summary Error] Bệnh nhân {request.benh_nhan_id} - {str(e)}")
-        summary_result = f"Dịch vụ AI Tóm tắt hiện không khả dụng ({str(e)}). Vui lòng xem hồ sơ thủ công."
+        # Fallback an toàn: Tránh hiển thị mã lỗi thô cho người dùng, tự động tóm tắt từ dữ liệu DB
+        logger.error(f"[AI Summary Fallback] Bệnh nhân {request.benh_nhan_id} - {str(e)}")
+        summary_result = (
+            f"📋 TÓM TẮT HÀNH CHÍNH & TIỀN SỬ (Tự động từ CSDL):\n"
+            f"• Bệnh nhân: {benh_nhan.ho_ten} (Mã BN: #{benh_nhan.id})\n"
+            f"• Tiền sử bệnh ghi nhận: {benh_nhan.tien_su_benh or 'Chưa ghi nhận tiền sử dị ứng / mạn tính'}\n"
+            f"• Lịch sử các lần khám gần nhất:\n{history_info}\n"
+            f"*(Hệ thống AI đang tạm bận/đạt giới hạn kết nối; bản tóm tắt được trích xuất an toàn từ hồ sơ bệnh án)*"
+        )
 
     return AISummaryResponse(summary=summary_result)
 
