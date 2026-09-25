@@ -828,9 +828,9 @@ def phan_cong_bac_si_lich_kham(
     if not lich_kham:
         raise HTTPException(status_code=404, detail="Không tìm thấy lịch khám!")
 
-    doc = db.query(models.BacSi).filter(
-        or_(models.BacSi.id == data.bac_si_id, models.BacSi.user_id == data.bac_si_id)
-    ).first()
+    doc = db.query(models.BacSi).filter(models.BacSi.user_id == data.bac_si_id).first()
+    if not doc:
+        doc = db.query(models.BacSi).filter(models.BacSi.id == data.bac_si_id).first()
     if not doc:
         raise HTTPException(status_code=404, detail=f"Không tìm thấy bác sĩ với ID={data.bac_si_id}!")
 
