@@ -270,12 +270,13 @@ def get_queue_display(
     phong_kham: Optional[str] = Query(None, description="Tên hoặc mã phòng khám, ví dụ: 'Phòng 101'"),
     chuyen_khoa: Optional[str] = Query(None, description="Tên chuyên khoa"),
     bac_si_id: Optional[int] = Query(None, description="ID bác sĩ hoặc user_id"),
+    limit: int = Query(20, description="Số lượng bệnh nhân chờ hiển thị"),
     db: Session = Depends(get_db)
 ):
     """
     API Công khai cho Màn hình Kiosk hiển thị hàng đợi phòng khám:
     - Bệnh nhân ĐANG KHÁM (hiển thị số thứ tự STT, đầy đủ Họ tên, Ngày tháng năm sinh/Năm sinh).
-    - DANH SÁCH CHUẨN BỊ (3 - 5 ca tiếp theo).
+    - DANH SÁCH CHUẨN BỊ (3 - 5 ca tiếp theo hoặc tùy cấu hình).
     - Thống kê ca khám trong ngày.
     """
     today = date.today()
@@ -343,7 +344,7 @@ def get_queue_display(
     # 4. Danh sách CHUẨN BỊ (trang_thai == 'cho_kham' hoặc 'da_co_ket_qua'), sắp xếp theo STT
     cho_kham_list = [lk for lk in all_today if lk.trang_thai in ["cho_kham", "da_co_ket_qua"]]
     cho_kham_list.sort(key=lambda x: (0 if x.trang_thai == "da_co_ket_qua" else 1, x.stt or 9999, x.thoi_gian))
-    waiting_queue = [format_patient_info(lk) for lk in cho_kham_list[:6]]
+    waiting_queue = [format_patient_info(lk) for lk in cho_kham_list[:limit]]
 
     # 5. Thống kê ca khám trong ngày
     da_kham_count = sum(1 for lk in all_today if lk.trang_thai == "hoan_thanh")
