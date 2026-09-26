@@ -137,5 +137,8 @@ def run_e2e_closed_loop_test():
     print("=" * 75)
     return True
 
+def test_e2e_closed_loop_and_sync():
+    assert run_e2e_closed_loop_test() is True
+
 if __name__ == "__main__":
     run_e2e_closed_loop_test()
