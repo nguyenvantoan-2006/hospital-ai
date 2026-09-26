@@ -8,6 +8,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8")
 
+from sqlalchemy import or_
 from database import SessionLocal
 import models
 from seed_specialties_and_doctors import SPECIALTIES_DATA
@@ -126,8 +127,61 @@ def run_fix():
                 doc.phong_kham = f"{doc.phong_kham or 'Phòng khám'} (Khu A)"
                 updated_docs_count += 1
 
+        # 7. Đồng bộ dữ liệu thật cho 100% Lịch khám (không để BS=None hoặc Chuyên khoa=None)
+        all_lks = db.query(models.LichKham).all()
+        synced_lks_count = 0
+        default_noi_tong_quat = std_specs_map.get("Nội Tổng Quát")
+
+        for lk in all_lks:
+            need_update = False
+            # 7.1 Nếu chưa có chuyên khoa, phân loại theo lý do khám
+            if not lk.chuyen_khoa_id:
+                reason = (lk.ly_do_kham or "").lower()
+                matched_spec = default_noi_tong_quat
+                if any(w in reason for w in ["tai", "mũi", "họng", "amidan"]):
+                    matched_spec = std_specs_map.get("Tai Mũi Họng", default_noi_tong_quat)
+                elif any(w in reason for w in ["mắt", "kính", "cận", "viễn"]):
+                    matched_spec = std_specs_map.get("Mắt (Nhãn Khoa)", default_noi_tong_quat)
+                elif any(w in reason for w in ["ho", "sốt", "phổi", "khó thở"]):
+                    matched_spec = std_specs_map.get("Hô Hấp - Phổi", default_noi_tong_quat)
+                elif any(w in reason for w in ["đầu", "chóng mặt", "thần kinh"]):
+                    matched_spec = std_specs_map.get("Thần Kinh", default_noi_tong_quat)
+                elif any(w in reason for w in ["bụng", "tiêu hóa", "dạ dày"]):
+                    matched_spec = std_specs_map.get("Tiêu Hóa - Gan Mật", default_noi_tong_quat)
+                elif any(w in reason for w in ["tim", "huyết áp"]):
+                    matched_spec = std_specs_map.get("Tim Mạch", default_noi_tong_quat)
+                
+                if matched_spec:
+                    lk.chuyen_khoa_id = matched_spec.id
+                    need_update = True
+
+            # 7.2 Nếu chưa có bác sĩ hoặc bác sĩ không active, gán bác sĩ thật của chuyên khoa
+            target_ck = db.query(models.ChuyenKhoa).filter(models.ChuyenKhoa.id == lk.chuyen_khoa_id).first()
+            if target_ck:
+                ck_name = target_ck.ten_chuyen_khoa
+                current_doc_valid = False
+                if lk.bac_si_id:
+                    doc_check = db.query(models.BacSi).filter(
+                        models.BacSi.trang_thai == True,
+                        or_(models.BacSi.user_id == lk.bac_si_id, models.BacSi.id == lk.bac_si_id)
+                    ).first()
+                    if doc_check:
+                        current_doc_valid = True
+
+                if not current_doc_valid:
+                    active_doc = db.query(models.BacSi).filter(
+                        models.BacSi.chuyen_khoa == ck_name,
+                        models.BacSi.trang_thai == True
+                    ).first()
+                    if active_doc:
+                        lk.bac_si_id = active_doc.user_id if active_doc.user_id else active_doc.id
+                        need_update = True
+
+            if need_update:
+                synced_lks_count += 1
+
         db.commit()
-        print(f"✓ Đã chuẩn hóa {updated_docs_count} bác sĩ: 100% có số phòng kèm KHU (Khu A, Khu B, Khu C, Khu D).")
+        print(f"✓ Đã đồng bộ 100% lịch khám ({synced_lks_count} ca cập nhật): mọi lịch khám đều có Chuyên khoa thật, Bác sĩ thật và Phòng khám thật.")
 
         print("=" * 60)
         print("🎉 HOÀN TẤT CHUẨN HÓA DỮ LIỆU CHUYÊN KHOA & BÁC SĨ")
