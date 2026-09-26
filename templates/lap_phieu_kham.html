@@ -380,13 +380,14 @@
       <div class="d-flex align-items-center gap-2 flex-wrap">
         <div class="d-flex align-items-center gap-1 bg-white px-2 py-1 rounded-3 border shadow-sm">
           <i class="fa-solid fa-door-open text-primary small"></i>
-          <label class="small text-secondary fw-semibold mb-0" for="doctorRoomFilter">Phòng:</label>
+          <label class="small text-secondary fw-semibold mb-0" for="doctorRoomFilter">Phòng & Khu:</label>
           <div class="position-relative d-inline-block">
-            <input type="text" id="quickRoomSearchInput" class="form-control form-control-sm border-0 bg-light rounded-2 px-2" placeholder="🔍 Số phòng (101, 202...)" style="width: 170px; font-size: 13px;" oninput="onQuickRoomSearch(this.value)" autocomplete="off">
+            <input type="text" id="quickRoomSearchInput" list="doctorRoomDatalist" class="form-control form-control-sm border-0 bg-light rounded-2 px-2" placeholder="🔍 Phòng / Khu (104 Khu A...)" style="width: 210px; font-size: 13px;" oninput="onQuickRoomSearch(this.value)" autocomplete="off">
+            <datalist id="doctorRoomDatalist"></datalist>
             <button type="button" id="btnClearRoomSearch" class="btn btn-sm position-absolute top-50 end-0 translate-middle-y text-muted me-1 border-0 py-0 px-1" style="display: none; font-size: 14px;" onclick="clearRoomSearch()" title="Xóa lọc phòng">×</button>
           </div>
-          <select id="doctorRoomFilter" class="form-select form-select-sm border-0 py-0" style="width: auto; min-width: 190px; box-shadow: none;" onchange="onDoctorRoomFilterChange(this.value)">
-            <option value="">Tất cả phòng khám</option>
+          <select id="doctorRoomFilter" class="form-select form-select-sm border-0 py-0" style="width: auto; min-width: 260px; box-shadow: none;" onchange="onDoctorRoomFilterChange(this.value)">
+            <option value="">-- Tất cả phòng khám & Khu --</option>
           </select>
         </div>
         <a href="/man_hinh_phong_kham.html" target="_blank" class="btn btn-sm btn-outline-primary rounded-3 px-3 fw-semibold">
@@ -583,11 +584,12 @@
                     <div class="col-md-6">
                       <div class="d-flex justify-content-between align-items-center mb-1">
                         <label class="form-label small fw-semibold text-secondary mb-0">Phòng khám / Phòng CLS đích <span class="text-danger">*</span></label>
-                        <small class="text-primary" style="font-size: 11px;">🔍 Gõ số phòng để chọn nhanh</small>
+                        <small class="text-primary" style="font-size: 11px;">🔍 Gõ số phòng hoặc Khu</small>
                       </div>
                       <div class="input-group input-group-sm mb-1">
                         <span class="input-group-text bg-white border-end-0"><i class="fa-solid fa-magnifying-glass text-muted"></i></span>
-                        <input type="text" id="quickTargetRoomSearch" class="form-control border-start-0 ps-0" placeholder="Nhập số phòng (vd: 202, 107...)" oninput="filterTargetRoomSelect(this.value)">
+                        <input type="text" id="quickTargetRoomSearch" list="targetRoomDatalist" class="form-control border-start-0 ps-0" placeholder="Nhập số phòng / Khu (vd: 202, Khu B...)" oninput="filterTargetRoomSelect(this.value)" autocomplete="off">
+                        <datalist id="targetRoomDatalist"></datalist>
                       </div>
                       <select id="targetRoomSelect" class="form-select form-select-sm">
                         <!-- Danh sách nạp từ API -->
@@ -777,14 +779,35 @@
         if (!res.ok) return;
         availableHospitalRooms = await res.json();
 
-        // Nạp vào dropdown bộ lọc thanh công cụ
+        // Nạp vào dropdown bộ lọc thanh công cụ và datalist gợi ý
         const filterSel = document.getElementById("doctorRoomFilter");
+        const dlRoom = document.getElementById("doctorRoomDatalist");
+        const dlTarget = document.getElementById("targetRoomDatalist");
+
+        if (dlRoom) dlRoom.innerHTML = "";
+        if (dlTarget) dlTarget.innerHTML = "";
+
         if (filterSel && availableHospitalRooms.length > 0) {
+          filterSel.innerHTML = `<option value="">-- Tất cả phòng khám & Khu --</option>`;
           availableHospitalRooms.forEach(r => {
             const opt = document.createElement("option");
             opt.value = r.phong_kham;
-            opt.textContent = `${r.phong_kham} (${r.chuyen_khoa})`;
+            opt.textContent = `${r.phong_kham} - ${r.chuyen_khoa}`;
             filterSel.appendChild(opt);
+
+            if (dlRoom) {
+              const dlOpt = document.createElement("option");
+              dlOpt.value = r.phong_kham;
+              dlOpt.label = `${r.chuyen_khoa} (${r.vi_tri || ''})`;
+              dlRoom.appendChild(dlOpt);
+            }
+
+            if (dlTarget) {
+              const dlOpt = document.createElement("option");
+              dlOpt.value = r.phong_kham;
+              dlOpt.label = `${r.chuyen_khoa} (${r.vi_tri || ''})`;
+              dlTarget.appendChild(dlOpt);
+            }
           });
         }
 
@@ -807,8 +830,8 @@
       const inp = document.getElementById("quickRoomSearchInput");
       const btnClear = document.getElementById("btnClearRoomSearch");
       if (val) {
-        const numMatch = val.match(/\d+/);
-        if (inp) inp.value = numMatch ? numMatch[0] : val;
+        // Giữ nguyên toàn bộ số phòng và Khu (vd: Phòng 104 (Khu A))
+        if (inp) inp.value = val;
         if (btnClear) btnClear.style.display = "inline-block";
       } else {
         if (inp) inp.value = "";
@@ -818,7 +841,7 @@
     }
 
     /**
-     * Tìm kiếm nhanh số phòng khi gõ trực tiếp vào ô input (vd: 101, 202, 107...)
+     * Tìm kiếm nhanh số phòng và Khu khi gõ trực tiếp vào ô input (vd: 104, 104 Khu A, Khu B...)
      */
     function onQuickRoomSearch(query) {
       const q = (query || "").trim().toLowerCase();
@@ -827,11 +850,12 @@
 
       const filterSel = document.getElementById("doctorRoomFilter");
       if (q) {
-        // Tìm phòng khớp số phòng hoặc tên khoa
-        const matched = availableHospitalRooms.find(r => 
-          r.phong_kham.toLowerCase().includes(q) || 
-          (r.chuyen_khoa && r.chuyen_khoa.toLowerCase().includes(q))
-        );
+        const tokens = q.split(/\s+/).filter(t => t.length > 0);
+        // Tìm phòng khớp cả số phòng, Khu và tên chuyên khoa
+        const matched = availableHospitalRooms.find(r => {
+          const fullRoomText = `${r.phong_kham} ${r.chuyen_khoa || ''} ${r.vi_tri || ''}`.toLowerCase();
+          return tokens.every(token => fullRoomText.includes(token));
+        });
         if (matched) {
           filterSel.value = matched.phong_kham;
           currentRoomFilter = matched.phong_kham;
@@ -852,15 +876,20 @@
     }
 
     /**
-     * Lọc nhanh phòng đích trong modal chuyển phòng CLS khi gõ số phòng
+     * Lọc nhanh phòng đích trong modal chuyển phòng CLS khi gõ số phòng hoặc Khu
      */
     function filterTargetRoomSelect(val) {
       const q = (val || "").trim().toLowerCase();
       const sel = document.getElementById("targetRoomSelect");
-      if (!sel || !q) return;
+      if (!sel) return;
+      if (!q) {
+        sel.selectedIndex = 0;
+        return;
+      }
+      const tokens = q.split(/\s+/).filter(t => t.length > 0);
       for (let i = 0; i < sel.options.length; i++) {
         const text = sel.options[i].text.toLowerCase();
-        if (text.includes(q)) {
+        if (tokens.every(t => text.includes(t))) {
           sel.selectedIndex = i;
           break;
         }
@@ -899,8 +928,11 @@
 
       let filtered = currentPatientsQueue;
       if (currentRoomFilter) {
+        const tokens = currentRoomFilter.toLowerCase().split(/\s+/).filter(t => t.length > 0);
         filtered = currentPatientsQueue.filter(item => {
-          return item.phong_kham && item.phong_kham.toLowerCase().includes(currentRoomFilter.toLowerCase());
+          if (!item.phong_kham) return false;
+          const roomText = `${item.phong_kham} ${item.ten_chuyen_khoa || ''}`.toLowerCase();
+          return tokens.every(token => roomText.includes(token));
         });
       }
 
