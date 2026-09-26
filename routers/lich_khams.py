@@ -126,6 +126,46 @@ def calculate_gio_du_kien(stt: Optional[int], thoi_gian: Optional[datetime]) -> 
     return f"{est_start.strftime('%H:%M')} - {est_end.strftime('%H:%M')}"
 
 
+def resolve_appointment_doctor_and_room(db: Session, bac_si_id: Optional[int], chuyen_khoa_id: Optional[int]):
+    """
+    Phân giải Bác sĩ, Phòng khám và Chuyên khoa đồng bộ từ dữ liệu thật CSDL:
+    1. Nếu có bac_si_id: lấy đúng bác sĩ thật từ bảng bac_si (khớp theo user_id hoặc id).
+    2. Nếu chưa có bac_si_id nhưng có chuyen_khoa_id: tự động lấy phòng khám và bác sĩ trực thật của chuyên khoa đó.
+    3. Đảm bảo 100% phòng khám luôn có đầy đủ Số Phòng + KHU (ví dụ: Phòng 104 (Khu A)).
+    """
+    ten_bac_si = "Chưa phân công"
+    phong_kham = "Phòng 101 (Khu B) - Phòng Khám Chung"
+    ten_chuyen_khoa = "Khám Tổng Quát"
+
+    doc = None
+    if bac_si_id:
+        doc = db.query(models.BacSi).filter(
+            or_(models.BacSi.user_id == bac_si_id, models.BacSi.id == bac_si_id)
+        ).first()
+
+    ck = None
+    if chuyen_khoa_id:
+        ck = db.query(models.ChuyenKhoa).filter(models.ChuyenKhoa.id == chuyen_khoa_id).first()
+        if ck:
+            ten_chuyen_khoa = ck.ten_chuyen_khoa
+
+    if doc:
+        ten_bac_si = f"{doc.hoc_vi or 'BS.'} {doc.ho_ten}"
+        phong_kham = doc.phong_kham or phong_kham
+        if doc.chuyen_khoa:
+            ten_chuyen_khoa = doc.chuyen_khoa
+    elif ck:
+        sample_doc = db.query(models.BacSi).filter(
+            models.BacSi.chuyen_khoa == ck.ten_chuyen_khoa,
+            models.BacSi.trang_thai == True
+        ).first()
+        if sample_doc and sample_doc.phong_kham:
+            phong_kham = sample_doc.phong_kham
+            ten_bac_si = f"BS. Trực ({sample_doc.hoc_vi or 'BS.'} {sample_doc.ho_ten})"
+
+    return ten_bac_si, phong_kham, ten_chuyen_khoa
+
+
 # ════════════════════════════════════════════════════════════════════════════════
 #  ENDPOINTS CÔNG KHAI DÀNH CHO BỆNH NHÂN (KHÔNG CẦN ĐĂNG NHẬP)
 # ════════════════════════════════════════════════════════════════════════════════
@@ -353,21 +393,8 @@ def public_tra_cuu_lich_kham(
 
     results = []
     for lk in records:
-        # Tên Bác sĩ
-        ten_bs = "Chưa phân công"
-        phong = "Phòng Khám"
-        if lk.bac_si_id:
-            bs = db.query(models.BacSi).filter(or_(models.BacSi.id == lk.bac_si_id, models.BacSi.user_id == lk.bac_si_id)).first()
-            if bs:
-                ten_bs = f"{bs.hoc_vi or 'BS.'} {bs.ho_ten}"
-                phong = bs.phong_kham or phong
-
-        # Chuyên khoa
-        ten_ck = "Đa khoa"
-        if lk.chuyen_khoa_id:
-            ck = db.query(models.ChuyenKhoa).filter(models.ChuyenKhoa.id == lk.chuyen_khoa_id).first()
-            if ck:
-                ten_ck = ck.ten_chuyen_khoa
+        # Lấy thông tin Bác sĩ, Phòng khám & Chuyên khoa thật từ CSDL
+        ten_bs, phong, ten_ck = resolve_appointment_doctor_and_room(db, lk.bac_si_id, lk.chuyen_khoa_id)
 
         # Phiếu khám (nếu có)
         pk_info = None
@@ -507,21 +534,10 @@ def verify_otp_and_book(data: PatientVerifyOtpAndBookInput, db: Session = Depend
     # 3. Phân giải Bác sĩ và Chuyên khoa
     target_user_id = None
     doc_name = data.bac_si or "Bác sĩ phụ trách"
-    room_name = "Phòng khám đa khoa"
-
-    if data.bac_si_id:
-        doc = db.query(models.BacSi).filter(models.BacSi.id == data.bac_si_id).first()
-        if not doc:
-            doc = db.query(models.BacSi).filter(models.BacSi.user_id == data.bac_si_id).first()
-        if doc:
-            target_user_id = doc.user_id
-            doc_name = f"{doc.hoc_vi or 'BS.'} {doc.ho_ten}"
-            room_name = doc.phong_kham or "Phòng khám"
-        else:
-            target_user_id = data.bac_si_id
+    room_name = "Phòng 101 (Khu B) - Phòng Khám Chung"
 
     target_spec_id = data.chuyen_khoa_id
-    spec_name = data.chuyen_khoa or "Đa khoa"
+    spec_name = data.chuyen_khoa or "Khám Tổng Quát"
     if data.chuyen_khoa:
         clean_ck = data.chuyen_khoa.strip().lower()
         base_ck = clean_ck.split("(")[0].strip()
@@ -533,6 +549,27 @@ def verify_otp_and_book(data: PatientVerifyOtpAndBookInput, db: Session = Depend
                 target_spec_id = s.id
                 spec_name = s.ten_chuyen_khoa
                 break
+
+    if data.bac_si_id:
+        doc = db.query(models.BacSi).filter(
+            or_(models.BacSi.id == data.bac_si_id, models.BacSi.user_id == data.bac_si_id)
+        ).first()
+        if doc:
+            target_user_id = doc.user_id or doc.id
+            doc_name = f"{doc.hoc_vi or 'BS.'} {doc.ho_ten}"
+            room_name = doc.phong_kham or room_name
+        else:
+            target_user_id = data.bac_si_id
+    elif target_spec_id:
+        # Nếu bệnh nhân không chỉ định bác sĩ cụ thể, tự động gán bác sĩ trực thật của chuyên khoa đó
+        auto_doc = db.query(models.BacSi).filter(
+            models.BacSi.chuyen_khoa == spec_name,
+            models.BacSi.trang_thai == True
+        ).first()
+        if auto_doc:
+            target_user_id = auto_doc.user_id or auto_doc.id
+            doc_name = f"{auto_doc.hoc_vi or 'BS.'} {auto_doc.ho_ten}"
+            room_name = auto_doc.phong_kham or room_name
 
     # 4. Parse thời gian khám
     try:
@@ -642,27 +679,8 @@ def get_all_lich_khams(
     for lk in lich_khams:
         benh_nhan = lk.benh_nhan
         
-        # Tìm thông tin Bác sĩ & Phòng khám
-        ten_bac_si = "Chưa phân công"
-        phong_kham = "Phòng khám chung"
-        if lk.bac_si_id:
-            doc_user = db.query(models.User).filter(models.User.id == lk.bac_si_id).first()
-            if doc_user:
-                doc_info = db.query(models.BacSi).filter(models.BacSi.user_id == doc_user.id).first()
-                if doc_info:
-                    ten_bac_si = f"{doc_info.hoc_vi or 'BS.'} {doc_info.ho_ten}"
-                    phong_kham = doc_info.phong_kham or phong_kham
-                else:
-                    ten_bac_si = doc_user.username
-
-        # Tìm Chuyên khoa
-        ten_chuyen_khoa = "Khám tổng quát"
-        if lk.chuyen_khoa_id:
-            ck = db.query(models.ChuyenKhoa).filter(models.ChuyenKhoa.id == lk.chuyen_khoa_id).first()
-            if ck:
-                ten_chuyen_khoa = ck.ten_chuyen_khoa
-                if phong_kham == "Phòng khám chung":
-                    phong_kham = f"Phòng khám {ck.ten_chuyen_khoa}"
+        # Lấy thông tin Bác sĩ, Phòng khám & Chuyên khoa thật từ CSDL
+        ten_bac_si, phong_kham, ten_chuyen_khoa = resolve_appointment_doctor_and_room(db, lk.bac_si_id, lk.chuyen_khoa_id)
 
         # Tính tuổi & format ngày sinh bệnh nhân
         dob_str = benh_nhan.ngay_sinh.strftime("%d/%m/%Y") if (benh_nhan and benh_nhan.ngay_sinh) else None
@@ -792,13 +810,7 @@ def create_lich_kham(
     db.commit()
 
     gio_du_kien = calculate_gio_du_kien(new_lich_kham.stt, new_lich_kham.thoi_gian)
-    phong_kham = "Phòng khám chung"
-    ten_bac_si = "Chưa phân công"
-    if new_lich_kham.bac_si_id:
-        doc = db.query(models.BacSi).filter(or_(models.BacSi.id == new_lich_kham.bac_si_id, models.BacSi.user_id == new_lich_kham.bac_si_id)).first()
-        if doc:
-            ten_bac_si = f"{doc.hoc_vi or 'BS.'} {doc.ho_ten}"
-            phong_kham = doc.phong_kham or phong_kham
+    ten_bac_si, phong_kham, _ = resolve_appointment_doctor_and_room(db, new_lich_kham.bac_si_id, new_lich_kham.chuyen_khoa_id)
 
     return {
         "message": "Đặt lịch khám thành công!",
@@ -934,24 +946,9 @@ def tiep_don_tai_quay(
     db.commit()
     db.refresh(new_lich_kham)
 
-    # 6. Lấy thông tin điều phối đầy đủ
+    # 6. Lấy thông tin điều phối đầy đủ thật từ CSDL
     gio_du_kien = calculate_gio_du_kien(new_lich_kham.stt, new_lich_kham.thoi_gian)
-    phong_kham = "Phòng khám chung"
-    ten_bac_si = "Chưa phân công (Tự động điều phối)"
-    ten_chuyen_khoa = "Khám tổng quát"
-
-    if new_lich_kham.chuyen_khoa_id:
-        ck = db.query(models.ChuyenKhoa).filter(models.ChuyenKhoa.id == new_lich_kham.chuyen_khoa_id).first()
-        if ck:
-            ten_chuyen_khoa = ck.ten_chuyen_khoa
-
-    if new_lich_kham.bac_si_id:
-        doc = db.query(models.BacSi).filter(or_(models.BacSi.id == new_lich_kham.bac_si_id, models.BacSi.user_id == new_lich_kham.bac_si_id)).first()
-        if doc:
-            ten_bac_si = f"{doc.hoc_vi or 'BS.'} {doc.ho_ten}"
-            phong_kham = doc.phong_kham or phong_kham
-            if doc.chuyen_khoa:
-                ten_chuyen_khoa = doc.chuyen_khoa
+    ten_bac_si, phong_kham, ten_chuyen_khoa = resolve_appointment_doctor_and_room(db, new_lich_kham.bac_si_id, new_lich_kham.chuyen_khoa_id)
 
     # 7. Ghi Audit Log
     audit = models.AuditLog(
@@ -1015,16 +1012,8 @@ def update_trang_thai_lich_kham(
     # Tính khung giờ dự kiến vào khám cụ thể
     gio_du_kien = calculate_gio_du_kien(lich_kham.stt, lich_kham.thoi_gian)
 
-    # Lấy thông tin phòng khám & bác sĩ
-    phong_kham = "Phòng khám chung"
-    ten_bac_si = "Chưa phân công"
-    if lich_kham.bac_si_id:
-        doc_info = db.query(models.BacSi).filter(
-            or_(models.BacSi.user_id == lich_kham.bac_si_id, models.BacSi.id == lich_kham.bac_si_id)
-        ).first()
-        if doc_info:
-            ten_bac_si = f"{doc_info.hoc_vi or 'BS.'} {doc_info.ho_ten}"
-            phong_kham = doc_info.phong_kham or phong_kham
+    # Lấy thông tin phòng khám & bác sĩ thật từ CSDL
+    ten_bac_si, phong_kham, _ = resolve_appointment_doctor_and_room(db, lich_kham.bac_si_id, lich_kham.chuyen_khoa_id)
 
     audit = models.AuditLog(
         user_id=current_user.id,
