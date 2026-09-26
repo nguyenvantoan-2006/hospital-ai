@@ -191,7 +191,7 @@
         </div>
         <div>
           <span class="fw-bold fs-6 d-block leading-none">CLINOVA PHARMACY</span>
-          <small class="text-white-50" style="font-size:11px;">Quầy Dược & Cấp Phát Thuốc Theo Đơn</small>
+          <small class="text-white-50" style="font-size:11px;">Quầy Cấp Phát Thuốc Theo Đơn (Thu ngân kiêm nhiệm - FR-07)</small>
         </div>
       </a>
 
@@ -201,8 +201,8 @@
         <a href="ke_toan.html" class="btn btn-sm btn-outline-light"><i class="fa-solid fa-coins me-1"></i> Kho & Kế Toán</a>
         <div class="vr bg-white opacity-50 mx-1" style="height:24px;"></div>
         <div class="text-end text-white ms-1 d-none d-sm-block">
-          <div class="fw-bold leading-tight" id="displayUser">Dược sĩ phụ trách</div>
-          <small class="text-white-50" style="font-size: 10px;">Kho Dược Lâm Sàng</small>
+          <div class="fw-bold leading-tight" id="displayUser">Thu ngân / Cấp phát</div>
+          <small class="text-white-50" style="font-size: 10px;">Bộ phận Thu ngân & Cấp phát</small>
         </div>
         <button onclick="logout()" class="btn btn-sm btn-light text-danger fw-bold rounded-3 ms-2" title="Đăng xuất">
           <i class="fa-solid fa-right-from-bracket"></i>
@@ -217,8 +217,8 @@
     <!-- Top Toolbar -->
     <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
       <div>
-        <h4 class="fw-bold mb-1 text-dark"><i class="fa-solid fa-pills text-teal me-2" style="color: var(--teal-color)"></i>Quản Lý Đơn Thuốc & Cấp Phát Thuốc</h4>
-        <p class="text-muted small mb-0">Tiếp nhận đơn thuốc tức thì sau khi Bác sĩ kê đơn, thu tiền thuốc và xác nhận cấp phát thuốc cho bệnh nhân.</p>
+        <h4 class="fw-bold mb-1 text-dark"><i class="fa-solid fa-pills text-teal me-2" style="color: var(--teal-color)"></i>Quản Lý & Cấp Phát Thuốc Theo Đơn</h4>
+        <p class="text-muted small mb-0">Tiếp nhận đơn thuốc đã thanh toán viện phí (FR-07), kiểm tra số lượng và xác nhận bàn giao thuốc cho bệnh nhân.</p>
       </div>
       <div class="d-flex gap-2">
         <button class="btn btn-outline-secondary btn-sm rounded-3 px-3 shadow-sm bg-white" onclick="loadPrescriptions()">
@@ -533,7 +533,7 @@
 
           <!-- Lời dặn -->
           <div class="p-3 bg-light rounded-3 mb-4 small border">
-            <strong>Lời dặn của Bác sĩ / Dược sĩ:</strong>
+            <strong>Lời dặn của Bác sĩ / Người cấp phát:</strong>
             <p class="mb-0 text-secondary" id="printDoctorAdvice">Uống thuốc đúng giờ, đúng liều lượng chỉ định. Tái khám theo hẹn hoặc khi có triệu chứng bất thường.</p>
           </div>
 
@@ -543,8 +543,8 @@
               <p class="mb-5"><strong>BỆNH NHÂN / NGƯỜI NHẬN</strong><br><span class="text-muted">(Ký và ghi rõ họ tên)</span></p>
             </div>
             <div class="col-6">
-              <p class="mb-5"><strong>DƯỢC SĨ PHÁT THUỐC</strong><br><span class="text-muted">(Ký và ghi rõ họ tên)</span></p>
-              <strong id="printSignPharmacist">Dược sĩ CLINOVA</strong>
+              <p class="mb-5"><strong>NGƯỜI CẤP PHÁT / THU NGÂN</strong><br><span class="text-muted">(Ký và ghi rõ họ tên)</span></p>
+              <strong id="printSignPharmacist">Bộ phận Thu ngân & Cấp phát CLINOVA</strong>
             </div>
           </div>
 
@@ -862,7 +862,10 @@
 
       document.getElementById('printMedTotal').innerText = formatVND(d.tien_thuoc);
       document.getElementById('printGrandTotal').innerText = formatVND(d.tong_tien);
-      document.getElementById('printSignPharmacist').innerText = d.duoc_si_phat || 'Dược sĩ CLINOVA';
+      const curUser = localStorage.getItem('username');
+      const curRole = localStorage.getItem('role');
+      const roleTitle = (curRole === 'ke_toan') ? 'Thu ngân / Kế toán' : (curRole === 'admin' ? 'Quản trị viên' : 'Người cấp phát');
+      document.getElementById('printSignPharmacist').innerText = d.duoc_si_phat || (curUser ? `${curUser} (${roleTitle})` : 'Bộ phận Thu ngân & Cấp phát CLINOVA');
 
       const modalEl = document.getElementById('modalPrintPrescription');
       const modal = new bootstrap.Modal(modalEl);
@@ -871,10 +874,15 @@
 
     // Khởi chạy khi tải trang
     window.addEventListener('DOMContentLoaded', () => {
+      // Phân quyền RBAC: Quầy cấp phát trực thuộc quản lý của Kế toán/Thu ngân, Admin hoặc Lễ tân
+      if (typeof initAuthGuard === 'function') {
+        if (!initAuthGuard(["ke_toan", "admin", "le_tan", "bac_si"])) return;
+      }
       const username = localStorage.getItem('username');
+      const role = localStorage.getItem('role');
       if (username) {
         const el = document.getElementById('displayUser');
-        if (el) el.innerText = username;
+        if (el) el.innerText = `${username} (${role === 'ke_toan' ? 'Kế toán / Thu ngân' : (role === 'admin' ? 'Quản trị viên' : role)})`;
       }
       loadPrescriptions();
     });
