@@ -366,7 +366,7 @@
       removeTypingIndicator(typingId);
       appendMessage(
         "bot",
-        "⚠️ Hệ thống AI đang tạm thời gián đoạn kết nối. Bạn vui lòng liên hệ Tổng đài **1900 6868** hoặc thử lại sau ít phút nhé!"
+        "⚠️ Hệ thống AI đang tạm thời gián đoạn kết nối. Bạn vui lòng liên hệ Tổng đài **1900 8888** hoặc đến trực tiếp phòng khám tại **123 Tuyến Y Tế Trọng Điểm, TP. Thái Nguyên** nhé!"
       );
     } finally {
       btnSend.disabled = false;
