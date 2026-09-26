@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env python3
+#!/usr/bin/env python3
 """
 startup.py - Script khởi tạo môi trường production cho Hospital-AI
 Chạy tự động trên Railway trước khi uvicorn start.
@@ -40,6 +40,13 @@ try:
             print(f"  ! Seed specialties error: {e}")
     else:
         print(f"[2/3] Specialties already exist ({spec_count} records) — skip seed")
+
+    # Chuẩn hóa trạng thái 37 chuyên khoa chuẩn
+    try:
+        from scripts.fix_specialties_and_appointments import run_fix
+        run_fix()
+    except Exception as e:
+        print(f"  ! Fix specialties warning: {e}")
 
     # 3. Seed thuốc nếu chưa có
     thuoc_count = db.query(models.Thuoc).count()
