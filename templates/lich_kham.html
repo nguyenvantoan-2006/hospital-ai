@@ -506,11 +506,11 @@
     });
 
     /**
-     * Chuẩn hóa chuỗi tiếng Việt để so khớp tương đồng (bỏ dấu, chuyển chữ thường)
+     * Chuẩn hóa tên chuyên khoa (giữ nguyên dấu tiếng Việt để phân biệt chính xác Mắt vs Mật vs Mặt)
      */
-    function normalizeStr(str) {
+    function cleanSpecName(str) {
       if (!str) return "";
-      return str.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, "");
+      return str.toLowerCase().replace(/[\(\)\-\–\/]/g, " ").replace(/\s+/g, " ").trim();
     }
 
     /**
@@ -552,7 +552,7 @@
     }
 
     /**
-     * Lọc bác sĩ theo chuyên khoa (So khớp thông minh không phân biệt hoa thường / dấu tiếng Việt)
+     * Lọc bác sĩ theo chuyên khoa (Giữ nguyên dấu tiếng Việt để phân biệt chính xác Mắt, Mật, Mặt)
      */
     function onSpecialtyChange() {
       const specId = document.getElementById("chuyen_khoa_id").value;
@@ -563,11 +563,13 @@
       if (specId) {
         const specObj = allSpecialties.find(s => s.id == specId);
         if (specObj) {
-          const specNorm = normalizeStr(specObj.ten_chuyen_khoa);
+          const specClean = cleanSpecName(specObj.ten_chuyen_khoa);
+          const specBase = specClean.split(" ")[0]; // vd: "mắt"
           filtered = allDoctors.filter(d => {
             if (!d.chuyen_khoa) return false;
-            const docSpecNorm = normalizeStr(d.chuyen_khoa);
-            return docSpecNorm.includes(specNorm) || specNorm.includes(docSpecNorm);
+            const docClean = cleanSpecName(d.chuyen_khoa);
+            const docBase = docClean.split(" ")[0];
+            return docClean === specClean || docBase === specBase || docClean.includes(specClean) || specClean.includes(docClean);
           });
         }
       }
@@ -734,11 +736,11 @@
             statusBadge = '<span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle px-2 py-1"><i class="fa-solid fa-stopwatch me-1"></i>Chờ khám</span>';
             actionBtns = `
               <button class="btn btn-sm btn-outline-primary rounded-3 px-2 py-1 fw-semibold text-nowrap" onclick="openTicketById(${item.id})" title="Xem lại phiếu STT"><i class="fa-solid fa-print me-1"></i>In phiếu STT</button>
-              <button class="btn btn-sm btn-primary rounded-3 px-2 py-1 fw-semibold text-nowrap" onclick="updateAppointmentStatus(${item.id}, 'dang_kham')">Vào khám</button>
+              <button class="btn btn-sm btn-primary rounded-3 px-2 py-1 fw-semibold text-nowrap" onclick="updateAppointmentStatus(${item.id}, 'dang_kham')" title="Xác nhận bệnh nhân đã vào phòng khám"><i class="fa-solid fa-door-open me-1"></i>Vào khám</button>
             `;
           } else if (item.trang_thai === "dang_kham") {
             statusBadge = '<span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1"><i class="fa-solid fa-spinner fa-spin me-1"></i>Đang khám</span>';
-            actionBtns = `<a href="lap_phieu_kham.html" class="btn btn-sm btn-outline-success rounded-3 px-2 py-1 fw-semibold text-nowrap"><i class="fa-solid fa-stethoscope me-1"></i>Lập phiếu khám</a>`;
+            actionBtns = `<span class="badge bg-primary-subtle text-primary border border-primary-subtle py-1 px-2"><i class="fa-solid fa-user-doctor me-1"></i>Bác sĩ đang khám</span>`;
           } else if (item.trang_thai === "hoan_thanh") {
             statusBadge = '<span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1">Hoàn thành</span>';
             actionBtns = `<span class="badge bg-light text-muted border py-1 px-2">Đã khám xong</span>`;
@@ -997,12 +999,14 @@
       const docSelect = document.getElementById("assign_bac_si_id");
       docSelect.innerHTML = `<option value="">-- Chọn Bác sĩ phụ trách --</option>`;
 
-      // Tìm bác sĩ đúng chuyên khoa
-      const specNorm = normalizeStr(specialtyName);
+      // Tìm bác sĩ đúng chuyên khoa (phân biệt chuẩn xác tiếng Việt)
+      const specClean = cleanSpecName(specialtyName);
+      const specBase = specClean.split(" ")[0]; // vd: "mắt"
       const matchedDocs = allDoctors.filter(d => {
         if (!d.chuyen_khoa) return false;
-        const dNorm = normalizeStr(d.chuyen_khoa);
-        return dNorm.includes(specNorm) || specNorm.includes(dNorm);
+        const dClean = cleanSpecName(d.chuyen_khoa);
+        const dBase = dClean.split(" ")[0];
+        return dClean === specClean || dBase === specBase || dClean.includes(specClean) || specClean.includes(dClean);
       });
 
       if (matchedDocs.length > 0) {
