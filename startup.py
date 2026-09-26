@@ -51,7 +51,7 @@ try:
     # 3. Seed thuốc nếu chưa có
     thuoc_count = db.query(models.Thuoc).count()
     if thuoc_count == 0:
-        print("[3/3] Seeding medicines...")
+        print("[3/4] Seeding medicines...")
         try:
             import seed_medicines
             seed_medicines.run_seed(db)
@@ -59,7 +59,20 @@ try:
         except Exception as e:
             print(f"  ! Seed medicines error: {e}")
     else:
-        print(f"[3/3] Medicines already exist ({thuoc_count} records) — skip seed")
+        print(f"[3/4] Medicines already exist ({thuoc_count} records) — skip seed")
+
+    # 4. Seed hướng dẫn chuẩn bị khám RAG nếu chưa có
+    guide_count = db.query(models.HuongDanChuanBiKham).count()
+    if guide_count == 0:
+        print("[4/4] Seeding preparation guides...")
+        try:
+            import seed_preparation_guides
+            seed_preparation_guides.run_seed(db)
+            print("  ✓ Preparation guides seeded")
+        except Exception as e:
+            print(f"  ! Seed preparation guides error: {e}")
+    else:
+        print(f"[4/4] Preparation guides already exist ({guide_count} records) — skip seed")
 
     db.close()
     print("=" * 60)

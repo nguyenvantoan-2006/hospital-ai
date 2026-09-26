@@ -416,3 +416,24 @@ class AILog(Base):
         return f"<AILog id={self.id} chuc_nang='{self.chuc_nang}' trang_thai='{self.trang_thai}'>"
 
 
+# ════════════════════════════════════════════════════════════════════════════════
+#  15. HƯỚNG DẪN CHUẨN BỊ KHÁM — CSDL RAG Nội Bộ (Quy định Y tế Chuẩn)
+# ════════════════════════════════════════════════════════════════════════════════
+class HuongDanChuanBiKham(Base):
+    __tablename__ = "huong_dan_chuan_bi_kham"
+
+    id                = Column(Integer, primary_key=True, index=True)
+    chuyen_khoa_id    = Column(Integer, ForeignKey("chuyen_khoa.id", ondelete="SET NULL"), nullable=True)
+    ten_dich_vu       = Column(String(150), nullable=False, index=True) # Vd: Xét nghiệm máu, Nội soi dạ dày, Siêu âm bụng, Khám Da Liễu...
+    tu_khoa_nhan_dien = Column(String(255), nullable=True) # Vd: "máu, sinh hóa, tiểu đường, đường huyết, mỡ máu"
+    huong_dan_nhin_an = Column(Text, nullable=True) # Dặn dò nhịn ăn uống
+    giay_to_can_mang  = Column(Text, nullable=True) # Giấy tờ cần mang: CCCD, BHYT, đơn thuốc cũ
+    luu_y_quan_trong  = Column(Text, nullable=True) # Lưu ý đặc thù y tế
+    trang_thai        = Column(Boolean, default=True)
+
+    chuyen_khoa = relationship("ChuyenKhoa")
+
+    def __repr__(self) -> str:
+        return f"<HuongDanChuanBiKham id={self.id} dich_vu='{self.ten_dich_vu}'>"
+
+
