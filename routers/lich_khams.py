@@ -139,12 +139,21 @@ def get_public_doctors(
     API công khai cho bệnh nhân: Lấy danh sách bác sĩ để chọn khi đặt lịch.
     Có thể lọc theo chuyên khoa (mỗi chuyên khoa có 5 bác sĩ).
     """
-    query = db.query(models.BacSi).filter(models.BacSi.trang_thai == True)
+    docs = db.query(models.BacSi).filter(models.BacSi.trang_thai == True).all()
     if chuyen_khoa and chuyen_khoa.strip():
-        clean_name = chuyen_khoa.strip()
-        query = query.filter(models.BacSi.chuyen_khoa == clean_name)
+        clean_name = chuyen_khoa.strip().lower()
+        base_clean = clean_name.split("(")[0].strip()
+        filtered = []
+        for d in docs:
+            d_spec = (d.chuyen_khoa or "").strip().lower()
+            d_base = d_spec.split("(")[0].strip()
+            # Khớp chính xác hoặc khớp tên cơ sở (vd: 'mắt' khớp 'mắt (nhãn khoa)')
+            if d_spec == clean_name or d_base == base_clean:
+                filtered.append(d)
+            elif clean_name in d_spec or d_spec in clean_name:
+                filtered.append(d)
+        docs = filtered
     
-    docs = query.all()
     return [
         {
             "id": d.id,
@@ -513,11 +522,17 @@ def verify_otp_and_book(data: PatientVerifyOtpAndBookInput, db: Session = Depend
 
     target_spec_id = data.chuyen_khoa_id
     spec_name = data.chuyen_khoa or "Đa khoa"
-    if not target_spec_id and data.chuyen_khoa:
-        spec = db.query(models.ChuyenKhoa).filter(models.ChuyenKhoa.ten_chuyen_khoa == data.chuyen_khoa.strip()).first()
-        if spec:
-            target_spec_id = spec.id
-            spec_name = spec.ten_chuyen_khoa
+    if data.chuyen_khoa:
+        clean_ck = data.chuyen_khoa.strip().lower()
+        base_ck = clean_ck.split("(")[0].strip()
+        active_specs = db.query(models.ChuyenKhoa).filter(models.ChuyenKhoa.trang_thai == True).all()
+        for s in active_specs:
+            s_name = s.ten_chuyen_khoa.strip().lower()
+            s_base = s_name.split("(")[0].strip()
+            if s_name == clean_ck or s_base == base_ck or clean_ck in s_name:
+                target_spec_id = s.id
+                spec_name = s.ten_chuyen_khoa
+                break
 
     # 4. Parse thời gian khám
     try:
@@ -882,10 +897,16 @@ def tiep_don_tai_quay(
         if not active_doc:
             ck = db.query(models.ChuyenKhoa).filter(models.ChuyenKhoa.id == assigned_ck_id).first()
             if ck:
-                active_doc = db.query(models.BacSi).filter(
-                    models.BacSi.chuyen_khoa.ilike(f"%{ck.ten_chuyen_khoa}%"),
-                    models.BacSi.trang_thai == True
-                ).first()
+                ck_clean = ck.ten_chuyen_khoa.strip().lower()
+                ck_base = ck_clean.split("(")[0].strip()
+                all_active_docs = db.query(models.BacSi).filter(models.BacSi.trang_thai == True).all()
+                for d in all_active_docs:
+                    d_spec = (d.chuyen_khoa or "").strip().lower()
+                    d_base = d_spec.split("(")[0].strip()
+                    # Khớp chính xác hoặc khớp theo tên gốc tiếng Việt bằng Python (tuyệt đối không bị nhầm Mắt sang Mật)
+                    if d_spec == ck_clean or d_base == ck_base or ck_clean in d_spec or d_spec in ck_clean:
+                        active_doc = d
+                        break
         if active_doc:
             assigned_doc_id = active_doc.user_id or active_doc.id
 
@@ -1081,14 +1102,15 @@ def phan_cong_bac_si_lich_kham(
 
     # Nếu lịch khám chưa có chuyên khoa hoặc chuyên khoa chưa khớp, tự động gán theo chuyên khoa của bác sĩ
     if doc.chuyen_khoa:
-        ck = db.query(models.ChuyenKhoa).filter(
-            or_(
-                models.ChuyenKhoa.ten_chuyen_khoa.ilike(f"%{doc.chuyen_khoa.strip()}%"),
-                func.lower(doc.chuyen_khoa).contains(func.lower(models.ChuyenKhoa.ten_chuyen_khoa))
-            )
-        ).first()
-        if ck:
-            lich_kham.chuyen_khoa_id = ck.id
+        doc_clean = doc.chuyen_khoa.strip().lower()
+        doc_base = doc_clean.split("(")[0].strip()
+        active_specs = db.query(models.ChuyenKhoa).filter(models.ChuyenKhoa.trang_thai == True).all()
+        for s in active_specs:
+            s_clean = s.ten_chuyen_khoa.strip().lower()
+            s_base = s_clean.split("(")[0].strip()
+            if s_clean == doc_clean or s_base == doc_base or s_clean in doc_clean:
+                lich_kham.chuyen_khoa_id = s.id
+                break
 
     db.commit()
     db.refresh(lich_kham)
