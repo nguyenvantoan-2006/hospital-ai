@@ -32,7 +32,8 @@ def test_smtp():
         print("⚠️ CHƯA ĐỦ THÔNG TIN CẤU HÌNH!")
         print("👉 Vui lòng mở file .env và điền:")
         print("   GMAIL_USER=email_cua_ban@gmail.com")
-        print("   GMAIL_APP_PASSWORD=xxxx xxxx xxxx xxxx")
+        print("   GMAIL_APP_PASSWORD=xxxx xxxx xxxx xxxx (Mật khẩu ứng dụng Google 16 chữ số)")
+        print("   Xem hướng dẫn tạo tại: https://myaccount.google.com/apppasswords")
         return False
 
     recipient = sys.argv[1] if len(sys.argv) > 1 else user
@@ -42,13 +43,13 @@ def test_smtp():
         "chuyen_khoa": "Tim Mạch",
         "bac_si": "PGS.TS. BS. Nguyễn Văn A",
         "thoi_gian": "2026-09-25 08:30",
-        "ly_do_kham": "Khám định kỳ sức khỏe tim mạch"
+        "ly_do_kham": "Khám định kỳ huyết áp"
     }
 
     ok, msg = send_booking_otp_email(
         clean_email=recipient,
-        ho_ten="Nguyễn Văn Toàn",
-        otp_code="889966",
+        ho_ten="Khách Hàng Thử Nghiệm",
+        otp_code="982345",
         booking_details=sample_booking
     )
 

@@ -107,7 +107,7 @@ def get_smtp_config():
 def _send_email_smtp(to_email: str, subject: str, html_body: str) -> Tuple[bool, str]:
     """
     Hàm nội bộ gửi email qua Gmail SMTP.
-    Tự động nạp cấu hình mới nhất từ .env và gửi thư thực tế đến hộp thư bệnh nhân.
+    Tự động đọc cấu hình mới nhất từ .env và gửi email thực tế đến hộp thư bệnh nhân.
     """
     server_host, server_port, gmail_user, app_pwd, sender_name = get_smtp_config()
 
@@ -138,17 +138,11 @@ def _send_email_smtp(to_email: str, subject: str, html_body: str) -> Tuple[bool,
             server.login(gmail_user, clean_pwd)
             server.sendmail(gmail_user, [to_email], msg.as_string())
 
-        try:
-            print(f"[GMAIL SMTP THẬT] Đã gửi email thành công tới: {to_email} (Từ: {gmail_user})")
-        except Exception:
-            pass
+        print(f"✅ [GMAIL SMTP THẬT] Đã gửi email thành công tới: {to_email} (Từ: {gmail_user})")
         return True, "Email đã được gửi thành công qua Gmail SMTP."
     except Exception as e:
         err_str = str(e)
-        try:
-            print(f"[GMAIL SMTP LỖI] Không thể gửi email tới {to_email}: {err_str}")
-        except Exception:
-            pass
+        print(f"❌ [GMAIL SMTP LỖI] Không thể gửi email tới {to_email}: {err_str}")
         return False, f"Lỗi gửi email qua máy chủ Gmail: {err_str}"
 
 
