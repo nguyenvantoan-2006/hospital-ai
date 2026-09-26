@@ -194,16 +194,27 @@
 
     .queue-item {
       padding: 12px 14px;
-      border-radius: 8px;
+      border-radius: 10px;
       border: 1px solid var(--border);
-      margin-bottom: 8px;
-      cursor: pointer;
+      margin-bottom: 10px;
       transition: all .2s;
+      background: #ffffff;
     }
 
-    .queue-item:hover, .queue-item.active {
-      background: var(--primary-light);
+    .queue-item:hover {
       border-color: var(--primary);
+      box-shadow: 0 4px 12px rgba(26, 115, 232, 0.08);
+    }
+
+    .queue-item.active {
+      background: #EFF6FF;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 2px rgba(26, 115, 232, 0.25);
+    }
+
+    .queue-item.dang-kham-item {
+      border-left: 4px solid #10B981;
+      background: #F0FDF4;
     }
 
     .toast-container-custom {
@@ -211,6 +222,50 @@
       top: 20px;
       right: 20px;
       z-index: 1080;
+    }
+
+    /* A5 MEDICAL PRINT STYLES */
+    .a5-paper {
+      width: 100%;
+      max-width: 680px;
+      margin: 0 auto;
+      background: white;
+      padding: 24px;
+      border: 1px solid #E2E8F0;
+      border-radius: 8px;
+      font-family: 'Inter', sans-serif;
+      color: #0F172A;
+    }
+
+    .print-header {
+      border-bottom: 2px solid #1A73E8;
+      padding-bottom: 12px;
+      margin-bottom: 16px;
+    }
+
+    .print-title {
+      font-size: 17px;
+      font-weight: 800;
+      text-transform: uppercase;
+      color: #1A73E8;
+      letter-spacing: 0.5px;
+    }
+
+    .print-badge-stt {
+      font-size: 28px;
+      font-weight: 900;
+      color: #1A73E8;
+      line-height: 1;
+      border: 2px solid #1A73E8;
+      padding: 4px 14px;
+      border-radius: 8px;
+      display: inline-block;
+    }
+
+    .print-table th, .print-table td {
+      border: 1px solid #CBD5E1;
+      padding: 6px 10px;
+      font-size: 13px;
     }
 
     /* Đảm bảo Dropdown kho thuốc luôn nổi trên cùng và không bị cắt */
@@ -235,6 +290,28 @@
       border: 1px solid #94a3b8 !important;
       border-radius: 8px !important;
       box-shadow: 0 12px 32px rgba(15, 23, 42, 0.28) !important;
+    }
+
+    @media print {
+      body * {
+        visibility: hidden !important;
+      }
+      #printAreaContainer, #printAreaContainer *, #printArea, #printArea * {
+        visibility: visible !important;
+      }
+      #printAreaContainer, #printArea {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        background: white !important;
+      }
+      .modal-backdrop, .modal-header, .modal-footer, .no-print {
+        display: none !important;
+      }
+    }
     }
   </style>
 </head>
@@ -300,9 +377,24 @@
         <h3 class="fw-bold mb-1"><i class="fa-solid fa-stethoscope text-primary me-2"></i>Lập Phiếu Khám & AI Trợ Lý Lâm Sàng</h3>
         <p class="text-muted small mb-0">Tiếp nhận bệnh nhân, tóm tắt bệnh sử bằng AI, chẩn đoán và lập đơn thuốc</p>
       </div>
-      <div class="d-flex gap-2">
+      <div class="d-flex align-items-center gap-2 flex-wrap">
+        <div class="d-flex align-items-center gap-1 bg-white px-2 py-1 rounded-3 border shadow-sm">
+          <i class="fa-solid fa-door-open text-primary small"></i>
+          <label class="small text-secondary fw-semibold mb-0" for="doctorRoomFilter">Phòng & Khu:</label>
+          <div class="position-relative d-inline-block">
+            <input type="text" id="quickRoomSearchInput" list="doctorRoomDatalist" class="form-control form-control-sm border-0 bg-light rounded-2 px-2" placeholder="🔍 Phòng / Khu (104 Khu A...)" style="width: 210px; font-size: 13px;" oninput="onQuickRoomSearch(this.value)" autocomplete="off">
+            <datalist id="doctorRoomDatalist"></datalist>
+            <button type="button" id="btnClearRoomSearch" class="btn btn-sm position-absolute top-50 end-0 translate-middle-y text-muted me-1 border-0 py-0 px-1" style="display: none; font-size: 14px;" onclick="clearRoomSearch()" title="Xóa lọc phòng">×</button>
+          </div>
+          <select id="doctorRoomFilter" class="form-select form-select-sm border-0 py-0" style="width: auto; min-width: 260px; box-shadow: none;" onchange="onDoctorRoomFilterChange(this.value)">
+            <option value="">-- Tất cả phòng khám & Khu --</option>
+          </select>
+        </div>
+        <a href="/man_hinh_phong_kham.html" target="_blank" class="btn btn-sm btn-outline-primary rounded-3 px-3 fw-semibold">
+          <i class="fa-solid fa-tv me-1"></i> Kiosk TV
+        </a>
         <button class="btn btn-outline-secondary rounded-3 btn-sm px-3" onclick="loadQueue()">
-          <i class="fa-solid fa-arrows-rotate me-1" id="reloadQueueIcon"></i> Làm mới hàng chờ
+          <i class="fa-solid fa-arrows-rotate me-1" id="reloadQueueIcon"></i> Làm mới
         </button>
       </div>
     </div>
@@ -330,19 +422,51 @@
       <!-- Cột Phải: Form Khám bệnh & Kê đơn thuốc & AI Box -->
       <div class="col-lg-8">
         <div class="card-custom p-4">
-          <!-- Thông tin bệnh nhân đang chọn -->
-          <div class="bg-light p-3 rounded-3 mb-3 border">
-            <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+          <!-- Card Tổng Quan Lâm Sàng Bệnh Nhân (Đồng bộ từ Lễ tân & Đặt lịch online) -->
+          <div class="bg-light p-3 rounded-3 mb-3 border position-relative" id="patientOverviewCard">
+            <div class="d-flex align-items-start justify-content-between flex-wrap gap-2 mb-2">
               <div>
-                <span class="text-muted small">Bệnh nhân đang khám:</span>
-                <h5 class="fw-bold text-primary mb-0" id="currentPatientName">Chọn bệnh nhân từ danh sách bên trái</h5>
+                <div class="d-flex align-items-center gap-2 flex-wrap">
+                  <span class="badge bg-primary px-2 py-1 fs-6" id="currentPatientStt">STT: --</span>
+                  <h5 class="fw-bold text-primary mb-0" id="currentPatientName">Chọn bệnh nhân từ danh sách bên trái</h5>
+                  <span class="badge bg-secondary-subtle text-secondary border" id="currentPatientGender">--</span>
+                  <span class="badge bg-primary-subtle text-primary border" id="currentPatientAge">-- tuổi</span>
+                </div>
+                <div class="small text-muted mt-2 d-flex flex-wrap gap-3">
+                  <span><i class="fa-solid fa-cake-candles me-1 text-secondary"></i>Ngày sinh: <b id="currentPatientDob">--</b></span>
+                  <span><i class="fa-solid fa-phone me-1 text-secondary"></i>SĐT: <b id="currentPatientPhone">--</b></span>
+                  <span><i class="fa-solid fa-id-card me-1 text-secondary"></i>CCCD: <b id="currentPatientCccd">--</b></span>
+                  <span><i class="fa-solid fa-location-dot me-1 text-secondary"></i>Địa chỉ: <b id="currentPatientAddress">--</b></span>
+                </div>
               </div>
-              <div class="d-flex gap-2">
-                <span class="badge bg-secondary" id="currentPatientDob">--</span>
+              <div class="d-flex flex-column align-items-end gap-1">
                 <span class="badge bg-info-subtle text-info border" id="currentPatientBhyt">BHYT: --</span>
+                <span class="badge bg-light text-dark border small" id="currentPatientRoom"><i class="fa-solid fa-door-open me-1 text-primary"></i>--</span>
               </div>
             </div>
-            <div class="small text-danger mt-1 fw-medium" id="currentPatientHistory"></div>
+
+            <!-- Cảnh báo Tiền sử bệnh lý & Dị ứng (nếu có từ hồ sơ Lễ tân) -->
+            <div id="patientHistoryAlert" class="alert alert-danger py-2 px-3 small mb-2 border-danger-subtle d-none">
+              <i class="fa-solid fa-triangle-exclamation text-danger me-1"></i>
+              <strong>CẢNH BÁO TIỀN SỬ BỆNH / DỊ ỨNG:</strong> <span id="currentPatientHistoryText"></span>
+            </div>
+
+            <!-- Lý do đến khám & Triệu chứng ban đầu từ Lễ tân -->
+            <div class="bg-white p-2 rounded-2 border small d-flex align-items-center gap-2 mb-2" id="receptionNotesBox">
+              <span class="badge bg-warning text-dark fw-bold text-uppercase"><i class="fa-solid fa-clipboard-user me-1"></i>Lễ tân tiếp nhận</span>
+              <span class="text-secondary" id="currentPatientReasonText">Chưa có thông tin lý do khám</span>
+            </div>
+
+            <!-- Khung Kết Quả Cận Lâm Sàng Gửi Về (Closed-Loop Banner) -->
+            <div id="clsResultReceivedBanner" class="alert alert-success border-2 border-success py-2 px-3 mb-0 d-none">
+              <div class="d-flex align-items-center justify-content-between">
+                <div class="fw-bold text-success fs-6"><i class="fa-solid fa-square-poll-vertical me-2"></i>KẾT QUẢ CẬN LÂM SÀNG VỪA GỬI VỀ:</div>
+                <span class="badge bg-success text-white">Đã có kết quả - Ưu tiên kết luận & kê đơn</span>
+              </div>
+              <div class="mt-2 small text-dark p-2 bg-white rounded border font-monospace" id="clsResultContent">
+                <!-- Nội dung kết quả X-quang/Xét nghiệm -->
+              </div>
+            </div>
           </div>
 
           <!-- AI Tóm Tắt Bệnh Án Box (FR-AI-01) -->
@@ -387,11 +511,11 @@
                   <i class="fa-solid fa-sparkles me-1"></i> AI Gợi ý dặn dò sau khám
                 </button>
               </div>
-              <textarea id="aiGuideOutput" class="form-control small bg-white" rows="3" placeholder="Nội dung dặn dò, lưu ý sinh hoạt cho bệnh nhân..."></textarea>
+              <textarea id="aiSummary" class="form-control" rows="3" placeholder="Lời dặn dò chế độ sinh hoạt, dinh dưỡng và lưu ý điều trị sau khám..."></textarea>
             </div>
 
-            <!-- Kê đơn thuốc -->
-            <div class="border rounded-3 p-3 mb-4 bg-light">
+            <!-- Đơn thuốc đi kèm -->
+            <div class="mb-4">
               <div class="d-flex align-items-center justify-content-between mb-2">
                 <div>
                   <h6 class="fw-bold mb-0 text-dark"><i class="fa-solid fa-pills text-primary me-2"></i>Kê Đơn Thuốc Điện Tử (FR-06)</h6>
@@ -424,21 +548,141 @@
               </div>
             </div>
 
-            <!-- Action Buttons -->
-            <div class="d-flex justify-content-end gap-2">
-              <button type="button" class="btn btn-outline-secondary px-4 rounded-3" onclick="resetForm()">Làm mới</button>
-              <button type="button" id="btnPrintCurrentPhieu" class="btn btn-outline-primary px-3 rounded-3" style="display: none;" onclick="openPrintModal()">
-                <i class="fa-solid fa-print me-1"></i> In Phiếu Khám & Đơn Thuốc
-              </button>
-              <button type="submit" id="btnSavePhieu" class="btn btn-primary px-4 rounded-3 fw-semibold shadow-sm">
-                <i class="fa-solid fa-floppy-disk me-1"></i> Hoàn Tất Khám & Chuyển Thanh Toán
-              </button>
+            <!-- HỆ THỐNG ĐIỀU PHỐI 3 LUỒNG KHÁM BỆNH & CẬN LÂM SÀNG (CLOSED-LOOP ROUTING) -->
+            <div class="mt-4 pt-3 border-top">
+              <div class="d-flex align-items-center justify-content-between mb-3">
+                <h6 class="fw-bold mb-0 text-dark"><i class="fa-solid fa-route text-primary me-2"></i>Quy Trình Xử Lý Đợt Khám (Closed-Loop Routing)</h6>
+                <span class="badge bg-primary-subtle text-primary border border-primary-subtle">Chọn 1 trong 3 nhánh</span>
+              </div>
+              
+              <ul class="nav nav-pills nav-fill mb-3" id="decisionTab" role="tablist">
+                <li class="nav-item" role="presentation">
+                  <button class="nav-link active fw-semibold" id="branch-a-tab" data-bs-toggle="pill" data-bs-target="#branch-a-content" type="button" role="tab">
+                    <i class="fa-solid fa-arrow-right-arrow-left me-2 text-warning"></i>1. Chuyển Phòng / Cận Lâm Sàng
+                  </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                  <button class="nav-link fw-semibold" id="branch-b-tab" data-bs-toggle="pill" data-bs-target="#branch-b-content" type="button" role="tab">
+                    <i class="fa-solid fa-prescription-bottle-medical me-2 text-success"></i>2. Hoàn Tất Đợt Khám & Kê Đơn
+                  </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                  <button class="nav-link fw-semibold" id="branch-c-tab" data-bs-toggle="pill" data-bs-target="#branch-c-content" type="button" role="tab">
+                    <i class="fa-solid fa-square-poll-vertical me-2 text-info"></i>3. Trả Kết QuẢ Cận Lâm Sàng
+                  </button>
+                </li>
+              </ul>
+
+              <div class="tab-content" id="decisionTabContent">
+                <!-- BRANCH A: CHUYỂN PHÒNG / CHỈ ĐỊNH CẬN LÂM SÀNG -->
+                <div class="tab-pane fade show active p-3 bg-light rounded-3 border" id="branch-a-content" role="tabpanel">
+                  <div class="alert alert-warning py-2 px-3 small mb-3 border-0 d-flex align-items-center gap-2">
+                    <i class="fa-solid fa-triangle-exclamation text-warning fs-5"></i>
+                    <div><strong>Chuyển phòng:</strong> Bệnh nhân được chuyển sang hàng chờ phòng đích với STT mới và xuất <strong>Phiếu Hướng Dẫn Điều Phối (A5)</strong> để cầm đi. Ca tại phòng ban đầu được giữ ở trạng thái <em>Đang chờ kết quả CLS</em>.</div>
+                  </div>
+                  <div class="row g-3">
+                    <div class="col-md-6">
+                      <div class="d-flex justify-content-between align-items-center mb-1">
+                        <label class="form-label small fw-semibold text-secondary mb-0">Phòng khám / Phòng CLS đích <span class="text-danger">*</span></label>
+                        <small class="text-primary" style="font-size: 11px;">🔍 Gõ số phòng hoặc Khu</small>
+                      </div>
+                      <div class="input-group input-group-sm mb-1">
+                        <span class="input-group-text bg-white border-end-0"><i class="fa-solid fa-magnifying-glass text-muted"></i></span>
+                        <input type="text" id="quickTargetRoomSearch" list="targetRoomDatalist" class="form-control border-start-0 ps-0" placeholder="Nhập số phòng / Khu (vd: 202, Khu B...)" oninput="filterTargetRoomSelect(this.value)" autocomplete="off">
+                        <datalist id="targetRoomDatalist"></datalist>
+                      </div>
+                      <select id="targetRoomSelect" class="form-select form-select-sm">
+                        <!-- Danh sách nạp từ API -->
+                      </select>
+                    </div>
+                    <div class="col-md-6">
+                      <label class="form-label small fw-semibold text-secondary">Chỉ định dịch vụ / Lý do chuyển <span class="text-danger">*</span></label>
+                      <input type="text" id="targetServiceReason" class="form-control form-control-sm" placeholder="Ví dụ: Chụp X-quang tim phổi thẳng, Xét nghiệm máu..." />
+                    </div>
+                    <div class="col-12">
+                      <label class="form-label small fw-semibold text-secondary">Ghi chú & Lời dặn di chuyển cho bệnh nhân</label>
+                      <input type="text" id="targetTransferNotes" class="form-control form-control-sm" placeholder="Ví dụ: Lên Tầng 2 rẽ trái vào phòng 202, mang theo kết quả quay lại sau..." />
+                    </div>
+                    <div class="col-12 text-end mt-3">
+                      <button type="button" id="btnExecuteTransfer" class="btn btn-warning fw-semibold px-4 rounded-3 shadow-sm" onclick="executeBranchTransfer()">
+                        <i class="fa-solid fa-print me-1"></i> Chuyển Phòng & In Phiếu Điều Phối (A5)
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- BRANCH B: KÊ ĐƠN THUỐC & HOÀN TẤT ĐỢT KHÁM -->
+                <div class="tab-pane fade p-3 bg-light rounded-3 border" id="branch-b-content" role="tabpanel">
+                  <div class="alert alert-success py-2 px-3 small mb-3 border-0 d-flex align-items-center gap-2">
+                    <i class="fa-solid fa-circle-check text-success fs-5"></i>
+                    <div><strong>Hoàn tất khám:</strong> Lưu phiếu khám, tự động đẩy hóa đơn sang Thu Ngân và đơn thuốc sang Quầy Dược, in <strong>Đơn Thuốc Điện Tử (A5)</strong>.</div>
+                  </div>
+                  <div class="d-flex justify-content-between align-items-center">
+                    <button type="button" class="btn btn-outline-secondary px-3 rounded-3 btn-sm" onclick="resetForm()">Làm mới form</button>
+                    <div class="d-flex gap-2">
+                      <button type="button" id="btnPrintCurrentPhieu" class="btn btn-outline-primary px-3 rounded-3 btn-sm" style="display: none;" onclick="openPrintModal()">
+                        <i class="fa-solid fa-print me-1"></i> In Phiếu Khám & Đơn Thuốc
+                      </button>
+                      <button type="submit" id="btnSavePhieu" class="btn btn-primary fw-semibold px-4 rounded-3 shadow-sm">
+                        <i class="fa-solid fa-print me-1"></i> Hoàn Tất Khám & Chuyển Thanh Toán
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- BRANCH C: TRẢ KẾT QUẢ CẬN LÂM SÀNG VỀ PHÒNG KHÁM BAN ĐẦU -->
+                <div class="tab-pane fade p-3 bg-light rounded-3 border" id="branch-c-content" role="tabpanel">
+                  <div class="alert alert-info py-2 px-3 small mb-3 border-0 d-flex align-items-center gap-2">
+                    <i class="fa-solid fa-circle-info text-info fs-5"></i>
+                    <div><strong>Dành cho Phòng Cận lâm sàng (X-Quang, Xét nghiệm...):</strong> Nhập kết quả và bấm nút gửi ngược về Bác sĩ phòng ban đầu. Bệnh nhân sẽ được cấp STT mới và ưu tiên lên đầu hàng chờ.</div>
+                  </div>
+                  <div class="row g-3">
+                    <div class="col-12">
+                      <label class="form-label small fw-semibold text-secondary">Kết luận cận lâm sàng <span class="text-danger">*</span></label>
+                      <input type="text" id="clsKetLuanInput" class="form-control form-control-sm" placeholder="Ví dụ: Phổi sáng bình thường, không tổn thương thâm nhiễm / Tim phổi bình thường..." />
+                    </div>
+                    <div class="col-12">
+                      <label class="form-label small fw-semibold text-secondary">Chi tiết kết quả hình ảnh / Chỉ số xét nghiệm <span class="text-danger">*</span></label>
+                      <textarea id="clsChiTietInput" class="form-control form-control-sm" rows="3" placeholder="Ví dụ: Vòm hoành 2 bên đều, bóng tim không to, chỉ số tim/lồng ngực trong giới hạn bình thường..."></textarea>
+                    </div>
+                    <div class="col-12 text-end mt-3">
+                      <button type="button" id="btnSendClsResult" class="btn btn-info text-white fw-semibold px-4 rounded-3 shadow-sm" onclick="executeSendClsResult()">
+                        <i class="fa-solid fa-paper-plane me-1"></i> 📤 Trả Kết Quả Về Bác Sĩ Phòng Ban Đầu
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
             </div>
           </form>
         </div>
       </div>
     </div>
   </main>
+
+  <!-- MODAL IN PHIẾU HƯỚNG DẪN ĐIỀU PHỐI (A5) -->
+  <div class="modal fade" id="modalPhieuDieuPhoi" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+      <div class="modal-content border-0 shadow-lg">
+        <div class="modal-header bg-warning text-dark py-2">
+          <h6 class="modal-title fw-bold"><i class="fa-solid fa-print me-2"></i>In Phiếu Hướng Dẫn Điều Phối Khám Bệnh</h6>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body p-4" id="printAreaContainer">
+          <div class="a5-paper" id="paperDieuPhoi">
+            <!-- Render động thông tin phiếu điều phối -->
+          </div>
+        </div>
+        <div class="modal-footer py-2">
+          <button type="button" class="btn btn-secondary btn-sm rounded-3" data-bs-dismiss="modal">Đóng</button>
+          <button type="button" class="btn btn-primary btn-sm rounded-3 fw-semibold px-3" onclick="triggerPrint()">
+            <i class="fa-solid fa-print me-1"></i> In Phiếu Ngay
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <!-- MODAL IN ĐƠN THUỐC & PHIẾU KHÁM (A4/A5 PRINT PREVIEW) -->
   <div class="modal fade" id="printPrescriptionModal" tabindex="-1" aria-hidden="true">
@@ -505,6 +749,10 @@
       </div>
     </div>
   </div>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <!-- Scripts -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
@@ -512,19 +760,146 @@
 
   <script>
     let currentPatientsQueue = [];
+    let currentRoomFilter = "";
+    let availableHospitalRooms = [];
 
     document.addEventListener("DOMContentLoaded", () => {
       if (initAuthGuard(["bac_si", "admin"])) {
+        loadHospitalRooms();
         loadQueue();
       }
     });
 
     /**
+     * Tải danh mục phòng khám bệnh viện
+     */
+    async function loadHospitalRooms() {
+      try {
+        const res = await fetch("/api/v1/lich-khams/public/phong-khams");
+        if (!res.ok) return;
+        availableHospitalRooms = await res.json();
+
+        // Nạp vào dropdown bộ lọc thanh công cụ và datalist gợi ý
+        const filterSel = document.getElementById("doctorRoomFilter");
+        const dlRoom = document.getElementById("doctorRoomDatalist");
+        const dlTarget = document.getElementById("targetRoomDatalist");
+
+        if (dlRoom) dlRoom.innerHTML = "";
+        if (dlTarget) dlTarget.innerHTML = "";
+
+        if (filterSel && availableHospitalRooms.length > 0) {
+          filterSel.innerHTML = `<option value="">-- Tất cả phòng khám & Khu --</option>`;
+          availableHospitalRooms.forEach(r => {
+            const opt = document.createElement("option");
+            opt.value = r.phong_kham;
+            opt.textContent = `${r.phong_kham} - ${r.chuyen_khoa}`;
+            filterSel.appendChild(opt);
+
+            if (dlRoom) {
+              const dlOpt = document.createElement("option");
+              dlOpt.value = r.phong_kham;
+              dlOpt.label = `${r.chuyen_khoa} (${r.vi_tri || ''})`;
+              dlRoom.appendChild(dlOpt);
+            }
+
+            if (dlTarget) {
+              const dlOpt = document.createElement("option");
+              dlOpt.value = r.phong_kham;
+              dlOpt.label = `${r.chuyen_khoa} (${r.vi_tri || ''})`;
+              dlTarget.appendChild(dlOpt);
+            }
+          });
+        }
+
+        // Nạp vào dropdown phòng đích (Branch A)
+        const targetSel = document.getElementById("targetRoomSelect");
+        if (targetSel && availableHospitalRooms.length > 0) {
+          targetSel.innerHTML = availableHospitalRooms.map(r => `
+            <option value="${escapeHtml(r.phong_kham)}">
+              ${escapeHtml(r.phong_kham)} - ${escapeHtml(r.chuyen_khoa)} (${escapeHtml(r.vi_tri)})
+            </option>
+          `).join("");
+        }
+      } catch (e) {
+        console.warn("Lỗi tải danh mục phòng khám:", e);
+      }
+    }
+
+    function onDoctorRoomFilterChange(val) {
+      currentRoomFilter = val.trim();
+      const inp = document.getElementById("quickRoomSearchInput");
+      const btnClear = document.getElementById("btnClearRoomSearch");
+      if (val) {
+        // Giữ nguyên toàn bộ số phòng và Khu (vd: Phòng 104 (Khu A))
+        if (inp) inp.value = val;
+        if (btnClear) btnClear.style.display = "inline-block";
+      } else {
+        if (inp) inp.value = "";
+        if (btnClear) btnClear.style.display = "none";
+      }
+      renderQueueList();
+    }
+
+    /**
+     * Tìm kiếm nhanh số phòng và Khu khi gõ trực tiếp vào ô input (vd: 104, 104 Khu A, Khu B...)
+     */
+    function onQuickRoomSearch(query) {
+      const q = (query || "").trim().toLowerCase();
+      const btnClear = document.getElementById("btnClearRoomSearch");
+      if (btnClear) btnClear.style.display = q ? "inline-block" : "none";
+
+      const filterSel = document.getElementById("doctorRoomFilter");
+      if (q) {
+        const tokens = q.split(/\s+/).filter(t => t.length > 0);
+        // Tìm phòng khớp cả số phòng, Khu và tên chuyên khoa
+        const matched = availableHospitalRooms.find(r => {
+          const fullRoomText = `${r.phong_kham} ${r.chuyen_khoa || ''} ${r.vi_tri || ''}`.toLowerCase();
+          return tokens.every(token => fullRoomText.includes(token));
+        });
+        if (matched) {
+          filterSel.value = matched.phong_kham;
+          currentRoomFilter = matched.phong_kham;
+        } else {
+          currentRoomFilter = q;
+        }
+      } else {
+        filterSel.value = "";
+        currentRoomFilter = "";
+      }
+      renderQueueList();
+    }
+
+    function clearRoomSearch() {
+      const inp = document.getElementById("quickRoomSearchInput");
+      if (inp) inp.value = "";
+      onQuickRoomSearch("");
+    }
+
+    /**
+     * Lọc nhanh phòng đích trong modal chuyển phòng CLS khi gõ số phòng hoặc Khu
+     */
+    function filterTargetRoomSelect(val) {
+      const q = (val || "").trim().toLowerCase();
+      const sel = document.getElementById("targetRoomSelect");
+      if (!sel) return;
+      if (!q) {
+        sel.selectedIndex = 0;
+        return;
+      }
+      const tokens = q.split(/\s+/).filter(t => t.length > 0);
+      for (let i = 0; i < sel.options.length; i++) {
+        const text = sel.options[i].text.toLowerCase();
+        if (tokens.every(t => text.includes(t))) {
+          sel.selectedIndex = i;
+          break;
+        }
+      }
+    }
+
+    /**
      * Tải danh sách hàng chờ khám
      */
     async function loadQueue() {
-      const queueList = document.getElementById("queueList");
-      const queueEmpty = document.getElementById("queueEmpty");
       const reloadIcon = document.getElementById("reloadQueueIcon");
       if (reloadIcon) reloadIcon.classList.add("fa-spin");
 
@@ -533,33 +908,9 @@
         if (!res.ok) throw new Error("Lỗi tải hàng chờ");
         const list = await res.json();
         
-        // Lọc trạng thái cho_kham hoặc cho_xac_nhan hoặc da_dat_lich
-        currentPatientsQueue = list.filter(item => ["cho_kham", "dang_kham", "da_dat_lich", "cho_xac_nhan"].includes(item.trang_thai));
-        document.getElementById("queueCount").textContent = currentPatientsQueue.length;
-
-        queueList.innerHTML = "";
-        if (currentPatientsQueue.length === 0) {
-          queueEmpty.style.display = "block";
-          return;
-        }
-
-        queueEmpty.style.display = "none";
-        currentPatientsQueue.forEach(item => {
-          const div = document.createElement("div");
-          div.className = "queue-item";
-          div.id = `queue-item-${item.id}`;
-          div.onclick = () => selectPatientForExam(item);
-
-          div.innerHTML = `
-            <div class="d-flex align-items-center justify-content-between mb-1">
-              <span class="badge bg-primary fw-bold">STT #${item.stt || item.id}</span>
-              <span class="badge bg-light text-secondary small">${item.thoi_gian}</span>
-            </div>
-            <div class="fw-bold text-dark">${escapeHtml(item.ho_ten)}</div>
-            <div class="small text-muted text-truncate"><i class="fa-solid fa-notes-medical me-1"></i>${escapeHtml(item.ly_do_kham || 'Khám tổng quát')}</div>
-          `;
-          queueList.appendChild(div);
-        });
+        // Lọc trạng thái chờ khám / đang khám / đã tiếp nhận / đã có kết quả CLS
+        currentPatientsQueue = list.filter(item => ["da_co_ket_qua", "dang_kham", "cho_kham", "cho_ket_qua_cls", "da_dat_lich", "cho_xac_nhan"].includes(item.trang_thai));
+        renderQueueList();
 
       } catch (e) {
         console.error("Queue load error:", e);
@@ -569,7 +920,148 @@
     }
 
     /**
-     * Chọn bệnh nhân để khám
+     * Hiển thị danh sách hàng chờ theo bộ lọc phòng
+     */
+    function renderQueueList() {
+      const queueList = document.getElementById("queueList");
+      const queueEmpty = document.getElementById("queueEmpty");
+
+      let filtered = currentPatientsQueue;
+      if (currentRoomFilter) {
+        const tokens = currentRoomFilter.toLowerCase().split(/\s+/).filter(t => t.length > 0);
+        filtered = currentPatientsQueue.filter(item => {
+          if (!item.phong_kham) return false;
+          const roomText = `${item.phong_kham} ${item.ten_chuyen_khoa || ''}`.toLowerCase();
+          return tokens.every(token => roomText.includes(token));
+        });
+      }
+
+      document.getElementById("queueCount").textContent = filtered.length;
+      queueList.innerHTML = "";
+
+      if (filtered.length === 0) {
+        queueEmpty.style.display = "block";
+        return;
+      }
+
+      queueEmpty.style.display = "none";
+      filtered.forEach(item => {
+        const isDaCoKQ = item.trang_thai === "da_co_ket_qua";
+        const isDangKham = item.trang_thai === "dang_kham";
+        const isChoCLS = item.trang_thai === "cho_ket_qua_cls";
+
+        let statusBadge = '';
+        let extraBorder = '';
+        if (isDaCoKQ) {
+          statusBadge = `<span class="badge text-white shadow-sm" style="background: linear-gradient(135deg, #7C3AED, #2563EB);"><i class="fa-solid fa-star me-1 text-warning"></i>ĐÃ CÓ KQ CLS (ƯU TIÊN)</span>`;
+          extraBorder = 'border-primary border-2 shadow-sm';
+        } else if (isDangKham) {
+          statusBadge = `<span class="badge bg-success-subtle text-success border border-success-subtle"><i class="fa-solid fa-spinner fa-spin me-1"></i>Đang trong phòng</span>`;
+        } else if (isChoCLS) {
+          statusBadge = `<span class="badge bg-warning-subtle text-dark border border-warning-subtle"><i class="fa-solid fa-hourglass-half me-1 text-warning"></i>Đang chờ KQ CLS</span>`;
+        } else {
+          statusBadge = `<span class="badge bg-secondary-subtle text-dark border"><i class="fa-regular fa-clock me-1"></i>Chờ khám</span>`;
+        }
+
+        const div = document.createElement("div");
+        div.className = `queue-item ${isDangKham ? 'dang-kham-item' : ''} ${extraBorder}`;
+        div.id = `queue-item-${item.id}`;
+        div.onclick = () => selectPatientForExam(item);
+
+        const ageGender = `${item.gioi_tinh || 'Khác'}${item.tuoi ? ' • ' + item.tuoi + ' tuổi' : ''}`;
+        const roomTag = item.phong_kham ? `<span class="badge bg-light text-secondary border font-monospace small"><i class="fa-solid fa-door-open me-1"></i>${escapeHtml(item.phong_kham)}</span>` : '';
+
+        div.innerHTML = `
+          <div class="d-flex align-items-center justify-content-between mb-1">
+            <div class="d-flex align-items-center gap-1">
+              <span class="badge ${isDaCoKQ ? 'bg-danger text-white' : 'bg-primary'} fw-bold">STT #${item.stt || item.id}</span>
+              ${statusBadge}
+            </div>
+            <span class="badge bg-light text-secondary small">${item.gio_du_kien ? `<i class="fa-solid fa-stopwatch me-1 text-primary"></i>${item.gio_du_kien}` : item.thoi_gian}</span>
+          </div>
+          <div class="d-flex align-items-center justify-content-between">
+            <div class="fw-bold text-dark fs-6">${escapeHtml(item.ho_ten)}</div>
+            <small class="text-muted">${ageGender}</small>
+          </div>
+          <div class="small text-muted text-truncate my-1"><i class="fa-solid fa-notes-medical me-1 text-primary"></i>${escapeHtml(item.ly_do_kham || 'Khám tổng quát')}</div>
+          <div class="d-flex align-items-center justify-content-between mt-2 pt-2 border-top gap-2">
+            ${roomTag}
+            <div class="d-flex gap-1 flex-fill justify-content-end">
+              <button type="button" class="btn btn-sm ${isDaCoKQ ? 'btn-danger' : 'btn-primary'} flex-fill rounded-2 py-1" onclick="goiVaoKham(${item.id}, event)">
+                <i class="fa-solid fa-bullhorn me-1"></i> ${isDaCoKQ ? 'Mời vào kết luận' : (isDangKham ? 'Gọi vào lại' : 'Mời vào khám')}
+              </button>
+              <button type="button" class="btn btn-sm btn-outline-secondary rounded-2 py-1 px-2" title="Gọi lại qua loa phát thanh" onclick="goiLai(${item.id}, event)">
+                <i class="fa-solid fa-rotate-right"></i>
+              </button>
+            </div>
+          </div>
+        `;
+        queueList.appendChild(div);
+      });
+    }
+
+    /**
+     * Bác sĩ gọi bệnh nhân vào phòng khám
+     * Cập nhật 'dang_kham', phát loa và gửi tín hiệu tới Màn hình Kiosk
+     */
+    async function goiVaoKham(lichKhamId, e) {
+      if (e) e.stopPropagation();
+
+      try {
+        const res = await fetch(`/api/v1/lich-khams/${lichKhamId}/goi-vao-kham`, {
+          method: "POST",
+          headers: getAuthHeaders()
+        });
+
+        if (!res.ok) throw new Error("Lỗi khi gọi bệnh nhân");
+        const data = await res.json();
+
+        // Tự động chọn bệnh nhân vào form khám
+        const patientItem = currentPatientsQueue.find(i => i.id === lichKhamId);
+        if (patientItem) {
+          patientItem.trang_thai = "dang_kham";
+          patientItem.stt = data.stt;
+          selectPatientForExam(patientItem);
+        }
+
+        // Phát âm thanh giọng đọc tiếng Việt trực tiếp tại máy Bác Sĩ (nếu có loa)
+        speakDoctorAnnouncement(data.stt, data.ho_ten, data.nam_sinh, data.phong_kham);
+
+        showToast(`📢 Đã gọi bệnh nhân ${data.ho_ten} (STT #${data.stt}) vào ${data.phong_kham}! Kiosk TV đã hiển thị.`, "success");
+        loadQueue();
+
+      } catch (err) {
+        showToast(err.message, "danger");
+      }
+    }
+
+    /**
+     * Gọi lại lần 2
+     */
+    function goiLai(lichKhamId, e) {
+      if (e) e.stopPropagation();
+      const patientItem = currentPatientsQueue.find(i => i.id === lichKhamId);
+      if (!patientItem) return;
+
+      speakDoctorAnnouncement(patientItem.stt || patientItem.id, patientItem.ho_ten, null, "phòng khám");
+      showToast(`🔁 Đang phát loa gọi lại lần 2: Bệnh nhân ${patientItem.ho_ten} (STT #${patientItem.stt || patientItem.id})`, "warning");
+    }
+
+    function speakDoctorAnnouncement(stt, name, namSinh, phong) {
+      if (!('speechSynthesis' in window)) return;
+      window.speechSynthesis.cancel();
+      const yearText = namSinh ? `, sinh năm ${namSinh}` : "";
+      const msg = new SpeechSynthesisUtterance(`Xin mời bệnh nhân số ${stt}, ${name}${yearText}, vào ${phong || 'phòng khám'}.`);
+      msg.lang = "vi-VN";
+      msg.rate = 0.95;
+      const voices = window.speechSynthesis.getVoices();
+      const viVoice = voices.find(v => v.lang.startsWith("vi") || v.name.includes("Vietnamese"));
+      if (viVoice) msg.voice = viVoice;
+      window.speechSynthesis.speak(msg);
+    }
+
+    /**
+     * Chọn bệnh nhân để khám và đồng bộ toàn bộ dữ liệu lâm sàng
      */
     function selectPatientForExam(item) {
       document.querySelectorAll(".queue-item").forEach(el => el.classList.remove("active"));
@@ -578,15 +1070,54 @@
 
       document.getElementById("selectedPatientId").value = item.benh_nhan_id;
       document.getElementById("selectedLichKhamId").value = item.id;
-      document.getElementById("currentPatientName").textContent = `${item.ho_ten} (STT: #${item.stt || item.id})`;
+      document.getElementById("currentPatientStt").textContent = `STT #${item.stt || item.id}`;
+      document.getElementById("currentPatientName").textContent = item.ho_ten || "Bệnh nhân";
+      document.getElementById("currentPatientGender").textContent = item.gioi_tinh || "Khác";
+      document.getElementById("currentPatientAge").textContent = item.tuoi ? `${item.tuoi} tuổi` : "-- tuổi";
+      document.getElementById("currentPatientDob").textContent = item.ngay_sinh || "--";
+      document.getElementById("currentPatientPhone").textContent = item.so_dien_thoai || "--";
+      document.getElementById("currentPatientCccd").textContent = item.cccd || "--";
+      document.getElementById("currentPatientAddress").textContent = item.dia_chi || "--";
       document.getElementById("currentPatientBhyt").textContent = `BHYT: ${item.ma_bhyt || 'Không'}`;
+      document.getElementById("currentPatientRoom").innerHTML = `<i class="fa-solid fa-door-open me-1 text-primary"></i>${escapeHtml(item.phong_kham || 'Phòng khám')}`;
+
+      // Cảnh báo tiền sử bệnh lý / dị ứng
+      const historyAlert = document.getElementById("patientHistoryAlert");
+      const historyText = document.getElementById("currentPatientHistoryText");
+      if (item.tien_su_benh && item.tien_su_benh.trim()) {
+        historyAlert.classList.remove("d-none");
+        historyText.textContent = item.tien_su_benh;
+      } else {
+        historyAlert.classList.add("d-none");
+      }
+
+      // Lý do tiếp nhận từ lễ tân
+      document.getElementById("currentPatientReasonText").textContent = item.ly_do_kham || "Khám tổng quát";
       document.getElementById("trieu_chung").value = item.ly_do_kham || "";
+
+      // Khung hiển thị kết quả Cận lâm sàng gửi về
+      const clsBanner = document.getElementById("clsResultReceivedBanner");
+      const clsContent = document.getElementById("clsResultContent");
+      if (item.trang_thai === "da_co_ket_qua" || (item.ly_do_kham && item.ly_do_kham.includes("[KẾT QUẢ CLS"))) {
+        clsBanner.classList.remove("d-none");
+        let txt = item.ket_qua_cls || item.ly_do_kham;
+        if (txt.includes("[KẾT QUẢ CLS")) {
+          txt = txt.substring(txt.indexOf("[KẾT QUẢ CLS"));
+        }
+        clsContent.textContent = txt;
+        // Chuyển Tab sang Nhánh 2 (Hoàn tất khám & kê đơn)
+        const tab2Btn = document.getElementById("branch-b-tab");
+        if (tab2Btn) new bootstrap.Tab(tab2Btn).show();
+      } else {
+        clsBanner.classList.add("d-none");
+      }
+
       document.getElementById("btnAiSummary").disabled = false;
       document.getElementById("aiSummaryOutput").innerHTML = `Đã chọn <b>${escapeHtml(item.ho_ten)}</b>. Nhấn "Tóm tắt hồ sơ bằng AI" để phân tích bệnh án.`;
     }
 
     /**
-     * Kích hoạt AI Tóm tắt bệnh án
+     * Kích hoạt AI Tóm tắt bệnh án (FR-AI-01)
      */
     async function triggerAiSummary() {
       const patientId = document.getElementById("selectedPatientId").value;
@@ -912,7 +1443,215 @@
     }
 
     /**
-     * Lưu phiếu khám bệnh và chuyển thanh toán
+     * LUỒNG 1 (BRANCH A): CHUYỂN PHÒNG / CHỈ ĐỊNH CẬN LÂM SÀNG
+     */
+    async function executeBranchTransfer() {
+      const patientId = document.getElementById("selectedPatientId").value;
+      const lichKhamId = document.getElementById("selectedLichKhamId").value;
+
+      if (!patientId || !lichKhamId) {
+        showToast("Vui lòng chọn một bệnh nhân từ danh sách chờ trước khi chuyển phòng!", "warning");
+        return;
+      }
+
+      const targetRoom = document.getElementById("targetRoomSelect").value;
+      const serviceReason = document.getElementById("targetServiceReason").value.trim();
+      const notes = document.getElementById("targetTransferNotes").value.trim();
+
+      if (!serviceReason) {
+        showToast("Vui lòng nhập chỉ định dịch vụ hoặc lý do chuyển phòng!", "warning");
+        document.getElementById("targetServiceReason").focus();
+        return;
+      }
+
+      const btn = document.getElementById("btnExecuteTransfer");
+      btn.disabled = true;
+      btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin me-1"></i> Đang điều phối chuyển phòng...`;
+
+      try {
+        const payload = {
+          lich_kham_hien_tai_id: parseInt(lichKhamId),
+          phong_kham_dich: targetRoom,
+          chi_dinh_dich_vu: serviceReason,
+          ghi_chu: notes || null
+        };
+
+        const res = await fetch("/api/v1/lich-khams/dieu-phoi-chuyen-phong", {
+          method: "POST",
+          headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.detail || "Lỗi khi điều phối chuyển phòng");
+        }
+
+        const data = await res.json();
+        const p = data.phieu_dieu_phoi;
+
+        // Render Phiếu Điều Phối A5 vào modal
+        renderPrintSlip(p);
+
+        // Mở Modal in
+        const modalEl = new bootstrap.Modal(document.getElementById("modalPhieuDieuPhoi"));
+        modalEl.show();
+
+        showToast(`🎉 Chuyển phòng thành công! Bệnh nhân đã vào hàng chờ ${p.phong_dich} (STT #${p.stt_moi})`, "success");
+        resetForm();
+        loadQueue();
+
+      } catch (err) {
+        showToast(err.message, "danger");
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = `<i class="fa-solid fa-print me-1"></i> Chuyển Phòng & In Phiếu Điều Phối (A5)`;
+      }
+    }
+
+    /**
+     * LUỒNG 3 (BRANCH C): TRẢ KẾT QUẢ CẬN LÂM SÀNG VỀ PHÒNG KHÁM BAN ĐẦU
+     */
+    async function executeSendClsResult() {
+      const lichKhamId = document.getElementById("selectedLichKhamId").value;
+      if (!lichKhamId) {
+        showToast("Vui lòng chọn một bệnh nhân từ danh sách chờ!", "warning");
+        return;
+      }
+
+      const ketLuan = document.getElementById("clsKetLuanInput").value.trim();
+      const chiTiet = document.getElementById("clsChiTietInput").value.trim();
+
+      if (!ketLuan || !chiTiet) {
+        showToast("Vui lòng nhập đầy đủ Kết luận và Chi tiết kết quả cận lâm sàng!", "warning");
+        if (!ketLuan) document.getElementById("clsKetLuanInput").focus();
+        else document.getElementById("clsChiTietInput").focus();
+        return;
+      }
+
+      const btn = document.getElementById("btnSendClsResult");
+      btn.disabled = true;
+      btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin me-1"></i> Đang gửi trả kết quả...`;
+
+      try {
+        const payload = {
+          lich_kham_cls_id: parseInt(lichKhamId),
+          ket_luan: ketLuan,
+          ket_qua_chi_tiet: chiTiet
+        };
+
+        const res = await fetch("/api/v1/lich-khams/tra-ket-qua-cls", {
+          method: "POST",
+          headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err.detail || "Lỗi khi gửi trả kết quả cận lâm sàng");
+        }
+
+        const data = await res.json();
+        showToast(`🎉 ${data.message}`, "success");
+        document.getElementById("clsKetLuanInput").value = "";
+        document.getElementById("clsChiTietInput").value = "";
+        resetForm();
+        loadQueue();
+
+      } catch (err) {
+        showToast(err.message, "danger");
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = `<i class="fa-solid fa-paper-plane me-1"></i> 📤 Trả Kết Quả Về Bác Sĩ Phòng Ban Đầu`;
+      }
+    }
+
+    /**
+     * Render HTML Mẫu Phiếu Điều Phối A5 chuẩn Bộ Y tế
+     */
+    function renderPrintSlip(p) {
+      const container = document.getElementById("paperDieuPhoi");
+      container.innerHTML = `
+        <div class="print-header d-flex align-items-center justify-content-between">
+          <div class="d-flex align-items-center gap-3">
+            <div style="font-size: 34px; color: #1A73E8;"><i class="fa-solid fa-hospital"></i></div>
+            <div>
+              <div class="fw-bold text-uppercase" style="font-size: 14px; letter-spacing: 0.5px;">BỆNH VIỆN ĐA KHOA QUỐC TẾ CLINOVA AI</div>
+              <div class="small text-muted" style="font-size: 11px;">Địa chỉ: Khu Công Nghệ Cao, Hà Nội • Hotline: 1900 6868</div>
+            </div>
+          </div>
+          <div class="text-end">
+            <div class="badge bg-light text-dark border font-monospace px-2 py-1" style="font-size: 13px;">${p.ma_phieu}</div>
+            <div class="small text-muted" style="font-size: 11px;">${p.thoi_gian_tao}</div>
+          </div>
+        </div>
+
+        <div class="text-center my-3">
+          <div class="print-title">PHIẾU HƯỚNG DẪN ĐIỀU PHỐI KHÁM BỆNH</div>
+          <div class="small text-secondary fst-italic">(Dành cho bệnh nhân di chuyển giữa các phòng khám / cận lâm sàng)</div>
+        </div>
+
+        <div class="bg-light p-3 rounded-2 border mb-3">
+          <div class="row g-2 small">
+            <div class="col-7"><strong>Họ và tên BN:</strong> <span class="text-uppercase fw-bold text-primary fs-6">${escapeHtml(p.benh_nhan.ho_ten)}</span></div>
+            <div class="col-5"><strong>Năm sinh:</strong> ${p.benh_nhan.nam_sinh || p.benh_nhan.ngay_sinh || '--'} (${escapeHtml(p.benh_nhan.gioi_tinh)})</div>
+            <div class="col-7"><strong>Mã BHYT:</strong> ${escapeHtml(p.benh_nhan.ma_bhyt || 'Không')}</div>
+            <div class="col-5"><strong>SĐT:</strong> ${escapeHtml(p.benh_nhan.so_dien_thoai || '--')}</div>
+          </div>
+        </div>
+
+        <!-- KHUNG ĐIỀU PHỐI CHÍNH -->
+        <div class="border border-primary rounded-3 p-3 mb-3 bg-white">
+          <div class="row align-items-center mb-2">
+            <div class="col-8">
+              <div class="text-muted small text-uppercase fw-bold">1. Phòng chuyển đi:</div>
+              <div class="fw-bold text-dark">${escapeHtml(p.phong_hien_tai)} (Bác sĩ chỉ định: ${escapeHtml(p.bac_si_chi_dinh)})</div>
+            </div>
+            <div class="col-4 text-end">
+              <span class="badge bg-secondary-subtle text-secondary border">Ca khám hoàn tất</span>
+            </div>
+          </div>
+
+          <hr class="my-2" />
+
+          <div class="row align-items-center mt-2">
+            <div class="col-8">
+              <div class="text-danger small text-uppercase fw-bold"><i class="fa-solid fa-location-dot me-1"></i>2. Phòng cần đến tiếp theo:</div>
+              <div class="fw-bold fs-5 text-primary">${escapeHtml(p.phong_dich)}</div>
+              <div class="small text-secondary fw-semibold mt-1"><i class="fa-solid fa-stairs me-1"></i>Vị trí: ${escapeHtml(p.vi_tri_phong)}</div>
+            </div>
+            <div class="col-4 text-end">
+              <div class="small text-muted mb-1">STT TẠI PHÒNG MỚI</div>
+              <div class="print-badge-stt">#${String(p.stt_moi).padStart(2, '0')}</div>
+            </div>
+          </div>
+
+          <div class="mt-3 pt-2 border-top">
+            <div class="small"><strong>Dịch vụ / Xét nghiệm chỉ định:</strong> <span class="text-dark fw-bold">${escapeHtml(p.chi_dinh_dich_vu)}</span></div>
+            <div class="small text-danger mt-1"><strong>Lời dặn di chuyển:</strong> ${escapeHtml(p.ghi_chu)}</div>
+          </div>
+        </div>
+
+        <div class="d-flex justify-content-between align-items-end mt-4 pt-2">
+          <div class="small text-muted" style="max-width: 320px; font-size: 11px;">
+            <i class="fa-solid fa-circle-info me-1"></i>
+            Quý bệnh nhân vui lòng cầm phiếu này đến cửa phòng đích. Hệ thống Màn hình TV và Loa phát thanh tại phòng sẽ tự động gọi tên theo Số Thứ Tự trên.
+          </div>
+          <div class="text-center">
+            <div class="small fw-semibold">Bác sĩ chỉ định</div>
+            <div class="fst-italic small text-muted mb-4">(Ký, ghi rõ họ tên)</div>
+            <div class="fw-bold text-primary">${escapeHtml(p.bac_si_chi_dinh)}</div>
+          </div>
+        </div>
+      `;
+    }
+
+    function triggerPrint() {
+      window.print();
+    }
+
+    /**
+     * LUỒNG 2 (BRANCH B): HOÀN TẤT ĐỢT KHÁM & KÊ ĐƠN LẤY THUỐC
      */
     async function savePhieuKham(e) {
       e.preventDefault();
@@ -929,15 +1668,22 @@
       const aiSummary = document.getElementById("aiSummaryOutput").innerText;
       const huongDan = document.getElementById("aiGuideOutput").value.trim();
 
-      // Thu thập danh sách đơn thuốc
+      // Thu thập danh sách đơn thuốc từ bảng kê đơn
       const rows = document.querySelectorAll("#prescriptionTableBody tr");
       const donThuocs = [];
 
       for (const r of rows) {
-        const medId = r.querySelector(".med-id-val").value;
-        const medName = r.querySelector(".med-search-input").value.trim();
-        const qty = parseInt(r.querySelector(".med-qty-input").value) || 0;
-        const dosage = r.querySelector(".med-dosage-input").value.trim();
+        const medIdInput = r.querySelector(".med-id-val");
+        const medNameInput = r.querySelector(".med-search-input");
+        const medQtyInput = r.querySelector(".med-qty-input");
+        const medDosageInput = r.querySelector(".med-dosage-input");
+
+        if (!medIdInput || !medNameInput) continue;
+
+        const medId = medIdInput.value;
+        const medName = medNameInput.value.trim();
+        const qty = parseInt(medQtyInput ? medQtyInput.value : 0) || 0;
+        const dosage = medDosageInput ? medDosageInput.value.trim() : "";
 
         if (!medId) {
           showToast(`Vui lòng chọn thuốc hợp lệ từ danh sách gợi ý cho "${medName || 'Dòng trống'}"`, "warning");
@@ -1000,16 +1746,29 @@
         const btnPrint = document.getElementById("btnPrintCurrentPhieu");
         if (btnPrint) btnPrint.style.display = "inline-block";
 
+        // Cập nhật trạng thái lịch khám thành hoàn tất
+        if (lichKhamId) {
+          await fetch(`/api/v1/lich-khams/${lichKhamId}/trang-thai`, {
+            method: "PUT",
+            headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+            body: JSON.stringify({ trang_thai: "hoan_thanh" })
+          }).catch(() => {});
+        }
+
+        // Tự động mở modal in phiếu khám & đơn thuốc
+        openPrintModal();
         resetForm();
         loadQueue();
+
       } catch (err) {
         showToast(err.message, "danger");
       } finally {
         btn.disabled = false;
-        btn.innerHTML = `<i class="fa-solid fa-floppy-disk me-1"></i> Hoàn Tất Khám & Chuyển Thanh Toán`;
+        btn.innerHTML = `<i class="fa-solid fa-print me-1"></i> Hoàn Tất Khám & In Đơn Thuốc (A5)`;
       }
     }
 
+    /**
     /**
      * Mở modal in phiếu khám & đơn thuốc
      */
@@ -1057,6 +1816,9 @@
       document.getElementById("currentPatientBhyt").textContent = "BHYT: --";
       document.getElementById("btnAiSummary").disabled = true;
       document.getElementById("aiSummaryOutput").innerHTML = "Nhấn nút 'Tóm tắt hồ sơ bằng AI' để tự động phân tích và tóm tắt tiền sử bệnh án ẩn danh.";
+      document.getElementById("aiGuideOutput").value = "";
+      document.getElementById("targetServiceReason").value = "";
+      document.getElementById("targetTransferNotes").value = "";
       document.querySelectorAll(".queue-item").forEach(el => el.classList.remove("active"));
     }
 

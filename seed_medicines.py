@@ -665,8 +665,8 @@ SPECIALTY_MEDICINES = [
 ]
 
 
-def seed_medicines():
-    db = SessionLocal()
+def _do_seed_medicines(db):
+    """Logic seed thuốc nội bộ — dùng chung cho cả seed_medicines() và run_seed(db)."""
     print("=" * 70)
     print("🏥 BẮT ĐẦU NẠP DANH MỤC THUỐC TÂN DƯỢC & VẬT TƯ Y TẾ THEO CHUYÊN KHOA")
     print("=" * 70)
@@ -674,36 +674,56 @@ def seed_medicines():
     total_added = 0
     total_updated = 0
 
+    for med_data in SPECIALTY_MEDICINES:
+        ten = med_data["ten_thuoc"].strip()
+        # Kiểm tra xem thuốc đã tồn tại trong kho chưa (theo tên)
+        existing = db.query(models.Thuoc).filter(models.Thuoc.ten_thuoc == ten).first()
+        if existing:
+            existing.don_vi_tinh = med_data["don_vi_tinh"]
+            existing.gia_nhap = med_data["gia_nhap"]
+            existing.don_gia = med_data["don_gia"]
+            existing.so_luong_ton = med_data["so_luong_ton"]
+            total_updated += 1
+        else:
+            new_thuoc = models.Thuoc(
+                ten_thuoc=ten,
+                don_vi_tinh=med_data["don_vi_tinh"],
+                gia_nhap=med_data["gia_nhap"],
+                don_gia=med_data["don_gia"],
+                so_luong_ton=med_data["so_luong_ton"]
+            )
+            db.add(new_thuoc)
+            total_added += 1
+
+    db.commit()
+    total_in_db = db.query(models.Thuoc).count()
+
+    print(f"✅ Đã thêm mới: {total_added} mặt hàng thuốc chuyên khoa")
+    print(f"🔄 Đã cập nhật: {total_updated} mặt hàng thuốc có sẵn")
+    print(f"📦 TỔNG SỐ MẶT HÀNG TRONG KHO DƯỢC HIỆN TẠI: {total_in_db} mặt hàng")
+    print("=" * 70)
+    print("🎉 Nạp dữ liệu thuốc theo chuyên khoa thành công!")
+
+
+def run_seed(db):
+    """
+    Wrapper được gọi từ startup.py khi deploy Railway.
+    Nhận session DB từ ngoài — KHÔNG tự tạo/đóng session.
+    """
     try:
-        for med_data in SPECIALTY_MEDICINES:
-            ten = med_data["ten_thuoc"].strip()
-            # Kiểm tra xem thuốc đã tồn tại trong kho chưa (theo tên)
-            existing = db.query(models.Thuoc).filter(models.Thuoc.ten_thuoc == ten).first()
-            if existing:
-                existing.don_vi_tinh = med_data["don_vi_tinh"]
-                existing.gia_nhap = med_data["gia_nhap"]
-                existing.don_gia = med_data["don_gia"]
-                existing.so_luong_ton = med_data["so_luong_ton"]
-                total_updated += 1
-            else:
-                new_thuoc = models.Thuoc(
-                    ten_thuoc=ten,
-                    don_vi_tinh=med_data["don_vi_tinh"],
-                    gia_nhap=med_data["gia_nhap"],
-                    don_gia=med_data["don_gia"],
-                    so_luong_ton=med_data["so_luong_ton"]
-                )
-                db.add(new_thuoc)
-                total_added += 1
+        _do_seed_medicines(db)
+        return True
+    except Exception as e:
+        db.rollback()
+        print(f"❌ Lỗi khi nạp dữ liệu thuốc (run_seed): {e}")
+        return False
 
-        db.commit()
-        total_in_db = db.query(models.Thuoc).count()
 
-        print(f"✅ Đã thêm mới: {total_added} mặt hàng thuốc chuyên khoa")
-        print(f"🔄 Đã cập nhật: {total_updated} mặt hàng thuốc có sẵn")
-        print(f"📦 TỔNG SỐ MẶT HÀNG TRONG KHO DƯỢC HIỆN TẠI: {total_in_db} mặt hàng")
-        print("=" * 70)
-        print("🎉 Nạp dữ liệu thuốc theo chuyên khoa thành công!")
+def seed_medicines():
+    """Chạy độc lập bằng: python seed_medicines.py"""
+    db = SessionLocal()
+    try:
+        _do_seed_medicines(db)
         return True
     except Exception as e:
         db.rollback()

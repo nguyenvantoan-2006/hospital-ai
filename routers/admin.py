@@ -243,7 +243,7 @@ def get_user_profile(user_id: int, db: Session = Depends(get_db)):
 def get_all_specialties(db: Session = Depends(get_db)):
     """Lấy danh sách tất cả chuyên khoa."""
     try:
-        specs = db.query(models.ChuyenKhoa).all()
+        specs = db.query(models.ChuyenKhoa).filter(models.ChuyenKhoa.trang_thai == True).all()
         return [
             {"id": s.id, "ten_chuyen_khoa": s.ten_chuyen_khoa,
              "mo_ta": s.mo_ta, "gia_kham_tieu_chuan": s.gia_kham_tieu_chuan,

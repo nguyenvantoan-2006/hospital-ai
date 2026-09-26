@@ -13,6 +13,8 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
   <!-- FontAwesome Icons -->
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+  <!-- AI Chatbot Styling -->
+  <link rel="stylesheet" href="/static/css/chatbot.css">
 
   <style>
     :root {
@@ -173,7 +175,7 @@
     <div class="container d-flex flex-wrap justify-content-between align-items-center">
       <div class="d-flex align-items-center gap-4">
         <span><i class="fa-solid fa-phone text-primary me-2"></i>Hotline Cấp Cứu 24/7: <strong>1900 8888</strong></span>
-        <span class="d-none d-md-inline"><i class="fa-solid fa-location-dot text-primary me-2"></i>123 Tuyến Y Tế Trọng Điểm, TP. Hồ Chí Minh</span>
+        <span class="d-none d-md-inline"><i class="fa-solid fa-location-dot text-primary me-2"></i>123 Tuyến Y Tế Trọng Điểm, TP.Thái Nguyên</span>
       </div>
       <div class="d-flex align-items-center gap-3">
         <span><i class="fa-regular fa-clock me-1"></i>Làm việc: 07:00 - 20:00 (Cả T7 & CN)</span>
@@ -206,9 +208,13 @@
           <li class="nav-item"><a class="nav-link text-dark" href="#quy-trinh">Quy Trình Đặt Lịch</a></li>
           <li class="nav-item"><a class="nav-link text-dark" href="#bac-si">Đội Ngũ Bác Sĩ</a></li>
           <li class="nav-item"><a class="nav-link text-dark" href="#lien-he">Liên Hệ</a></li>
+          <li class="nav-item"><a class="nav-link text-primary fw-semibold" href="man_hinh_phong_kham.html" target="_blank"><i class="fa-solid fa-tv me-1"></i>Màn Hình Gọi Số</a></li>
         </ul>
 
-        <div class="d-flex align-items-center gap-3">
+        <div class="d-flex align-items-center gap-2">
+          <a href="man_hinh_phong_kham.html" target="_blank" class="btn btn-outline-primary rounded-pill px-3 py-2 fw-semibold" title="Màn hình Kiosk gọi số trước cửa phòng khám">
+            <i class="fa-solid fa-satellite-dish me-1"></i> Bảng Gọi Số
+          </a>
           <a href="dat_lich_online.html" class="btn btn-primary fw-bold rounded-pill px-4 py-2 shadow-sm">
             <i class="fa-solid fa-calendar-check me-2"></i>Đặt Lịch Ngay
           </a>
@@ -304,43 +310,6 @@
           </div>
         </div>
       </div>
-<<<<<<< HEAD
-=======
-
-      <!-- Module 5: Quầy Dược & Cấp Phát Thuốc -->
-      <div class="col-md-6 col-lg-4">
-        <a href="quay_thuoc.html" class="module-card p-4">
-          <div class="icon-box mb-3" style="background-color: #CCFBF1; color: #0D9488;">
-            <i class="fa-solid fa-prescription-bottle-medical"></i>
-          </div>
-          <h5 class="fw-bold mb-2">Quầy Dược & Phát Thuốc</h5>
-          <p class="text-muted small mb-0">Tiếp nhận đơn thuốc tức thì sau khi bác sĩ kê, thu tiền thuốc và xác nhận cấp phát thuốc.</p>
-        </a>
-      </div>
-
-      <!-- Module 5: Kế toán Tổng hợp & Tài chính -->
-      <div class="col-md-6 col-lg-4">
-        <a href="ke_toan.html" class="module-card p-4">
-          <div class="icon-box bg-info-subtle text-info mb-3">
-            <i class="fa-solid fa-coins"></i>
-          </div>
-          <h5 class="fw-bold mb-2">Kế toán & Tài chính</h5>
-          <p class="text-muted small mb-0">Quản lý quỹ lương nhân viên, tồn kho dược phẩm, báo cáo doanh thu theo Quý và xuất Excel.</p>
-        </a>
-      </div>
-
-      <!-- Module 6: Quản trị hệ thống -->
-      <div class="col-md-6 col-lg-4">
-        <a href="admin_dashboard.html" class="module-card p-4">
-          <div class="icon-box bg-secondary-subtle text-secondary mb-3">
-            <i class="fa-solid fa-chart-pie"></i>
-          </div>
-          <h5 class="fw-bold mb-2">Quản trị Admin</h5>
-          <p class="text-muted small mb-0">Quản lý danh mục bác sĩ, chuyên khoa, tài khoản người dùng và nhật ký audit logs.</p>
-        </a>
-      </div>
-
->>>>>>> e60f036 (feat(ui): tao trang quay_thuoc.html quan ly don thuoc cap phat va nang cap thanh_toan.html)
     </div>
   </section>
 
@@ -464,7 +433,7 @@
           <h6 class="fw-bold text-white mb-3">Tổng Đài Trợ Giúp</h6>
           <div class="text-primary fw-bold fs-4 mb-2">1900 8888</div>
           <p class="text-white-50 small mb-2">Email: lienhe@clinova.vn</p>
-          <p class="text-white-50 small">Địa chỉ: 123 Tuyến Y Tế Trọng Điểm, TP. Hồ Chí Minh</p>
+          <p class="text-white-50 small">Địa chỉ: 123 Tuyến Y Tế Trọng Điểm, TP.Thái Nguyên</p>
         </div>
       </div>
       <div class="d-flex flex-wrap justify-content-between align-items-center pt-3 text-white-50 small">
@@ -500,16 +469,50 @@
         return;
       }
 
-      // Icon mapper
-      const icons = [
-        "fa-stethoscope", "fa-user-nurse", "fa-baby", "fa-person-pregnant", "fa-heart-pulse",
-        "fa-lungs", "fa-shield-virus", "fa-bone", "fa-brain", "fa-head-side-mask",
-        "fa-tooth", "fa-eye", "fa-hand-dots", "fa-droplet", "fa-ribbon",
-        "fa-virus", "fa-hospital", "fa-capsules", "fa-syringe", "fa-dna"
-      ];
+      // Ánh xạ icon y tế chuẩn xác theo tên chuyên khoa (FontAwesome 6)
+      function getSpecialtyIcon(name) {
+        if (!name) return "fa-stethoscope";
+        const n = name.toLowerCase();
+        if (n.includes("truyền nhiễm") || n.includes("nhiệt đới") || n.includes("virus")) return "fa-virus";
+        if (n.includes("phục hồi") || n.includes("vật lý trị liệu")) return "fa-person-walking";
+        if (n.includes("da liễu")) return "fa-hand-dots";
+        if (n.includes("thẩm mỹ") || n.includes("tạo hình")) return "fa-wand-magic-sparkles";
+        if (n.includes("gây mê")) return "fa-syringe";
+        if (n.includes("cấp cứu") || n.includes("hồi sức")) return "fa-truck-medical";
+        if (n.includes("răng") || n.includes("hàm") || n.includes("mặt")) return "fa-tooth";
+        if (n.includes("mắt") || n.includes("nhãn")) return "fa-eye";
+        if (n.includes("tai") || n.includes("mũi") || n.includes("họng")) return "fa-head-side-cough";
+        if (n.includes("tim") || n.includes("mạch")) return "fa-heart-pulse";
+        if (n.includes("hô hấp") || n.includes("phổi")) return "fa-lungs";
+        if (n.includes("xương") || n.includes("khớp") || n.includes("chấn thương") || n.includes("chỉnh hình")) return "fa-bone";
+        if (n.includes("nhi khoa") || n.includes("trẻ em") || n.includes("sơ sinh") || n.startsWith("nhi")) return "fa-baby";
+        if (n.includes("sản") || n.includes("phụ khoa") || n.includes("thai")) return "fa-person-pregnant";
+        if (n.includes("thần kinh") || n.includes("não") || n.includes("cột sống")) return "fa-brain";
+        if (n.includes("tiêu hóa") || n.includes("gan") || n.includes("mật") || n.includes("dạ dày") || n.includes("đại tràng")) return "fa-capsules";
+        if (n.includes("thận") || n.includes("tiết niệu")) return "fa-shield-halved";
+        if (n.includes("nội tiết") || n.includes("đái tháo đường") || n.includes("tiểu đường")) return "fa-droplet";
+        if (n.includes("ung bướu") || n.includes("ung thư")) return "fa-ribbon";
+        if (n.includes("huyết học") || n.includes("máu")) return "fa-vial";
+        if (n.includes("dị ứng") || n.includes("miễn dịch")) return "fa-shield-virus";
+        if (n.includes("y học cổ truyền") || n.includes("đông y")) return "fa-leaf";
+        if (n.includes("dinh dưỡng")) return "fa-bowl-food";
+        if (n.includes("tâm thần") || n.includes("tâm lý")) return "fa-comments";
+        if (n.includes("hình ảnh") || n.includes("x-quang") || n.includes("ct") || n.includes("mri") || n.includes("siêu âm")) return "fa-x-ray";
+        if (n.includes("xét nghiệm") || n.includes("sinh hóa")) return "fa-vials";
+        if (n.includes("lồng ngực")) return "fa-heart-circle-bolt";
+        if (n.includes("nam khoa") || n.includes("giới tính")) return "fa-mars";
+        if (n.includes("lão") || n.includes("người già") || n.includes("cao tuổi")) return "fa-person-cane";
+        if (n.includes("giải phẫu") || n.includes("tế bào")) return "fa-dna";
+        if (n.includes("nội soi")) return "fa-microscope";
+        if (n.includes("tiêm chủng") || n.includes("vắc-xin") || n.includes("vacxin")) return "fa-syringe";
+        if (n.includes("nội tổng quát")) return "fa-stethoscope";
+        if (n.includes("ngoại")) return "fa-kit-medical";
+        if (n.includes("tổng quát") || n.includes("kiểm tra sức khỏe")) return "fa-clipboard-check";
+        return "fa-user-doctor";
+      }
 
       container.innerHTML = list.map((spec, idx) => {
-        const icon = icons[idx % icons.length];
+        const icon = getSpecialtyIcon(spec.ten_chuyen_khoa);
         const feeFormatted = new Intl.NumberFormat('vi-VN').format(spec.gia_kham_tieu_chuan || 150000);
         return `
           <div class="col-md-6 col-lg-4 col-xl-3 spec-item" data-name="${spec.ten_chuyen_khoa.toLowerCase()}">
@@ -583,6 +586,8 @@
       loadFeaturedDoctors();
     });
   </script>
+  <!-- AI Chatbot Script -->
+  <script src="/static/js/chatbot.js"></script>
 </body>
 
 </html>

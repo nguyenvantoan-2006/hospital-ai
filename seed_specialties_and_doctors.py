@@ -85,125 +85,143 @@ def hash_default_password() -> str:
     return bcrypt.hashpw(b"BacSi@2024!", salt).decode("utf-8")
 
 
-def seed_database():
-    db = SessionLocal()
-    try:
-        print("=" * 70)
-        print("🌱 BẮT ĐẦU SEED 37 CHUYÊN KHOA VÀ 185 BÁC SĨ (5 BÁC SĨ / KHOA)")
-        print("=" * 70)
+def _do_seed(db):
+    """Logic seed nội bộ — dùng chung cho cả seed_database() và run_seed(db)."""
+    print("=" * 70)
+    print("🌱 BẮT ĐẦU SEED 37 CHUYÊN KHOA VÀ 185 BÁC SĨ (5 BÁC SĨ / KHOA)")
+    print("="  * 70)
 
-        # 1. Tạo bảng nếu chưa có
-        Base.metadata.create_all(bind=engine)
+    # 1. Tạo bảng nếu chưa có
+    Base.metadata.create_all(bind=engine)
 
-        default_password_hash = hash_default_password()
+    default_password_hash = hash_default_password()
 
-        created_specs = 0
-        created_docs = 0
-        doctor_global_idx = 1
+    created_specs = 0
+    created_docs = 0
+    doctor_global_idx = 1
 
-        for spec_idx, spec_info in enumerate(SPECIALTIES_DATA, start=1):
-            ten_khoa = spec_info["ten"]
-            # Kiểm tra hoặc tạo chuyên khoa
-            spec = db.query(models.ChuyenKhoa).filter(
-                models.ChuyenKhoa.ten_chuyen_khoa == ten_khoa
-            ).first()
+    for spec_idx, spec_info in enumerate(SPECIALTIES_DATA, start=1):
+        ten_khoa = spec_info["ten"]
+        # Kiểm tra hoặc tạo chuyên khoa
+        spec = db.query(models.ChuyenKhoa).filter(
+            models.ChuyenKhoa.ten_chuyen_khoa == ten_khoa
+        ).first()
 
-            if not spec:
-                spec = models.ChuyenKhoa(
-                    ten_chuyen_khoa=ten_khoa,
-                    mo_ta=spec_info["mo_ta"],
-                    gia_kham_tieu_chuan=float(spec_info["gia"]),
+        if not spec:
+            spec = models.ChuyenKhoa(
+                ten_chuyen_khoa=ten_khoa,
+                mo_ta=spec_info["mo_ta"],
+                gia_kham_tieu_chuan=float(spec_info["gia"]),
+                trang_thai=True
+            )
+            db.add(spec)
+            db.commit()
+            db.refresh(spec)
+            created_specs += 1
+        else:
+            # Cập nhật thông tin mô tả và giá chuẩn nếu cần
+            spec.mo_ta = spec_info["mo_ta"]
+            spec.gia_kham_tieu_chuan = float(spec_info["gia"])
+            spec.trang_thai = True
+            db.commit()
+
+        print(f"\n📂 [{spec_idx:02d}/37] Chuyên khoa: {ten_khoa} (ID: {spec.id})")
+
+        # 2. Tạo 5 bác sĩ cho chuyên khoa này
+        for doc_num in range(1, 6):
+            ma_bs = f"BS{doctor_global_idx:03d}"
+            username = f"bacsi_{doctor_global_idx:03d}"
+            email = f"bs{doctor_global_idx:03d}@clinic.com"
+
+            # Lựa chọn tên sinh ngẫu nhiên nhưng cố định theo index
+            ho = HO_LIST[(doctor_global_idx * 3 + doc_num) % len(HO_LIST)]
+            dem = DEM_LIST[(doctor_global_idx * 7 + doc_num) % len(DEM_LIST)]
+            ten = TEN_LIST[(doctor_global_idx * 5 + doc_num) % len(TEN_LIST)]
+            ho_ten = f"{ho} {dem} {ten}"
+
+            hoc_vi = HOC_VI_LIST[(doctor_global_idx + doc_num) % len(HOC_VI_LIST)]
+            sdt = f"09{doctor_global_idx:03d}{doc_num:02d}{spec_idx:02d}"[:10]
+            phong_kham = f"Phòng {100 + spec_idx} (Khu {chr(65 + (spec_idx % 4))})"
+            lich_truc = CA_TRUC_LIST[(doctor_global_idx + doc_num) % len(CA_TRUC_LIST)]
+
+            # Kiểm tra tài khoản User
+            user = db.query(models.User).filter(models.User.username == username).first()
+            if not user:
+                user = models.User(
+                    username=username,
+                    password_hash=default_password_hash,
+                    role="bac_si",
+                    email=email,
                     trang_thai=True
                 )
-                db.add(spec)
+                db.add(user)
                 db.commit()
-                db.refresh(spec)
-                created_specs += 1
+                db.refresh(user)
+
+            # Kiểm tra hồ sơ BacSi
+            doc = db.query(models.BacSi).filter(
+                (models.BacSi.ma_bac_si == ma_bs) | (models.BacSi.user_id == user.id)
+            ).first()
+
+            if not doc:
+                doc = models.BacSi(
+                    user_id=user.id,
+                    ma_bac_si=ma_bs,
+                    ho_ten=ho_ten,
+                    hoc_vi=hoc_vi,
+                    chuyen_khoa=ten_khoa,
+                    so_dien_thoai=sdt,
+                    phong_kham=phong_kham,
+                    lich_truc=lich_truc,
+                    trang_thai=True
+                )
+                db.add(doc)
+                db.commit()
+                db.refresh(doc)
+                created_docs += 1
+                status_flag = "MỚI"
             else:
-                # Cập nhật thông tin mô tả và giá chuẩn nếu cần
-                spec.mo_ta = spec_info["mo_ta"]
-                spec.gia_kham_tieu_chuan = float(spec_info["gia"])
-                spec.trang_thai = True
+                # Đồng bộ thông tin chuyên khoa
+                doc.chuyen_khoa = ten_khoa
+                doc.ho_ten = ho_ten
+                doc.hoc_vi = hoc_vi
+                doc.phong_kham = phong_kham
+                doc.lich_truc = lich_truc
+                doc.trang_thai = True
                 db.commit()
+                status_flag = "CẬP NHẬT"
 
-            print(f"\n📂 [{spec_idx:02d}/37] Chuyên khoa: {ten_khoa} (ID: {spec.id})")
+            print(f"   └─ [{status_flag}] #{doctor_global_idx:03d} {hoc_vi} {ho_ten} ({ma_bs}) | User: {username}")
+            doctor_global_idx += 1
 
-            # 2. Tạo 5 bác sĩ cho chuyên khoa này
-            for doc_num in range(1, 6):
-                ma_bs = f"BS{doctor_global_idx:03d}"
-                username = f"bacsi_{doctor_global_idx:03d}"
-                email = f"bs{doctor_global_idx:03d}@clinic.com"
+    print("\n" + "=" * 70)
+    total_specs_db = db.query(models.ChuyenKhoa).count()
+    total_docs_db = db.query(models.BacSi).count()
+    print(f"🎉 HOÀN TẤT THÀNH CÔNG!")
+    print(f"   • Tổng số chuyên khoa hiện có trong DB: {total_specs_db}/37")
+    print(f"   • Tổng số bác sĩ hiện có trong DB: {total_docs_db}/185")
+    print(f"   • Mật khẩu đăng nhập mặc định cho toàn bộ bác sĩ: BacSi@2024!")
+    print("=" * 70)
 
-                # Lựa chọn tên sinh ngẫu nhiên nhưng cố định theo index
-                ho = HO_LIST[(doctor_global_idx * 3 + doc_num) % len(HO_LIST)]
-                dem = DEM_LIST[(doctor_global_idx * 7 + doc_num) % len(DEM_LIST)]
-                ten = TEN_LIST[(doctor_global_idx * 5 + doc_num) % len(TEN_LIST)]
-                ho_ten = f"{ho} {dem} {ten}"
 
-                hoc_vi = HOC_VI_LIST[(doctor_global_idx + doc_num) % len(HOC_VI_LIST)]
-                sdt = f"09{doctor_global_idx:03d}{doc_num:02d}{spec_idx:02d}"[:10]
-                phong_kham = f"Phòng {100 + spec_idx} (Khu {chr(65 + (spec_idx % 4))})"
-                lich_truc = CA_TRUC_LIST[(doctor_global_idx + doc_num) % len(CA_TRUC_LIST)]
+def run_seed(db):
+    """
+    Wrapper được gọi từ startup.py khi deploy Railway.
+    Nhận session DB từ ngoài — KHÔNG tự tạo/đóng session.
+    """
+    try:
+        _do_seed(db)
+    except Exception as e:
+        db.rollback()
+        print(f"❌ LỖI KHI SEED DỮ LIỆU (run_seed): {e}")
+        raise e
 
-                # Kiểm tra tài khoản User
-                user = db.query(models.User).filter(models.User.username == username).first()
-                if not user:
-                    user = models.User(
-                        username=username,
-                        password_hash=default_password_hash,
-                        role="bac_si",
-                        email=email,
-                        trang_thai=True
-                    )
-                    db.add(user)
-                    db.commit()
-                    db.refresh(user)
 
-                # Kiểm tra hồ sơ BacSi
-                doc = db.query(models.BacSi).filter(
-                    (models.BacSi.ma_bac_si == ma_bs) | (models.BacSi.user_id == user.id)
-                ).first()
-
-                if not doc:
-                    doc = models.BacSi(
-                        user_id=user.id,
-                        ma_bac_si=ma_bs,
-                        ho_ten=ho_ten,
-                        hoc_vi=hoc_vi,
-                        chuyen_khoa=ten_khoa,
-                        so_dien_thoai=sdt,
-                        phong_kham=phong_kham,
-                        lich_truc=lich_truc,
-                        trang_thai=True
-                    )
-                    db.add(doc)
-                    db.commit()
-                    db.refresh(doc)
-                    created_docs += 1
-                    status_flag = "MỚI"
-                else:
-                    # Đồng bộ thông tin chuyên khoa
-                    doc.chuyen_khoa = ten_khoa
-                    doc.ho_ten = ho_ten
-                    doc.hoc_vi = hoc_vi
-                    doc.phong_kham = phong_kham
-                    doc.lich_truc = lich_truc
-                    doc.trang_thai = True
-                    db.commit()
-                    status_flag = "CẬP NHẬT"
-
-                print(f"   └─ [{status_flag}] #{doctor_global_idx:03d} {hoc_vi} {ho_ten} ({ma_bs}) | User: {username}")
-                doctor_global_idx += 1
-
-        print("\n" + "=" * 70)
-        total_specs_db = db.query(models.ChuyenKhoa).count()
-        total_docs_db = db.query(models.BacSi).count()
-        print(f"🎉 HOÀN TẤT THÀNH CÔNG!")
-        print(f"   • Tổng số chuyên khoa hiện có trong DB: {total_specs_db}/37")
-        print(f"   • Tổng số bác sĩ hiện có trong DB: {total_docs_db}/185")
-        print(f"   • Mật khẩu đăng nhập mặc định cho toàn bộ bác sĩ: BacSi@2024!")
-        print("=" * 70)
-
+def seed_database():
+    """Chạy độc lập bằng: python seed_specialties_and_doctors.py"""
+    db = SessionLocal()
+    try:
+        _do_seed(db)
     except Exception as e:
         db.rollback()
         print(f"❌ LỖI KHI SEED DỮ LIỆU: {e}")

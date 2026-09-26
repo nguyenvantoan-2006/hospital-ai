@@ -25,10 +25,33 @@ GMAIL_USER        = os.getenv("GMAIL_USER") or os.getenv("MAIL_USERNAME") or ""
 GMAIL_APP_PASSWORD= os.getenv("GMAIL_APP_PASSWORD") or os.getenv("MAIL_PASSWORD") or ""
 SENDER_NAME       = os.getenv("EMAIL_SENDER_NAME", "CLINOVA Smart Clinic")
 
-# ─── BỘ ĐỆM LƯU MÃ OTP TRONG BỘ NHỚ (In-memory Store) ──────────────────────────
-# Cấu trúc: { email: { "otp": "123456", "expires_at": datetime, "data": {...} } }
+# ─── BỘ ĐỆM LƯU MÃ OTP & RATE LIMITING TRONG BỘ NHỚ ──────────────────────────
+# Cấu trúc OTP: { email: { "otp": "123456", "expires_at": datetime, "data": {...} } }
 _otp_lock = threading.Lock()
 _otp_store: Dict[str, Dict[str, Any]] = {}
+_otp_rate_store: Dict[str, list] = {}
+
+
+def check_otp_rate_limit(email: str, max_requests: int = 3, window_minutes: int = 60) -> Tuple[bool, str]:
+    """
+    Kiểm tra giới hạn tần suất gửi OTP (Rate Limiting - FR-09 / AC-09-01).
+    Tối đa 3 lần / email / 1 giờ để chống spam và phá hoại hệ thống.
+    """
+    clean_email = email.strip().lower()
+    now = datetime.now()
+    threshold = now - timedelta(minutes=window_minutes)
+
+    with _otp_lock:
+        timestamps = _otp_rate_store.get(clean_email, [])
+        valid_ts = [ts for ts in timestamps if ts > threshold]
+        _otp_rate_store[clean_email] = valid_ts
+
+        if len(valid_ts) >= max_requests:
+            return False, f"Bạn đã gửi quá {max_requests} mã OTP trong vòng 1 giờ. Vui lòng thử lại sau hoặc liên hệ Hotline 1900 6868."
+
+        valid_ts.append(now)
+        _otp_rate_store[clean_email] = valid_ts
+        return True, ""
 
 
 def save_otp(email: str, otp_code: str, booking_details: Dict[str, Any], ttl_minutes: int = 10) -> None:
@@ -71,39 +94,62 @@ def verify_stored_otp(clean_email: str, clean_otp: str) -> Tuple[bool, Optional[
         return True, saved_data, ""
 
 
+def get_smtp_config():
+    load_dotenv(override=True)
+    server = os.getenv("SMTP_SERVER", "smtp.gmail.com")
+    port = int(os.getenv("SMTP_PORT", 587))
+    user = os.getenv("GMAIL_USER") or os.getenv("MAIL_USERNAME") or ""
+    pwd = os.getenv("GMAIL_APP_PASSWORD") or os.getenv("MAIL_PASSWORD") or ""
+    sender = os.getenv("EMAIL_SENDER_NAME", "CLINOVA Smart Clinic")
+    return server, port, user, pwd, sender
+
+
 def _send_email_smtp(to_email: str, subject: str, html_body: str) -> Tuple[bool, str]:
     """
     Hàm nội bộ gửi email qua Gmail SMTP.
-    Hỗ trợ graceful fallback khi chưa thiết lập GMAIL_USER/PASSWORD.
+    Tự động nạp cấu hình mới nhất từ .env và gửi thư thực tế đến hộp thư bệnh nhân.
     """
-    if not GMAIL_USER or not GMAIL_APP_PASSWORD:
-        print(f"\n[EMAIL SIMULATION] Đến: {to_email} | Tiêu đề: {subject}")
-        print("  --> Chưa cấu hình GMAIL_USER hoặc GMAIL_APP_PASSWORD trong .env. Email được mô phỏng thành công!")
-        return True, "Chưa cấu hình tài khoản Gmail. Đang chạy chế độ mô phỏng gửi email."
+    server_host, server_port, gmail_user, app_pwd, sender_name = get_smtp_config()
+
+    if not gmail_user or not app_pwd:
+        warning_msg = (
+            "Chưa cấu hình tài khoản gửi Gmail thật (GMAIL_USER & GMAIL_APP_PASSWORD trong .env). "
+            "Email đang chạy ở chế độ mô phỏng."
+        )
+        print(f"\n⚠️ [EMAIL SIMULATION] Đến: {to_email} | Tiêu đề: {subject}")
+        print(f"   --> {warning_msg}")
+        return True, warning_msg
 
     try:
         msg = MIMEMultipart("alternative")
         msg["Subject"] = subject
-        msg["From"] = f"{SENDER_NAME} <{GMAIL_USER}>"
+        msg["From"] = f"{sender_name} <{gmail_user}>"
         msg["To"] = to_email
 
         html_part = MIMEText(html_body, "html", "utf-8")
         msg.attach(html_part)
 
-        with smtplib.SMTP(SMTP_SERVER, SMTP_PORT, timeout=12) as server:
+        # Kết nối tới máy chủ SMTP Gmail với TLS
+        with smtplib.SMTP(server_host, server_port, timeout=15) as server:
             server.ehlo()
             server.starttls()
             server.ehlo()
-            server.login(GMAIL_USER, GMAIL_APP_PASSWORD.replace(" ", ""))
-            server.sendmail(GMAIL_USER, [to_email], msg.as_string())
+            clean_pwd = app_pwd.replace(" ", "")
+            server.login(gmail_user, clean_pwd)
+            server.sendmail(gmail_user, [to_email], msg.as_string())
 
-        print(f"✅ Đã gửi email thành công tới: {to_email}")
+        try:
+            print(f"[GMAIL SMTP THẬT] Đã gửi email thành công tới: {to_email} (Từ: {gmail_user})")
+        except Exception:
+            pass
         return True, "Email đã được gửi thành công qua Gmail SMTP."
     except Exception as e:
         err_str = str(e)
-        print(f"⚠️ Lỗi khi kết nối Gmail SMTP ({err_str}). Kiểm tra App Password!")
-        # Không làm sập luồng đặt lịch, trả về thông báo lỗi chi tiết
-        return False, f"Lỗi gửi email qua máy chủ: {err_str}"
+        try:
+            print(f"[GMAIL SMTP LỖI] Không thể gửi email tới {to_email}: {err_str}")
+        except Exception:
+            pass
+        return False, f"Lỗi gửi email qua máy chủ Gmail: {err_str}"
 
 
 def send_booking_otp_email(
@@ -234,7 +280,7 @@ def send_booking_confirmation_email(
           </ul>
         </div>
         <div class="footer">
-          © 2026 CLINOVA Smart Clinic — Địa chỉ: 123 Đường Y Tế, TP. Hồ Chí Minh — Hotline: 1900 8888
+          © 2026 CLINOVA Smart Clinic — Địa chỉ: 123 Tuyến Y Tế Trọng Điểm, TP.Thái Nguyên — Hotline: 1900 8888
         </div>
       </div>
     </body>

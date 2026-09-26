@@ -1,0 +1,14 @@
+fastapi==0.141.1
+uvicorn[standard]==0.52.1
+sqlalchemy==2.0.51
+pymysql==1.1.1
+pydantic==2.13.4
+pydantic-settings==2.15.0
+python-dotenv==1.0.1
+PyJWT==2.13.0
+bcrypt==5.0.0
+passlib==1.7.4
+google-genai==2.24.0
+google-generativeai==0.7.2
+cryptography==44.0.3
+email-validator==2.2.0

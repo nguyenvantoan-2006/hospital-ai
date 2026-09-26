@@ -144,6 +144,9 @@
     <a href="thanh_toan.html" class="nav-item-custom">
       <i class="fa-solid fa-file-invoice-dollar"></i> Hóa đơn & Thanh toán
     </a>
+    <a href="quay_thuoc.html" class="nav-item-custom">
+      <i class="fa-solid fa-prescription-bottle-medical"></i> Quầy Dược & Cấp Phát
+    </a>
     <a href="ke_toan.html" class="nav-item-custom">
       <i class="fa-solid fa-coins"></i> Kế toán & Tài chính
     </a>
@@ -170,18 +173,30 @@
     <!-- Toolbar Filters -->
     <div class="card-custom mb-4">
       <div class="p-3 bg-light d-flex align-items-center justify-content-between gap-3 flex-wrap">
-        <div class="d-flex align-items-center gap-2 flex-wrap">
+        <div class="d-flex align-items-center gap-2 flex-wrap flex-grow-1">
+          <!-- Quick Search -->
+          <div style="min-width: 200px;">
+            <label class="form-label small fw-semibold text-secondary mb-1"><i class="fa-solid fa-magnifying-glass me-1"></i>Tìm bệnh nhân</label>
+            <input type="text" id="searchKeyword" class="form-control form-control-sm" placeholder="Nhập họ tên hoặc SĐT..." oninput="filterLocalAppointments()" />
+          </div>
           <!-- Filter Date -->
           <div>
             <label class="form-label small fw-semibold text-secondary mb-1">Ngày khám</label>
             <input type="date" id="filterDate" class="form-control form-control-sm" onchange="fetchAppointments()" />
           </div>
-          <!-- Filter Doctor -->
+          <!-- Filter Doctor with Quick Search -->
           <div>
-            <label class="form-label small fw-semibold text-secondary mb-1">Bác sĩ phụ trách</label>
-            <select id="filterDoctor" class="form-select form-select-sm" onchange="fetchAppointments()">
-              <option value="">-- Tất cả bác sĩ --</option>
-            </select>
+            <label class="form-label small fw-semibold text-secondary mb-1">Bác sĩ & Phòng khám</label>
+            <div class="d-flex align-items-center gap-1">
+              <div class="position-relative d-inline-block">
+                <input type="text" id="quickDoctorSearch" list="filterDoctorDatalist" class="form-control form-control-sm bg-light" placeholder="🔍 Tên BS / Số phòng (vd: Long 107, 107...)" style="width: 215px; font-size: 13px;" oninput="onQuickDoctorSearch(this.value)" autocomplete="off">
+                <datalist id="filterDoctorDatalist"></datalist>
+                <button type="button" id="btnClearDoctorSearch" class="btn btn-sm position-absolute top-50 end-0 translate-middle-y text-muted me-1 border-0 py-0 px-1" style="display: none; font-size: 14px;" onclick="clearDoctorSearch()" title="Xóa tìm BS">×</button>
+              </div>
+              <select id="filterDoctor" class="form-select form-select-sm" style="max-width: 220px;" onchange="onFilterDoctorChange(this.value)">
+                <option value="">-- Tất cả bác sĩ --</option>
+              </select>
+            </div>
           </div>
           <!-- Filter Status -->
           <div>
@@ -195,6 +210,12 @@
               <option value="hoan_thanh">Hoàn thành</option>
               <option value="huy">Đã hủy</option>
             </select>
+          </div>
+          <!-- Quick Filters Buttons -->
+          <div class="d-flex align-items-center gap-1 mt-auto">
+            <button type="button" class="btn btn-sm btn-outline-primary rounded-3" onclick="setQuickDate('today')" title="Xem lịch hẹn hôm nay"><i class="fa-regular fa-calendar me-1"></i>Hôm nay</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary rounded-3" onclick="setQuickDate('all')" title="Xem tất cả các ngày"><i class="fa-solid fa-calendar-days me-1"></i>Tất cả ngày</button>
+            <button type="button" class="btn btn-sm btn-warning text-dark fw-bold rounded-3 shadow-sm" onclick="setQuickStatus('can_tiep_nhan')" title="Lọc các bệnh nhân cần xác nhận / tiếp nhận"><i class="fa-solid fa-bell me-1"></i>Cần tiếp nhận</button>
           </div>
         </div>
         <button class="btn btn-sm btn-outline-secondary rounded-3 mt-auto" onclick="fetchAppointments()">
@@ -212,7 +233,7 @@
               <th class="ps-3">Mã LK</th>
               <th>STT Khám</th>
               <th>Họ và Tên Bệnh Nhân</th>
-              <th>Bác sĩ & Chuyên khoa</th>
+              <th>Bác sĩ & Phòng khám</th>
               <th>Thời gian hẹn</th>
               <th>Lý do khám</th>
               <th>Trạng thái</th>
@@ -232,45 +253,106 @@
 
   </main>
 
-  <!-- MODAL ĐẶT LỊCH KHÁM MỚI -->
+  <!-- MODAL TIẾP ĐÓN & ĐĂNG KÝ KHÁM TẠI QUẦY -->
   <div class="modal fade" id="bookingModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered">
       <div class="modal-content border-0 shadow-lg rounded-4">
         <div class="modal-header bg-primary text-white rounded-top-4">
-          <h5 class="modal-title fw-bold"><i class="fa-solid fa-calendar-plus me-2"></i>Tạo Lịch Khám Mới</h5>
+          <h5 class="modal-title fw-bold"><i class="fa-solid fa-hospital-user me-2"></i>Tiếp Đón & Đăng Ký Khám Tại Quầy</h5>
           <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
         </div>
-        <form id="formDatLich" onsubmit="handleConfirmBooking(event)">
+        <form id="formDatLich" onsubmit="event.preventDefault(); submitBookingForm('cho_kham');">
           <div class="modal-body p-4">
             
-            <div class="row g-3">
-              <!-- Chọn bệnh nhân -->
-              <div class="col-md-12">
-                <label for="benh_nhan_id" class="form-label fw-semibold small text-secondary">
-                  Chọn Bệnh Nhân <span class="text-danger">*</span>
-                </label>
-                <select id="benh_nhan_id" class="form-select" required>
-                  <option value="">-- Đang tải danh sách bệnh nhân... --</option>
-                </select>
+            <!-- Chuyển đổi Bệnh nhân Mới / Bệnh nhân Cũ -->
+            <ul class="nav nav-pills nav-fill mb-3 bg-light p-1 rounded-3" id="patientTypeTab" role="tablist">
+              <li class="nav-item" role="presentation">
+                <button class="nav-link active fw-bold py-2" id="tab-new-patient-btn" data-bs-toggle="pill" data-bs-target="#tab-new-patient" type="button" role="tab" onclick="switchPatientMode('new')">
+                  <i class="fa-solid fa-user-plus me-1 text-primary"></i> 1. Bệnh Nhân MỚI (Chưa từng có hồ sơ)
+                </button>
+              </li>
+              <li class="nav-item" role="presentation">
+                <button class="nav-link fw-bold py-2" id="tab-existing-patient-btn" data-bs-toggle="pill" data-bs-target="#tab-existing-patient" type="button" role="tab" onclick="switchPatientMode('existing')">
+                  <i class="fa-solid fa-address-book me-1 text-success"></i> 2. Bệnh Nhân CŨ (Đã có hồ sơ tại viện)
+                </button>
+              </li>
+            </ul>
+
+            <div class="tab-content mb-3" id="patientTabContent">
+              <!-- TAB 1: BỆNH NHÂN MỚI -->
+              <div class="tab-pane fade show active p-3 bg-light rounded-3 border" id="tab-new-patient" role="tabpanel">
+                <div class="row g-2">
+                  <div class="col-md-7">
+                    <label class="form-label small fw-bold text-dark mb-1">Họ và tên bệnh nhân <span class="text-danger">*</span></label>
+                    <input type="text" id="new_ho_ten" class="form-control" placeholder="Ví dụ: Nguyễn Văn An" />
+                  </div>
+                  <div class="col-md-5">
+                    <label class="form-label small fw-bold text-dark mb-1">Số điện thoại liên hệ <span class="text-danger">*</span></label>
+                    <input type="tel" id="new_sdt" class="form-control" placeholder="Ví dụ: 0987654321" />
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label small fw-semibold text-secondary mb-1">Ngày sinh</label>
+                    <input type="date" id="new_ngay_sinh" class="form-control" />
+                  </div>
+                  <div class="col-md-3">
+                    <label class="form-label small fw-semibold text-secondary mb-1">Giới tính</label>
+                    <select id="new_gioi_tinh" class="form-select">
+                      <option value="Nam">Nam</option>
+                      <option value="Nữ">Nữ</option>
+                      <option value="Khác">Khác</option>
+                    </select>
+                  </div>
+                  <div class="col-md-5">
+                    <label class="form-label small fw-semibold text-secondary mb-1">Số CCCD / Mã định danh</label>
+                    <input type="text" id="new_cccd" class="form-control" placeholder="12 chữ số căn cước" />
+                  </div>
+                  <div class="col-md-6">
+                    <label class="form-label small fw-semibold text-secondary mb-1">Mã thẻ BHYT (nếu có)</label>
+                    <input type="text" id="new_bhyt" class="form-control" placeholder="Ví dụ: DN401..." />
+                  </div>
+                  <div class="col-md-6">
+                    <label class="form-label small fw-semibold text-secondary mb-1">Địa chỉ thường trú</label>
+                    <input type="text" id="new_dia_chi" class="form-control" placeholder="Quận/Huyện, Tỉnh/TP..." />
+                  </div>
+                </div>
               </div>
 
-              <!-- Chọn Chuyên khoa -->
+              <!-- TAB 2: BỆNH NHÂN CŨ -->
+              <div class="tab-pane fade p-3 bg-light rounded-3 border" id="tab-existing-patient" role="tabpanel">
+                <label for="benh_nhan_id" class="form-label small fw-bold text-dark mb-1">
+                  <i class="fa-solid fa-magnifying-glass me-1 text-success"></i>Chọn Bệnh Nhân Đã Từng Khám <span class="text-danger">*</span>
+                </label>
+                <select id="benh_nhan_id" class="form-select form-select-lg fs-6">
+                  <option value="">-- Đang tải danh sách bệnh nhân... --</option>
+                </select>
+                <div class="small text-muted mt-2"><i class="fa-solid fa-circle-info me-1"></i>Hệ thống tự động liên kết mã hồ sơ, tiền sử dị ứng và thẻ BHYT đã lưu.</div>
+              </div>
+            </div>
+
+            <!-- PHẦN THÔNG TIN CHUYÊN KHOA & BÁC SĨ -->
+            <div class="row g-3">
               <div class="col-md-6">
                 <label for="chuyen_khoa_id" class="form-label fw-semibold small text-secondary">Chuyên khoa khám</label>
                 <select id="chuyen_khoa_id" class="form-select" onchange="onSpecialtyChange()">
-                  <option value="">-- Chọn chuyên khoa --</option>
+                  <option value="">-- Khám tổng quát (Mặc định) --</option>
                 </select>
               </div>
 
-              <!-- Chọn Bác sĩ -->
               <div class="col-md-6">
-                <label for="bac_si_id" class="form-label fw-semibold small text-secondary">Bác sĩ phụ trách</label>
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                  <label for="bac_si_id" class="form-label fw-semibold small text-secondary mb-0">Bác sĩ phụ trách</label>
+                  <small class="text-primary" style="font-size: 11px;">🔍 Gõ tên hoặc số phòng</small>
+                </div>
+                <div class="input-group input-group-sm mb-1">
+                  <span class="input-group-text bg-white border-end-0"><i class="fa-solid fa-magnifying-glass text-muted"></i></span>
+                  <input type="text" id="modalQuickDocSearch" list="modalDoctorDatalist" class="form-control border-start-0 ps-0" placeholder="Nhập tên BS hoặc số phòng (vd: Long 107, 107...)" oninput="filterModalDocSelect(this.value)" autocomplete="off">
+                  <datalist id="modalDoctorDatalist"></datalist>
+                </div>
                 <select id="bac_si_id" class="form-select">
-                  <option value="">-- Tất cả Bác sĩ --</option>
+                  <option value="">-- Tự động điều phối theo chuyên khoa --</option>
                 </select>
               </div>
 
-              <!-- Ngày & Giờ khám -->
               <div class="col-md-6">
                 <label for="ngay_kham" class="form-label fw-semibold small text-secondary">Ngày khám <span class="text-danger">*</span></label>
                 <input type="date" id="ngay_kham" class="form-control" required />
@@ -280,21 +362,134 @@
                 <input type="time" id="gio_kham" class="form-control" required />
               </div>
 
-              <!-- Lý do khám -->
               <div class="col-md-12">
                 <label for="ly_do_kham" class="form-label fw-semibold small text-secondary">Lý do khám / Triệu chứng ban đầu</label>
-                <textarea id="ly_do_kham" rows="3" class="form-control" placeholder="Mô tả sơ bộ triệu chứng hoặc nhu cầu khám..."></textarea>
+                <textarea id="ly_do_kham" rows="2" class="form-control" placeholder="Mô tả triệu chứng hoặc lý do đến quầy khám..."></textarea>
               </div>
             </div>
 
           </div>
+          <div class="modal-footer bg-light rounded-bottom-4 d-flex justify-content-between align-items-center">
+            <button type="button" class="btn btn-outline-secondary px-3 rounded-3" data-bs-dismiss="modal">Hủy</button>
+            <div class="d-flex gap-2">
+              <button type="button" id="btnBookingNormal" onclick="submitBookingForm('da_dat_lich')" class="btn btn-outline-primary px-3 rounded-3 fw-semibold">
+                <i class="fa-regular fa-calendar-check me-1"></i> Chỉ lưu hẹn trước
+              </button>
+              <button type="button" id="btnBookingDirect" onclick="submitBookingForm('cho_kham')" class="btn btn-success px-4 rounded-3 fw-bold shadow">
+                <i class="fa-solid fa-ticket me-1"></i> Tiếp nhận ngay & Cấp STT
+              </button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL PHÂN CÔNG BÁC SĨ & PHÒNG KHÁM -->
+  <div class="modal fade" id="assignDoctorModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content border-0 shadow-lg rounded-4">
+        <div class="modal-header bg-gradient text-white rounded-top-4" style="background: linear-gradient(135deg, #1A73E8, #0D47A1);">
+          <h5 class="modal-title fw-bold"><i class="fa-solid fa-user-doctor me-2"></i>Phân công Bác sĩ & Phòng khám</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <form id="formAssignDoctor" onsubmit="handleConfirmAssignDoctor(event)">
+          <div class="modal-body p-4">
+            <input type="hidden" id="assignLichKhamId" value="" />
+            <div class="mb-3 p-3 bg-light rounded-3 border">
+              <div class="small text-muted mb-1">Thông tin lịch khám:</div>
+              <div class="fw-bold text-primary fs-6" id="assignLichKhamInfo">#LK-31 - Trần Văn Minh</div>
+              <div class="small text-secondary" id="assignSpecialtyInfo">Chuyên khoa: Dị ứng - Miễn dịch</div>
+            </div>
+
+            <div class="mb-3">
+              <div class="d-flex justify-content-between align-items-center mb-1">
+                <label for="assign_bac_si_id" class="form-label fw-semibold small text-secondary mb-0">
+                  Chọn Bác sĩ phụ trách <span class="text-danger">*</span>
+                </label>
+                <small class="text-primary" style="font-size: 11px;">🔍 Gõ tên hoặc số phòng</small>
+              </div>
+              <div class="input-group input-group-sm mb-2">
+                <span class="input-group-text bg-white border-end-0"><i class="fa-solid fa-magnifying-glass text-muted"></i></span>
+                <input type="text" id="quickAssignDocSearch" list="assignDoctorDatalist" class="form-control border-start-0 ps-0" placeholder="Nhập tên BS hoặc số phòng (vd: Long 107, 107...)" oninput="filterAssignDocSelect(this.value)" autocomplete="off">
+                <datalist id="assignDoctorDatalist"></datalist>
+              </div>
+              <select id="assign_bac_si_id" class="form-select form-select-lg fs-6" required>
+                <option value="">-- Đang tải danh sách bác sĩ... --</option>
+              </select>
+              <div class="form-text text-muted small mt-1">
+                <i class="fa-solid fa-circle-info me-1 text-primary"></i>Phòng khám sẽ tự động gắn theo phòng làm việc của Bác sĩ được chọn.
+              </div>
+            </div>
+          </div>
           <div class="modal-footer bg-light rounded-bottom-4">
-            <button type="button" class="btn btn-outline-secondary px-4 rounded-3" data-bs-dismiss="modal">Hủy</button>
-            <button type="submit" id="btnBooking" class="btn btn-primary px-4 rounded-3 fw-semibold">
-              <i class="fa-solid fa-check-circle me-1"></i> Xác nhận Đặt Lịch
+            <button type="button" class="btn btn-outline-secondary px-4 rounded-3" data-bs-dismiss="modal">Đóng</button>
+            <button type="submit" id="btnConfirmAssign" class="btn btn-primary px-4 rounded-3 fw-semibold">
+              <i class="fa-solid fa-check me-1"></i> Lưu Phân Công
             </button>
           </div>
         </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL PHIẾU TIẾP NHẬN & GỌI KHÁM (IN PHIẾU STT) -->
+  <div class="modal fade" id="ticketModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+        <div class="modal-header bg-dark text-white border-0 py-3">
+          <h6 class="modal-title fw-bold text-uppercase"><i class="fa-solid fa-print me-2 text-warning"></i>Phiếu Tiếp Nhận Khám Bệnh</h6>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body p-4" id="ticketPrintArea">
+          <div class="text-center pb-3 border-bottom border-2 border-primary">
+            <h5 class="fw-black text-primary text-uppercase mb-1 tracking-wide">PHÒNG KHÁM ĐA KHOA QUỐC TẾ</h5>
+            <div class="small text-muted">Hệ Thống Y Tế Thông Minh Hospital-AI</div>
+          </div>
+
+          <div class="text-center my-4 py-3 bg-primary-subtle rounded-4 border border-primary-subtle">
+            <div class="text-uppercase small fw-bold text-primary mb-1">MÃ SỐ GỌI KHÁM</div>
+            <div class="display-3 fw-bold text-primary" id="ticketStt">STT #04</div>
+            <div class="badge bg-primary text-white rounded-pill px-3 py-1 fs-6 mt-1" id="ticketLichId">#LK-31</div>
+          </div>
+
+          <div class="space-y-2 mb-3">
+            <div class="d-flex justify-content-between py-1 border-bottom">
+              <span class="text-muted small">Họ và tên bệnh nhân:</span>
+              <span class="fw-bold text-dark" id="ticketPatientName">Trần Văn Minh</span>
+            </div>
+            <div class="d-flex justify-content-between py-1 border-bottom">
+              <span class="text-muted small">Chuyên khoa khám:</span>
+              <span class="fw-semibold text-dark" id="ticketSpecialty">Dị ứng - Miễn dịch</span>
+            </div>
+            <div class="d-flex justify-content-between py-1 border-bottom">
+              <span class="text-muted small">Bác sĩ phụ trách:</span>
+              <span class="fw-semibold text-primary" id="ticketDoctor">ThS. BS. Hoàng Anh Hải</span>
+            </div>
+            <div class="d-flex justify-content-between py-2 border-bottom bg-warning-subtle px-2 rounded-2 mt-2">
+              <span class="text-dark small fw-bold"><i class="fa-solid fa-door-open me-1 text-primary"></i>PHÒNG KHÁM:</span>
+              <span class="fw-bold text-primary fs-6" id="ticketRoom">Phòng 101 (Khu B)</span>
+            </div>
+            <div class="d-flex justify-content-between py-2 border-bottom bg-info-subtle px-2 rounded-2 mt-2">
+              <span class="text-dark small fw-bold"><i class="fa-solid fa-clock me-1 text-info"></i>GIỜ DỰ KIẾN VÀO KHÁM:</span>
+              <span class="fw-bold text-info fs-6" id="ticketEstimatedTime">08:15 - 08:30</span>
+            </div>
+            <div class="d-flex justify-content-between py-1 border-bottom">
+              <span class="text-muted small">Thời gian hẹn:</span>
+              <span class="small fw-semibold text-dark" id="ticketTime">2026-09-24 15:30</span>
+            </div>
+          </div>
+
+          <div class="alert alert-info py-2 px-3 small rounded-3 mb-0 text-center">
+            <i class="fa-solid fa-bullhorn me-1"></i> Quý khách vui lòng có mặt trước cửa phòng khám và chú ý lắng nghe loa phát thanh hoặc theo dõi màn hình TV trước cửa phòng.
+          </div>
+        </div>
+        <div class="modal-footer bg-light border-0">
+          <button type="button" class="btn btn-outline-secondary px-3 rounded-3" data-bs-dismiss="modal">Đóng</button>
+          <button type="button" class="btn btn-primary px-4 rounded-3 fw-semibold" onclick="printTicket()">
+            <i class="fa-solid fa-print me-1"></i> In Phiếu Khám
+          </button>
+        </div>
       </div>
     </div>
   </div>
@@ -309,12 +504,17 @@
     const API_ADMIN_URL = "/api/v1/admin/";
 
     let bookingModal = null;
+    let assignDoctorModal = null;
+    let ticketModal = null;
     let allDoctors = [];
     let allSpecialties = [];
+    let currentAppointmentsList = [];
 
     document.addEventListener("DOMContentLoaded", () => {
       if (initAuthGuard(["le_tan", "bac_si", "admin"])) {
         bookingModal = new bootstrap.Modal(document.getElementById("bookingModal"));
+        assignDoctorModal = new bootstrap.Modal(document.getElementById("assignDoctorModal"));
+        ticketModal = new bootstrap.Modal(document.getElementById("ticketModal"));
 
         // Set ngày hiện tại mặc định cho bộ lọc và form
         const today = new Date().toISOString().split('T')[0];
@@ -327,6 +527,14 @@
         fetchAppointments();
       }
     });
+
+    /**
+     * Chuẩn hóa tên chuyên khoa (giữ nguyên dấu tiếng Việt để phân biệt chính xác Mắt vs Mật vs Mặt)
+     */
+    function cleanSpecName(str) {
+      if (!str) return "";
+      return str.toLowerCase().replace(/[\(\)\-\–\/]/g, " ").replace(/\s+/g, " ").trim();
+    }
 
     /**
      * Tải danh sách Bác sĩ và Chuyên khoa cho Filter và Form
@@ -342,14 +550,29 @@
           allDoctors = await resDocs.json();
           const docSelectFilter = document.getElementById("filterDoctor");
           const docSelectForm = document.getElementById("bac_si_id");
+          const dlFilter = document.getElementById("filterDoctorDatalist");
+          const dlModal = document.getElementById("modalDoctorDatalist");
           
           docSelectFilter.innerHTML = `<option value="">-- Tất cả Bác sĩ --</option>`;
-          docSelectForm.innerHTML = `<option value="">-- Tất cả Bác sĩ --</option>`;
+          docSelectForm.innerHTML = `<option value="">-- Tất cả Bác sĩ (Tự động điều phối) --</option>`;
+          if (dlFilter) dlFilter.innerHTML = "";
+          if (dlModal) dlModal.innerHTML = "";
 
           allDoctors.forEach(d => {
-            const nameStr = `${d.hoc_vi || 'BS.'} ${d.ho_ten} (${d.chuyen_khoa || 'Tổng quát'})`;
+            const nameStr = `${d.hoc_vi || 'BS.'} ${d.ho_ten} [${d.phong_kham || 'Phòng khám'}] (${d.chuyen_khoa || 'Tổng quát'})`;
             docSelectFilter.appendChild(new Option(nameStr, d.user_id));
             docSelectForm.appendChild(new Option(nameStr, d.user_id));
+
+            if (dlFilter) {
+              const opt = document.createElement("option");
+              opt.value = `${d.hoc_vi || 'BS.'} ${d.ho_ten} - ${d.phong_kham || 'Phòng khám'} (${d.chuyen_khoa || 'Tổng quát'})`;
+              dlFilter.appendChild(opt);
+            }
+            if (dlModal) {
+              const opt = document.createElement("option");
+              opt.value = `${d.hoc_vi || 'BS.'} ${d.ho_ten} - ${d.phong_kham || 'Phòng khám'} (${d.chuyen_khoa || 'Tổng quát'})`;
+              dlModal.appendChild(opt);
+            }
           });
         }
 
@@ -367,24 +590,44 @@
     }
 
     /**
-     * Lọc bác sĩ theo chuyên khoa
+     * Lọc bác sĩ theo chuyên khoa (Giữ nguyên dấu tiếng Việt để phân biệt chính xác Mắt, Mật, Mặt)
      */
     function onSpecialtyChange() {
       const specId = document.getElementById("chuyen_khoa_id").value;
       const docSelectForm = document.getElementById("bac_si_id");
-      docSelectForm.innerHTML = `<option value="">-- Tất cả Bác sĩ --</option>`;
+      const dlModal = document.getElementById("modalDoctorDatalist");
+      docSelectForm.innerHTML = `<option value="">-- Chọn Bác sĩ phụ trách --</option>`;
+      if (dlModal) dlModal.innerHTML = "";
 
       let filtered = allDoctors;
       if (specId) {
         const specObj = allSpecialties.find(s => s.id == specId);
         if (specObj) {
-          filtered = allDoctors.filter(d => d.chuyen_khoa === specObj.ten_chuyen_khoa);
+          const specClean = cleanSpecName(specObj.ten_chuyen_khoa);
+          const specBase = specClean.split(" ")[0]; // vd: "mắt"
+          filtered = allDoctors.filter(d => {
+            if (!d.chuyen_khoa) return false;
+            const docClean = cleanSpecName(d.chuyen_khoa);
+            const docBase = docClean.split(" ")[0];
+            return docClean === specClean || docBase === specBase || docClean.includes(specClean) || specClean.includes(docClean);
+          });
         }
       }
 
-      filtered.forEach(d => {
-        const nameStr = `${d.hoc_vi || 'BS.'} ${d.ho_ten} (${d.chuyen_khoa || 'Tổng quát'})`;
+      const listForRender = filtered.length === 0 ? allDoctors : filtered;
+      if (filtered.length === 0) {
+        docSelectForm.innerHTML = `<option value="">-- Tất cả Bác sĩ (Tự động phân phòng) --</option>`;
+      }
+      
+      listForRender.forEach(d => {
+        const nameStr = `${d.hoc_vi || 'BS.'} ${d.ho_ten} [${d.phong_kham || 'Phòng khám'}]`;
         docSelectForm.appendChild(new Option(nameStr, d.user_id));
+
+        if (dlModal) {
+          const opt = document.createElement("option");
+          opt.value = `${d.hoc_vi || 'BS.'} ${d.ho_ten} - ${d.phong_kham || 'Phòng khám'} (${d.chuyen_khoa || 'Tổng quát'})`;
+          dlModal.appendChild(opt);
+        }
       });
     }
 
@@ -437,41 +680,310 @@
         const response = await fetch(url, { headers: getAuthHeaders() });
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         const data = await response.json();
+        currentAppointmentsList = data;
 
         if (data.length === 0) {
           loadingState.innerHTML = `<span class="text-muted">Không tìm thấy lịch khám nào khớp với điều kiện lọc</span>`;
           return;
         }
 
+          loadingState.style.display = "none";
+          renderAppointmentsTable(data);
+        } catch (error) {
+          console.error("Lỗi tải lịch khám:", error);
+          loadingState.innerHTML = `<span class="text-danger">Lỗi tải dữ liệu (${error.message})</span>`;
+        } finally {
+          if (reloadIcon) reloadIcon.classList.remove("fa-spin");
+        }
+      }
+
+      function filterLocalAppointments() {
+        const kw = (document.getElementById("searchKeyword").value || "").trim().toLowerCase();
+        if (!kw) {
+          renderAppointmentsTable(currentAppointmentsList);
+          return;
+        }
+        const tokens = kw.split(/\s+/).filter(t => t.length > 0);
+        const filtered = currentAppointmentsList.filter(item => {
+          const itemText = `${item.ho_ten || ''} ${item.so_dien_thoai || ''} ${item.ten_bac_si || ''} ${item.phong_kham || ''} ${item.ten_chuyen_khoa || ''} ${item.id} ${item.stt || ''}`.toLowerCase();
+          return tokens.every(t => itemText.includes(t));
+        });
+        renderAppointmentsTable(filtered);
+      }
+
+      /**
+       * Kiểm tra Bác sĩ có khớp với từ khóa tìm kiếm (hỗ trợ tìm cả tên BS và số phòng)
+       * Xử lý trường hợp nhiều bác sĩ trùng tên nhưng khác số phòng/khoa
+       */
+      function matchDoctorKeywords(doc, query) {
+        if (!query) return true;
+        const qClean = query.trim().toLowerCase();
+        const tokens = qClean.split(/\s+/).filter(t => t.length > 0);
+        if (tokens.length === 0) return true;
+
+        const name = (doc.ho_ten || "").toLowerCase();
+        const title = (doc.hoc_vi || "bs.").toLowerCase();
+        const room = (doc.phong_kham || "").toLowerCase();
+        const spec = (doc.chuyen_khoa || "").toLowerCase();
+        const roomDigits = room.replace(/\D/g, "");
+        const fullDoctorText = `${title} ${name} ${room} p.${roomDigits} p${roomDigits} ${roomDigits} ${spec}`.toLowerCase();
+
+        return tokens.every(token => fullDoctorText.includes(token));
+      }
+
+      /**
+       * Phục hồi lại toàn bộ danh sách bác sĩ trong filter select
+       */
+      function resetFilterDoctorOptions() {
+        const docSelectFilter = document.getElementById("filterDoctor");
+        if (!docSelectFilter) return;
+        const currentVal = docSelectFilter.value;
+        docSelectFilter.innerHTML = `<option value="">-- Tất cả Bác sĩ --</option>`;
+        allDoctors.forEach(d => {
+          const nameStr = `${d.hoc_vi || 'BS.'} ${d.ho_ten} [${d.phong_kham || 'Phòng khám'}] (${d.chuyen_khoa || 'Tổng quát'})`;
+          const opt = new Option(nameStr, d.user_id || d.id);
+          if (currentVal && (d.user_id == currentVal || d.id == currentVal)) {
+            opt.selected = true;
+          }
+          docSelectFilter.appendChild(opt);
+        });
+      }
+
+      /**
+       * Tìm kiếm nhanh Bác sĩ trên thanh lọc (hỗ trợ gõ Tên BS + Số Phòng khám)
+       */
+      function onQuickDoctorSearch(val) {
+        const q = (val || "").trim().toLowerCase();
+        const btnClear = document.getElementById("btnClearDoctorSearch");
+        if (btnClear) btnClear.style.display = q ? "inline-block" : "none";
+
+        const docSel = document.getElementById("filterDoctor");
+        if (!docSel) return;
+
+        if (!q) {
+          resetFilterDoctorOptions();
+          docSel.value = "";
+          fetchAppointments();
+          return;
+        }
+
+        // Tìm các bác sĩ khớp từ khóa (cả họ tên VÀ số phòng)
+        const matchedDocs = allDoctors.filter(d => matchDoctorKeywords(d, q));
+
+        if (matchedDocs.length === 1) {
+          // Trùng khớp đúng 1 bác sĩ duy nhất -> Tự động chọn vào dropdown
+          resetFilterDoctorOptions();
+          docSel.value = matchedDocs[0].user_id || matchedDocs[0].id;
+          fetchAppointments();
+        } else if (matchedDocs.length > 1) {
+          // Có nhiều bác sĩ cùng tên hoặc nhiều bác sĩ trong phòng/khoa
+          // Kiểm tra xem người dùng có gõ số phòng cụ thể không để chọn chính xác
+          const qDigits = q.replace(/\D/g, "");
+          const exactDoc = matchedDocs.find(d => {
+            const dRoomDigits = (d.phong_kham || "").replace(/\D/g, "");
+            return qDigits && dRoomDigits === qDigits;
+          });
+
+          if (exactDoc && qDigits) {
+            resetFilterDoctorOptions();
+            docSel.value = exactDoc.user_id || exactDoc.id;
+            fetchAppointments();
+            return;
+          }
+
+          // Rút gọn dropdown filterDoctor chỉ hiển thị các bác sĩ phù hợp kèm số phòng để dễ chọn
+          docSel.innerHTML = `<option value="">-- Có ${matchedDocs.length} BS phù hợp (Chọn để lọc) --</option>`;
+          matchedDocs.forEach(d => {
+            const nameStr = `${d.hoc_vi || 'BS.'} ${d.ho_ten} [${d.phong_kham || 'Phòng khám'}] (${d.chuyen_khoa || 'Tổng quát'})`;
+            docSel.appendChild(new Option(nameStr, d.user_id || d.id));
+          });
+
+          // Lọc danh sách lịch hẹn trên bảng theo từ khóa
+          const tokens = q.split(/\s+/).filter(t => t.length > 0);
+          const filtered = currentAppointmentsList.filter(item => {
+            const itemText = `${item.ten_bac_si || ''} ${item.phong_kham || ''} ${item.ten_chuyen_khoa || ''}`.toLowerCase();
+            return tokens.every(token => itemText.includes(token));
+          });
+          renderAppointmentsTable(filtered);
+        } else {
+          // Lọc trên bảng theo từ khóa tìm kiếm
+          const tokens = q.split(/\s+/).filter(t => t.length > 0);
+          const filtered = currentAppointmentsList.filter(item => {
+            const itemText = `${item.ten_bac_si || ''} ${item.phong_kham || ''} ${item.ten_chuyen_khoa || ''}`.toLowerCase();
+            return tokens.every(token => itemText.includes(token));
+          });
+          renderAppointmentsTable(filtered);
+        }
+      }
+
+      function clearDoctorSearch() {
+        const inp = document.getElementById("quickDoctorSearch");
+        if (inp) inp.value = "";
+        resetFilterDoctorOptions();
+        onQuickDoctorSearch("");
+      }
+
+      function onFilterDoctorChange(val) {
+        const inp = document.getElementById("quickDoctorSearch");
+        const btnClear = document.getElementById("btnClearDoctorSearch");
+        if (val) {
+          const d = allDoctors.find(doc => (doc.user_id == val || doc.id == val));
+          if (inp && d) {
+            inp.value = `${d.ho_ten} - ${d.phong_kham || ''}`;
+          }
+          if (btnClear) btnClear.style.display = "inline-block";
+        } else {
+          if (inp) inp.value = "";
+          if (btnClear) btnClear.style.display = "none";
+          resetFilterDoctorOptions();
+        }
+        fetchAppointments();
+      }
+
+      /**
+       * Lọc nhanh bác sĩ trong Modal Đặt Lịch (hỗ trợ tìm cả Tên BS và Số phòng)
+       */
+      function filterModalDocSelect(val) {
+        const q = (val || "").trim().toLowerCase();
+        const sel = document.getElementById("bac_si_id");
+        if (!sel) return;
+        if (!q) {
+          sel.selectedIndex = 0;
+          return;
+        }
+        const tokens = q.split(/\s+/).filter(t => t.length > 0);
+        for (let i = 0; i < sel.options.length; i++) {
+          const text = sel.options[i].text.toLowerCase();
+          if (tokens.every(t => text.includes(t))) {
+            sel.selectedIndex = i;
+            break;
+          }
+        }
+      }
+
+      /**
+       * Lọc nhanh bác sĩ trong Modal Phân Công BS (hỗ trợ tìm cả Tên BS và Số phòng)
+       */
+      function filterAssignDocSelect(val) {
+        const q = (val || "").trim().toLowerCase();
+        const sel = document.getElementById("assign_bac_si_id");
+        if (!sel) return;
+        if (!q) {
+          sel.selectedIndex = 0;
+          return;
+        }
+        const tokens = q.split(/\s+/).filter(t => t.length > 0);
+        for (let i = 0; i < sel.options.length; i++) {
+          const text = sel.options[i].text.toLowerCase();
+          if (tokens.every(t => text.includes(t))) {
+            sel.selectedIndex = i;
+            break;
+          }
+        }
+      }
+
+      function setQuickDate(type) {
+        if (type === 'today') {
+          const today = new Date().toISOString().split('T')[0];
+          document.getElementById("filterDate").value = today;
+        } else {
+          document.getElementById("filterDate").value = "";
+        }
+        document.getElementById("filterStatus").value = "";
+        fetchAppointments();
+      }
+
+      function setQuickStatus(type) {
+        if (type === 'can_tiep_nhan') {
+          // Lọc không giới hạn ngày để xem toàn bộ bệnh nhân cần xử lý
+          document.getElementById("filterDate").value = "";
+          document.getElementById("filterStatus").value = "";
+          fetchAppointments().then(() => {
+            const needAttention = currentAppointmentsList.filter(x => x.trang_thai === 'cho_xac_nhan' || x.trang_thai === 'da_dat_lich');
+            renderAppointmentsTable(needAttention);
+            showToast(`Đã lọc ${needAttention.length} lịch hẹn cần Xác nhận / Tiếp nhận`, "info");
+          });
+        }
+      }
+
+      function renderAppointmentsTable(list) {
+        const tbody = document.getElementById("bodyLichKham");
+        const loadingState = document.getElementById("loadingState");
+        tbody.innerHTML = "";
+
+        if (!list || list.length === 0) {
+          loadingState.style.display = "block";
+          loadingState.innerHTML = `<span class="text-muted">Không tìm thấy lịch khám nào khớp với điều kiện</span>`;
+          return;
+        }
         loadingState.style.display = "none";
-        data.forEach(item => {
+
+        list.forEach(item => {
           const tr = document.createElement("tr");
 
           // Status Badges & Action Buttons
           let statusBadge = '';
           let actionBtns = '';
+          let directConfirmBadge = '';
 
           if (item.trang_thai === "cho_xac_nhan") {
-            statusBadge = '<span class="badge bg-secondary-subtle text-secondary border">Chờ xác nhận</span>';
-            actionBtns = `<button class="btn btn-sm btn-outline-primary rounded-2 py-0 px-2" onclick="updateAppointmentStatus(${item.id}, 'da_dat_lich')">Xác nhận lịch</button>`;
+            statusBadge = '<span class="badge bg-warning-subtle text-dark border border-warning px-2 py-1"><i class="fa-solid fa-hourglass-start me-1 text-warning"></i>Chờ xác nhận</span>';
+            actionBtns = `<button class="btn btn-sm btn-warning text-dark fw-bold rounded-3 px-3 py-1 shadow-sm text-nowrap" onclick="updateAppointmentStatus(${item.id}, 'da_dat_lich')"><i class="fa-solid fa-check me-1"></i>Xác nhận lịch</button>`;
+            directConfirmBadge = `
+              <div class="mt-1">
+                <button class="btn btn-xs btn-outline-warning text-dark fw-bold rounded px-2 py-1 shadow-sm text-nowrap" onclick="updateAppointmentStatus(${item.id}, 'da_dat_lich')">
+                  <i class="fa-solid fa-circle-check me-1 text-warning"></i> Bấm xác nhận lịch Online
+                </button>
+              </div>`;
           } else if (item.trang_thai === "da_dat_lich") {
-            statusBadge = '<span class="badge bg-info-subtle text-info border border-info-subtle">Đã đặt lịch</span>';
-            actionBtns = `<button class="btn btn-sm btn-success rounded-2 py-0 px-2 fw-semibold" onclick="updateAppointmentStatus(${item.id}, 'cho_kham')"><i class="fa-solid fa-user-check me-1"></i> Tiếp nhận (Cấp STT)</button>`;
+            statusBadge = '<span class="badge bg-info-subtle text-info border border-info-subtle px-2 py-1"><i class="fa-regular fa-calendar-check me-1"></i>Đã đặt lịch</span>';
+            actionBtns = `<button class="btn btn-sm btn-success rounded-3 px-3 py-1 fw-bold shadow text-nowrap" onclick="updateAppointmentStatus(${item.id}, 'cho_kham')"><i class="fa-solid fa-user-check me-1"></i>Tiếp nhận (Cấp STT)</button>`;
+            directConfirmBadge = `
+              <div class="mt-1">
+                <button class="btn btn-xs btn-success text-white fw-bold rounded-pill px-2 py-1 shadow-sm text-nowrap" onclick="updateAppointmentStatus(${item.id}, 'cho_kham')">
+                  <i class="fa-solid fa-ticket me-1"></i> Tiếp nhận tại quầy (Cấp STT)
+                </button>
+              </div>`;
           } else if (item.trang_thai === "cho_kham") {
-            statusBadge = '<span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle">Chờ khám</span>';
-            actionBtns = `<button class="btn btn-sm btn-primary rounded-2 py-0 px-2" onclick="updateAppointmentStatus(${item.id}, 'dang_kham')">Vào khám</button>`;
+            statusBadge = '<span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle px-2 py-1"><i class="fa-solid fa-stopwatch me-1"></i>Chờ khám</span>';
+            actionBtns = `
+              <button class="btn btn-sm btn-outline-primary rounded-3 px-2 py-1 fw-semibold text-nowrap" onclick="openTicketById(${item.id})" title="Xem lại phiếu STT"><i class="fa-solid fa-print me-1"></i>In phiếu STT</button>
+              <button class="btn btn-sm btn-primary rounded-3 px-2 py-1 fw-semibold text-nowrap" onclick="updateAppointmentStatus(${item.id}, 'dang_kham')" title="Xác nhận bệnh nhân đã vào phòng khám"><i class="fa-solid fa-door-open me-1"></i>Vào khám</button>
+            `;
           } else if (item.trang_thai === "dang_kham") {
-            statusBadge = '<span class="badge bg-primary-subtle text-primary border border-primary-subtle">Đang khám</span>';
-            actionBtns = `<a href="lap_phieu_kham.html" class="btn btn-sm btn-outline-success rounded-2 py-0 px-2">Lập phiếu khám</a>`;
+            statusBadge = '<span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1"><i class="fa-solid fa-spinner fa-spin me-1"></i>Đang khám</span>';
+            actionBtns = `<span class="badge bg-primary-subtle text-primary border border-primary-subtle py-1 px-2"><i class="fa-solid fa-user-doctor me-1"></i>Bác sĩ đang khám</span>`;
           } else if (item.trang_thai === "hoan_thanh") {
-            statusBadge = '<span class="badge bg-success-subtle text-success border border-success-subtle">Hoàn thành</span>';
-            actionBtns = `<span class="text-muted small">Đã khám xong</span>`;
+            statusBadge = '<span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1">Hoàn thành</span>';
+            actionBtns = `<span class="badge bg-light text-muted border py-1 px-2">Đã khám xong</span>`;
           } else if (item.trang_thai === "huy") {
-            statusBadge = '<span class="badge bg-danger-subtle text-danger border border-danger-subtle">Đã hủy</span>';
-            actionBtns = `<span class="text-muted small">Đã hủy</span>`;
+            statusBadge = '<span class="badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-1">Đã hủy</span>';
+            actionBtns = `<span class="badge bg-light text-muted border py-1 px-2">Đã hủy</span>`;
           }
 
-          const queueNumber = item.stt ? `<span class="queue-badge">STT #${item.stt}</span>` : '<span class="text-muted small">--</span>';
+          let queueNumber = '';
+          if (item.stt) {
+            queueNumber = `<button type="button" class="btn btn-sm btn-outline-primary fw-bold rounded-pill px-2 py-0 shadow-sm" onclick="openTicketById(${item.id})" title="Xem / In Phiếu Gọi Khám"><i class="fa-solid fa-ticket me-1"></i>STT #${String(item.stt).padStart(2, '0')}</button>`;
+          } else if (item.trang_thai === 'cho_xac_nhan' || item.trang_thai === 'da_dat_lich') {
+            queueNumber = `<button type="button" class="btn btn-sm btn-success fw-bold rounded-pill px-2 py-0 shadow-sm text-nowrap" onclick="updateAppointmentStatus(${item.id}, 'cho_kham')" title="Bệnh nhân đã tới quầy - Bấm để cấp STT vào phòng"><i class="fa-solid fa-plus-circle me-1"></i>Cấp STT</button>`;
+          } else {
+            queueNumber = '<span class="text-muted small">--</span>';
+          }
+
+          const isUnassigned = (item.ten_bac_si === "Chưa phân công" || !item.bac_si_id);
+          const docDisplay = isUnassigned
+            ? `<div class="d-flex align-items-center gap-1 mb-1">
+                 <span class="badge bg-danger-subtle text-danger border border-danger-subtle"><i class="fa-solid fa-triangle-exclamation me-1"></i>Chưa phân công</span>
+                 <button type="button" class="btn btn-xs btn-primary py-0 px-2 rounded-pill shadow-sm" onclick="openAssignDoctorModal(${item.id}, '${escapeHtml(item.ten_chuyen_khoa || '')}', null, '${escapeHtml(item.ho_ten || '')}')" title="Phân công Bác sĩ">
+                   <i class="fa-solid fa-user-plus me-1"></i>Phân công BS
+                 </button>
+               </div>`
+            : `<div class="d-flex align-items-center gap-1 mb-1">
+                 <span class="fw-bold text-dark"><i class="fa-solid fa-user-doctor me-1 text-primary"></i>${escapeHtml(item.ten_bac_si)}</span>
+                 <button type="button" class="btn btn-xs text-secondary py-0 px-1" title="Đổi Bác sĩ" onclick="openAssignDoctorModal(${item.id}, '${escapeHtml(item.ten_chuyen_khoa || '')}', ${item.bac_si_id}, '${escapeHtml(item.ho_ten || '')}')">
+                   <i class="fa-solid fa-pen-to-square"></i>
+                 </button>
+               </div>`;
 
           tr.innerHTML = `
             <td class="ps-3 fw-bold text-primary">#LK-${item.id}</td>
@@ -479,13 +991,16 @@
             <td>
               <div class="fw-bold text-dark">${escapeHtml(item.ho_ten)}</div>
               <small class="text-muted">${item.so_dien_thoai ? 'SĐT: ' + escapeHtml(item.so_dien_thoai) : 'BN ID: #' + item.benh_nhan_id}</small>
+              ${directConfirmBadge}
             </td>
             <td>
-              <div class="fw-semibold small text-dark">${escapeHtml(item.ten_bac_si)}</div>
+              ${docDisplay}
+              <div class="small text-primary fw-semibold"><i class="fa-solid fa-door-open me-1"></i>${escapeHtml(item.phong_kham || 'Phòng khám chung')}</div>
               <small class="text-muted">${escapeHtml(item.ten_chuyen_khoa)}</small>
             </td>
             <td>
               <div class="small fw-semibold"><i class="fa-regular fa-clock me-1 text-primary"></i>${item.thoi_gian}</div>
+              ${item.gio_du_kien ? `<div class="badge bg-info-subtle text-info border border-info-subtle mt-1"><i class="fa-solid fa-stopwatch me-1"></i>Dự kiến: ${escapeHtml(item.gio_du_kien)}</div>` : ''}
             </td>
             <td><small class="text-muted">${escapeHtml(item.ly_do_kham || 'Khám bệnh')}</small></td>
             <td>${statusBadge}</td>
@@ -502,12 +1017,20 @@
           `;
           tbody.appendChild(tr);
         });
+      }
 
-      } catch (error) {
-        console.error("Lỗi tải lịch khám:", error);
-        loadingState.innerHTML = `<span class="text-danger">Lỗi tải dữ liệu (${error.message})</span>`;
-      } finally {
-        if (reloadIcon) reloadIcon.classList.remove("fa-spin");
+    let currentPatientMode = 'new'; // 'new' hoac 'existing'
+
+    function switchPatientMode(mode) {
+      currentPatientMode = mode;
+      const tabNewBtn = document.getElementById("tab-new-patient-btn");
+      const tabExistBtn = document.getElementById("tab-existing-patient-btn");
+      if (mode === 'new') {
+        tabNewBtn.classList.add("active");
+        tabExistBtn.classList.remove("active");
+      } else {
+        tabExistBtn.classList.add("active");
+        tabNewBtn.classList.remove("active");
       }
     }
 
@@ -515,45 +1038,83 @@
       document.getElementById("formDatLich").reset();
       const today = new Date().toISOString().split('T')[0];
       document.getElementById("ngay_kham").value = today;
-      document.getElementById("gio_kham").value = "09:00";
+      const now = new Date();
+      const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+      document.getElementById("gio_kham").value = timeStr;
+
+      // Mặc định chọn tab bệnh nhân mới
+      switchPatientMode('new');
+      const tabNewEl = document.getElementById("tab-new-patient-btn");
+      if (tabNewEl) new bootstrap.Tab(tabNewEl).show();
+
       bookingModal.show();
     }
 
     /**
-     * Gửi request tạo lịch hẹn mới (POST /api/v1/lich-khams/)
+     * Gửi request tiếp đón tại quầy (POST /api/v1/lich-khams/tiep-don-tai-quay)
      */
-    async function handleConfirmBooking(event) {
-      event.preventDefault();
-
-      const benhNhanId = document.getElementById("benh_nhan_id").value;
-      const bacSiId = document.getElementById("bac_si_id").value;
+    async function submitBookingForm(desiredStatus = 'cho_kham') {
       const chuyenKhoaId = document.getElementById("chuyen_khoa_id").value;
+      const bacSiId = document.getElementById("bac_si_id").value;
       const ngayKham = document.getElementById("ngay_kham").value;
       const gioKham = document.getElementById("gio_kham").value;
       const lyDoKham = document.getElementById("ly_do_kham").value.trim();
 
-      if (!benhNhanId) {
-        showToast("Vui lòng chọn Bệnh nhân!", "warning");
-        return;
-      }
-
       const thoiGianISO = `${ngayKham}T${gioKham}:00`;
 
-      const payload = {
-        benh_nhan_id: parseInt(benhNhanId),
-        bac_si_id: bacSiId ? parseInt(bacSiId) : null,
+      let payload = {
         chuyen_khoa_id: chuyenKhoaId ? parseInt(chuyenKhoaId) : null,
+        bac_si_id: bacSiId ? parseInt(bacSiId) : null,
         thoi_gian: thoiGianISO,
-        ly_do_kham: lyDoKham || "Khám bệnh",
-        trang_thai: "da_dat_lich"
+        ly_do_kham: lyDoKham || "Khám bệnh tại quầy",
+        trang_thai: desiredStatus
       };
 
-      const btn = document.getElementById("btnBooking");
-      btn.disabled = true;
-      btn.innerHTML = `<i class="fa-solid fa-circle-notch fa-spin me-1"></i> Đang kiểm tra lịch trùng...`;
+      if (currentPatientMode === 'new') {
+        const hoTen = document.getElementById("new_ho_ten").value.trim();
+        const sdt = document.getElementById("new_sdt").value.trim();
+        const ngaySinh = document.getElementById("new_ngay_sinh").value;
+        const gioiTinh = document.getElementById("new_gioi_tinh").value;
+        const cccd = document.getElementById("new_cccd").value.trim();
+        const bhyt = document.getElementById("new_bhyt").value.trim();
+        const diaChi = document.getElementById("new_dia_chi").value.trim();
+
+        if (!hoTen) {
+          showToast("Vui lòng nhập Họ và tên bệnh nhân mới!", "warning");
+          document.getElementById("new_ho_ten").focus();
+          return;
+        }
+        if (!sdt) {
+          showToast("Vui lòng nhập Số điện thoại bệnh nhân!", "warning");
+          document.getElementById("new_sdt").focus();
+          return;
+        }
+
+        payload.ho_ten = hoTen;
+        payload.so_dien_thoai = sdt;
+        payload.ngay_sinh = ngaySinh || null;
+        payload.gio_tinh = gioiTinh;
+        payload.cccd = cccd || null;
+        payload.ma_bhyt = bhyt || null;
+        payload.dia_chi = diaChi || null;
+
+      } else {
+        const benhNhanId = document.getElementById("benh_nhan_id").value;
+        if (!benhNhanId) {
+          showToast("Vui lòng chọn bệnh nhân từ danh mục!", "warning");
+          document.getElementById("benh_nhan_id").focus();
+          return;
+        }
+        payload.benh_nhan_id = parseInt(benhNhanId);
+      }
+
+      const btnDirect = document.getElementById("btnBookingDirect");
+      const btnNormal = document.getElementById("btnBookingNormal");
+      if (btnDirect) btnDirect.disabled = true;
+      if (btnNormal) btnNormal.disabled = true;
 
       try {
-        const response = await fetch(API_LICH_KHAM_URL, {
+        const response = await fetch(`${API_LICH_KHAM_URL}tiep-don-tai-quay`, {
           method: "POST",
           headers: getAuthHeaders(),
           body: JSON.stringify(payload)
@@ -564,16 +1125,38 @@
           throw new Error(errData.detail || `Lỗi HTTP ${response.status}`);
         }
 
-        showToast("🎉 Đặt lịch khám thành công!", "success");
+        const resData = await response.json();
         bookingModal.hide();
-        fetchAppointments();
+
+        // Nạp lại danh mục bệnh nhân đề phòng có bệnh nhân mới vừa được tạo
+        loadPatientsSelect();
+
+        if (desiredStatus === 'cho_kham') {
+          showToast(`🎉 Tiếp nhận thành công! Đã cấp Số Thứ Tự STT #${resData.stt || resData.id}`, "success");
+          fetchAppointments().then(() => {
+            const matched = currentAppointmentsList.find(x => x.id === resData.id) || {
+              id: resData.id,
+              stt: resData.stt,
+              ho_ten: resData.ho_ten,
+              ten_chuyen_khoa: resData.ten_chuyen_khoa || "Khám tổng quát",
+              ten_bac_si: resData.ten_bac_si || "Chưa phân công",
+              phong_kham: resData.phong_kham || "Phòng khám",
+              thoi_gian: resData.thoi_gian,
+              gio_du_kien: resData.gio_du_kien
+            };
+            openQueueTicketModal(matched);
+          });
+        } else {
+          showToast("🎉 Đặt lịch hẹn thành công!", "success");
+          fetchAppointments();
+        }
 
       } catch (error) {
-        console.error("Lỗi đặt lịch khám:", error);
+        console.error("Lỗi tiếp đón tại quầy:", error);
         showToast(error.message, "danger");
       } finally {
-        btn.disabled = false;
-        btn.innerHTML = `<i class="fa-solid fa-check-circle me-1"></i> Xác nhận Đặt Lịch`;
+        if (btnDirect) btnDirect.disabled = false;
+        if (btnNormal) btnNormal.disabled = false;
       }
     }
 
@@ -596,6 +1179,17 @@
         const res = await response.json();
         if (newStatus === 'cho_kham') {
           showToast(`🎉 Tiếp nhận thành công! Đã cấp Số Thứ Tự STT #${res.stt}`, "success");
+          const matched = currentAppointmentsList.find(x => x.id === id);
+          if (matched) {
+            matched.stt = res.stt;
+            matched.trang_thai = "cho_kham";
+            if (res.gio_du_kien) matched.gio_du_kien = res.gio_du_kien;
+            if (res.phong_kham) matched.phong_kham = res.phong_kham;
+            if (res.ten_bac_si) matched.ten_bac_si = res.ten_bac_si;
+            openQueueTicketModal(matched);
+          }
+          fetchAppointments();
+          return;
         } else {
           showToast(`Đã chuyển trạng thái lịch khám #${id} sang ${newStatus}`, "success");
         }
@@ -604,6 +1198,151 @@
       } catch (error) {
         showToast(error.message, "danger");
       }
+    }
+
+    /**
+     * Mở modal Phân công Bác sĩ & Phòng khám
+     */
+    function openAssignDoctorModal(lichKhamId, specialtyName, currentDoctorUserId, patientName) {
+      document.getElementById("assignLichKhamId").value = lichKhamId;
+      document.getElementById("assignLichKhamInfo").textContent = `#LK-${lichKhamId} ${patientName ? '- ' + patientName : ''}`;
+      document.getElementById("assignSpecialtyInfo").textContent = `Chuyên khoa: ${specialtyName || 'Khám tổng quát'}`;
+
+      const docSelect = document.getElementById("assign_bac_si_id");
+      docSelect.innerHTML = `<option value="">-- Chọn Bác sĩ phụ trách --</option>`;
+
+      // Tìm bác sĩ đúng chuyên khoa (phân biệt chuẩn xác tiếng Việt)
+      const specClean = cleanSpecName(specialtyName);
+      const specBase = specClean.split(" ")[0]; // vd: "mắt"
+      const matchedDocs = allDoctors.filter(d => {
+        if (!d.chuyen_khoa) return false;
+        const dClean = cleanSpecName(d.chuyen_khoa);
+        const dBase = dClean.split(" ")[0];
+        return dClean === specClean || dBase === specBase || dClean.includes(specClean) || specClean.includes(dClean);
+      });
+
+      if (matchedDocs.length > 0) {
+        const optGroup = document.createElement("optgroup");
+        optGroup.label = `Bác sĩ chuyên khoa (${specialtyName || 'Đúng tuyến'})`;
+        matchedDocs.forEach(d => {
+          const opt = new Option(`${d.hoc_vi || 'BS.'} ${d.ho_ten} [${d.phong_kham || 'Phòng khám'}]`, d.user_id || d.id);
+          if (currentDoctorUserId && (d.user_id == currentDoctorUserId || d.id == currentDoctorUserId)) {
+            opt.selected = true;
+          }
+          optGroup.appendChild(opt);
+        });
+        docSelect.appendChild(optGroup);
+      }
+
+      // Nhóm bác sĩ các chuyên khoa khác
+      const otherDocs = allDoctors.filter(d => !matchedDocs.includes(d));
+      if (otherDocs.length > 0) {
+        const optGroup2 = document.createElement("optgroup");
+        optGroup2.label = "Tất cả bác sĩ khác trong viện";
+        otherDocs.forEach(d => {
+          const opt = new Option(`${d.hoc_vi || 'BS.'} ${d.ho_ten} [${d.phong_kham || 'Phòng khám'}] (${d.chuyen_khoa || 'Tổng quát'})`, d.user_id || d.id);
+          if (currentDoctorUserId && (d.user_id == currentDoctorUserId || d.id == currentDoctorUserId)) {
+            opt.selected = true;
+          }
+          optGroup2.appendChild(opt);
+        });
+        docSelect.appendChild(optGroup2);
+      }
+
+      // Reset ô tìm kiếm và nạp datalist gợi ý Bác sĩ kèm phòng khám
+      const assignDocSearch = document.getElementById("quickAssignDocSearch");
+      if (assignDocSearch) assignDocSearch.value = "";
+      const dlAssign = document.getElementById("assignDoctorDatalist");
+      if (dlAssign) {
+        dlAssign.innerHTML = "";
+        allDoctors.forEach(d => {
+          const opt = document.createElement("option");
+          opt.value = `${d.hoc_vi || 'BS.'} ${d.ho_ten} - ${d.phong_kham || 'Phòng khám'} (${d.chuyen_khoa || 'Tổng quát'})`;
+          dlAssign.appendChild(opt);
+        });
+      }
+
+      assignDoctorModal.show();
+    }
+
+    /**
+     * Xác nhận lưu phân công Bác sĩ
+     */
+    async function handleConfirmAssignDoctor(event) {
+      event.preventDefault();
+      const lichKhamId = document.getElementById("assignLichKhamId").value;
+      const bacSiId = document.getElementById("assign_bac_si_id").value;
+      const btn = document.getElementById("btnConfirmAssign");
+
+      if (!bacSiId) {
+        showToast("Vui lòng chọn Bác sĩ phụ trách!", "warning");
+        return;
+      }
+
+      btn.disabled = true;
+      btn.innerHTML = `<i class="fa-solid fa-circle-notch fa-spin me-1"></i> Đang lưu phân công...`;
+
+      try {
+        const res = await fetch(`${API_LICH_KHAM_URL}${lichKhamId}/phan-cong-bac-si`, {
+          method: "PUT",
+          headers: getAuthHeaders(),
+          body: JSON.stringify({ bac_si_id: parseInt(bacSiId) })
+        });
+
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.detail || `Lỗi HTTP ${res.status}`);
+        }
+
+        const data = await res.json();
+        showToast(`🎉 ${data.message}`, "success");
+        assignDoctorModal.hide();
+        fetchAppointments();
+      } catch (err) {
+        console.error("Lỗi phân công bác sĩ:", err);
+        showToast(err.message, "danger");
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = `<i class="fa-solid fa-check me-1"></i> Lưu Phân Công`;
+      }
+    }
+
+    /**
+     * Xem / In Phiếu Gọi Khám Bệnh
+     */
+    function openTicketById(id) {
+      const item = currentAppointmentsList.find(x => x.id === id);
+      if (item) openQueueTicketModal(item);
+    }
+
+    function openQueueTicketModal(item) {
+      document.getElementById("ticketStt").textContent = item.stt ? `STT #${String(item.stt).padStart(2, '0')}` : `STT #${item.id}`;
+      document.getElementById("ticketLichId").textContent = `#LK-${item.id}`;
+      document.getElementById("ticketPatientName").textContent = item.ho_ten || "Bệnh nhân";
+      document.getElementById("ticketSpecialty").textContent = item.ten_chuyen_khoa || "Khám tổng quát";
+      document.getElementById("ticketDoctor").textContent = (item.ten_bac_si && item.ten_bac_si !== "Chưa phân công") ? item.ten_bac_si : "Chưa phân công (Tự động điều phối)";
+      document.getElementById("ticketRoom").textContent = item.phong_kham || "Phòng khám chung";
+      document.getElementById("ticketTime").textContent = item.thoi_gian || "";
+      const estElem = document.getElementById("ticketEstimatedTime");
+      if (estElem) {
+        estElem.textContent = item.gio_du_kien || (item.thoi_gian ? item.thoi_gian.substring(11, 16) : "Đang điều phối");
+      }
+
+      ticketModal.show();
+    }
+
+    function printTicket() {
+      const printContents = document.getElementById("ticketPrintArea").innerHTML;
+      const win = window.open('', '', 'height=600,width=500');
+      win.document.write('<html><head><title>Phiếu Tiếp Nhận Khám Bệnh</title>');
+      win.document.write('<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">');
+      win.document.write('<style>body{padding:20px;font-family:sans-serif;} @media print {.no-print{display:none;}}</style>');
+      win.document.write('</head><body>');
+      win.document.write(printContents);
+      win.document.write('</body></html>');
+      win.document.close();
+      win.focus();
+      setTimeout(() => { win.print(); win.close(); }, 350);
     }
 
     function escapeHtml(text) {
