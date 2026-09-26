@@ -189,6 +189,9 @@
 
     recognition.onerror = (err) => {
       console.warn("[Voice-to-Text Warning]", err.error);
+      if (err.error === 'not-allowed') {
+        alert("Trình duyệt chưa được cấp quyền Microphone. Vui lòng nhấn vào biểu tượng ổ khóa cạnh thanh địa chỉ web để 'Cho phép (Allow)' Microphone nhé!");
+      }
       stopListening();
     };
 
@@ -253,7 +256,7 @@
         currentAttachment = {
           file: file,
           name: file.name,
-          mimeType: file.type,
+          mimeType: file.type || (isImage ? "image/jpeg" : "application/pdf"),
           dataUrl: dataUrl,
           sizeFormatted: formatBytes(file.size),
           isImage: isImage,
@@ -324,8 +327,10 @@
     const btnSend = document.getElementById("btnSendChat");
     const input = document.getElementById("clinovaChatInput");
 
+    const displayMsg = message || (attachment ? `Đã tải lên: ${attachment.name}` : "");
+
     // 1. Thêm tin nhắn người dùng kèm ảnh preview nếu có
-    appendMessage("user", message, attachment);
+    appendMessage("user", displayMsg, attachment);
 
     // 2. Thêm Typing indicator
     const typingId = showTypingIndicator();
@@ -335,7 +340,7 @@
     try {
       // 3. Chuẩn bị Payload gọi API Backend
       const payload = {
-        message: message,
+        message: message || "Hãy xem hình ảnh / tài liệu đính kèm này và tư vấn chuyên khoa phù hợp cùng những dặn dò chuẩn bị trước khi khám giúp tôi.",
         image_base64: attachment ? attachment.dataUrl : null,
         image_mime_type: attachment ? attachment.mimeType : null,
         file_name: attachment ? attachment.name : null
