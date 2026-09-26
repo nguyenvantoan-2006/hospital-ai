@@ -194,10 +194,10 @@ def get_public_phong_khams(db: Session = Depends(get_db)):
                 }
 
     paraclinical_rooms = [
-        {"phong_kham": "Phòng 202 - Chẩn Đoán Hình Ảnh (X-Quang)", "chuyen_khoa": "Chẩn đoán hình ảnh", "loai_phong": "can_lam_sang", "vi_tri": "Tầng 2 - Khu Kỹ Thuật Cao", "bac_si_ho_ten": "BS. CKI Lê Hoàng Long"},
-        {"phong_kham": "Phòng 105 - Xét Nghiệm Sinh Hóa - Huyết Học", "chuyen_khoa": "Xét nghiệm", "loai_phong": "can_lam_sang", "vi_tri": "Tầng 1 - Dãy Hành Lang B", "bac_si_ho_ten": "ThS. BS Phạm Minh Tuấn"},
-        {"phong_kham": "Phòng 108 - Siêu Âm Màu Doopler & 4D", "chuyen_khoa": "Thăm dò chức năng", "loai_phong": "can_lam_sang", "vi_tri": "Tầng 1 - Dãy Hành Lang A", "bac_si_ho_ten": "BS. Nguyễn Thị Lan"},
-        {"phong_kham": "Phòng 206 - Nội Soi Tiêu Hóa & Tai Mũi Họng", "chuyen_khoa": "Nội soi", "loai_phong": "can_lam_sang", "vi_tri": "Tầng 2 - Phòng Vô Trùng", "bac_si_ho_ten": "BS. CKI Trần Văn Nam"}
+        {"phong_kham": "Phòng 202 (Khu Kỹ Thuật Cao) - X-Quang", "chuyen_khoa": "Chẩn đoán hình ảnh", "loai_phong": "can_lam_sang", "vi_tri": "Tầng 2 - Khu Kỹ Thuật Cao", "bac_si_ho_ten": "BS. CKI Lê Hoàng Long"},
+        {"phong_kham": "Phòng 105 (Khu CLS) - Xét Nghiệm Sinh Hóa", "chuyen_khoa": "Xét nghiệm", "loai_phong": "can_lam_sang", "vi_tri": "Tầng 1 - Dãy Hành Lang B", "bac_si_ho_ten": "ThS. BS Phạm Minh Tuấn"},
+        {"phong_kham": "Phòng 108 (Khu CLS) - Siêu Âm Màu Doopler 4D", "chuyen_khoa": "Thăm dò chức năng", "loai_phong": "can_lam_sang", "vi_tri": "Tầng 1 - Dãy Hành Lang A", "bac_si_ho_ten": "BS. Nguyễn Thị Lan"},
+        {"phong_kham": "Phòng 206 (Khu Vô Trùng) - Nội Soi Can Thiệp", "chuyen_khoa": "Nội soi", "loai_phong": "can_lam_sang", "vi_tri": "Tầng 2 - Phòng Vô Trùng", "bac_si_ho_ten": "BS. CKI Trần Văn Nam"}
     ]
 
     for pr in paraclinical_rooms:
