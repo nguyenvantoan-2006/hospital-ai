@@ -301,17 +301,109 @@
   padding: 10px 14px;
   background: #ffffff;
   border-top: 1px solid #E2E8F0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
+/* File / Image Preview Bar */
+.chat-file-preview-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #F1F5F9;
+  border: 1px solid #CBD5E1;
+  border-radius: 12px;
+  padding: 6px 10px;
+  animation: slideInDown 0.25s ease-out;
+}
+
+@keyframes slideInDown {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.file-preview-content {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  overflow: hidden;
+}
+
+.file-preview-thumb {
+  width: 38px;
+  height: 38px;
+  border-radius: 8px;
+  object-fit: cover;
+  border: 1px solid #E2E8F0;
+  background: #ffffff;
+}
+
+.file-preview-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 8px;
+  background: #EF4444;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+}
+
+.file-preview-meta {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.file-preview-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: #1E293B;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 220px;
+}
+
+.file-preview-size {
+  font-size: 10.5px;
+  color: #64748B;
+}
+
+.btn-remove-file {
+  background: transparent;
+  border: none;
+  color: #94A3B8;
+  font-size: 14px;
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: 50%;
+  transition: all 0.2s;
+}
+
+.btn-remove-file:hover {
+  color: #EF4444;
+  background: #FEE2E2;
+}
+
+/* Chat Input Wrapper & Action Buttons */
 .chat-input-wrapper {
   display: flex;
   align-items: center;
-  gap: 8px;
-  background: #F1F5F9;
+  gap: 6px;
+  background: #F8FAFC;
   border-radius: 24px;
-  padding: 6px 12px;
-  border: 1px solid transparent;
-  transition: border-color 0.2s;
+  padding: 5px 8px 5px 12px;
+  border: 1px solid #E2E8F0;
+  transition: all 0.2s;
 }
 
 .chat-input-wrapper:focus-within {
@@ -327,12 +419,14 @@
   outline: none;
   font-size: 13.5px;
   color: #1e293b;
+  min-width: 0;
 }
 
-.chat-input-wrapper button {
-  background: #1A73E8;
+/* Tool Buttons: Mic & Paperclip */
+.btn-chat-tool {
+  background: transparent;
   border: none;
-  color: #ffffff;
+  color: #64748B;
   width: 32px;
   height: 32px;
   border-radius: 50%;
@@ -341,18 +435,121 @@
   justify-content: center;
   font-size: 14px;
   cursor: pointer;
-  transition: background 0.2s;
+  transition: all 0.2s;
+  flex-shrink: 0;
 }
 
-.chat-input-wrapper button:hover {
-  background: #1557B0;
+.btn-chat-tool:hover {
+  background: #E2E8F0;
+  color: #1A73E8;
+}
+
+/* Pulse animation when Voice Recording is Active */
+.btn-chat-tool.recording-active {
+  background: #EF4444;
+  color: #ffffff !important;
+  animation: pulseMic 1.2s infinite;
+}
+
+@keyframes pulseMic {
+  0% {
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
+    transform: scale(1);
+  }
+  70% {
+    box-shadow: 0 0 0 8px rgba(239, 68, 68, 0);
+    transform: scale(1.08);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
+    transform: scale(1);
+  }
+}
+
+/* Send Button */
+.btn-chat-send {
+  background: linear-gradient(135deg, #1A73E8 0%, #2563EB 100%);
+  border: none;
+  color: #ffffff;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+  flex-shrink: 0;
+  box-shadow: 0 2px 6px rgba(26, 115, 232, 0.3);
+}
+
+.btn-chat-send:hover {
+  transform: scale(1.05);
+  box-shadow: 0 4px 10px rgba(26, 115, 232, 0.4);
+}
+
+.btn-chat-send:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Message Attachment Image */
+.attached-media-preview {
+  margin-top: 6px;
+  border-radius: 10px;
+  overflow: hidden;
+  max-width: 220px;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+}
+
+.attached-media-preview img {
+  width: 100%;
+  max-height: 180px;
+  object-fit: cover;
+  display: block;
+}
+
+.attached-doc-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.25);
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 11.5px;
+  margin-top: 4px;
+}
+
+/* Specialty Direct Booking Chip */
+.spec-booking-chip {
+  background: #EFF6FF;
+  border: 1px solid #BFDBFE;
+  color: #1D4ED8;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 11.5px;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: all 0.2s;
+  margin-top: 4px;
+}
+
+.spec-booking-chip:hover {
+  background: #DBEAFE;
+  color: #1E40AF;
+  transform: translateY(-1px);
 }
 
 .chat-disclaimer {
-  font-size: 10.5px;
+  font-size: 10px;
   color: #94A3B8;
   text-align: center;
-  margin-top: 6px;
+  margin-top: 2px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -373,3 +570,4 @@
     border-radius: 0;
   }
 }
+
