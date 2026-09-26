@@ -105,7 +105,29 @@ def run_fix():
             if eye_doc:
                 lk59.bac_si_id = eye_doc.user_id if eye_doc.user_id else eye_doc.id
                 print(f"✓ Đã sửa LK #59: Bệnh nhân Hoàng Văn Tùng -> Bác sĩ Mắt: {eye_doc.hoc_vi} {eye_doc.ho_ten} ({eye_doc.phong_kham})")
-            db.commit()
+        # 6. Chuẩn hóa phòng khám có KHU cho 100% bác sĩ
+        spec_to_room_map = {}
+        for idx, s in enumerate(SPECIALTIES_DATA, start=1):
+            room_str = f"Phòng {100 + idx} (Khu {chr(65 + (idx % 4))})"
+            spec_to_room_map[s["ten"]] = room_str
+
+        all_active_docs = db.query(models.BacSi).filter(models.BacSi.trang_thai == True).all()
+        updated_docs_count = 0
+        for doc in all_active_docs:
+            current_spec = (doc.chuyen_khoa or "").strip()
+            std_spec_name = old_to_std_map.get(current_spec, current_spec)
+            if std_spec_name in spec_to_room_map:
+                std_room = spec_to_room_map[std_spec_name]
+                if doc.phong_kham != std_room or doc.chuyen_khoa != std_spec_name:
+                    doc.chuyen_khoa = std_spec_name
+                    doc.phong_kham = std_room
+                    updated_docs_count += 1
+            elif not doc.phong_kham or "Khu" not in doc.phong_kham:
+                doc.phong_kham = f"{doc.phong_kham or 'Phòng khám'} (Khu A)"
+                updated_docs_count += 1
+
+        db.commit()
+        print(f"✓ Đã chuẩn hóa {updated_docs_count} bác sĩ: 100% có số phòng kèm KHU (Khu A, Khu B, Khu C, Khu D).")
 
         print("=" * 60)
         print("🎉 HOÀN TẤT CHUẨN HÓA DỮ LIỆU CHUYÊN KHOA & BÁC SĨ")
