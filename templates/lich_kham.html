@@ -184,12 +184,18 @@
             <label class="form-label small fw-semibold text-secondary mb-1">Ngày khám</label>
             <input type="date" id="filterDate" class="form-control form-control-sm" onchange="fetchAppointments()" />
           </div>
-          <!-- Filter Doctor -->
+          <!-- Filter Doctor with Quick Search -->
           <div>
             <label class="form-label small fw-semibold text-secondary mb-1">Bác sĩ phụ trách</label>
-            <select id="filterDoctor" class="form-select form-select-sm" onchange="fetchAppointments()">
-              <option value="">-- Tất cả bác sĩ --</option>
-            </select>
+            <div class="d-flex align-items-center gap-1">
+              <div class="position-relative d-inline-block">
+                <input type="text" id="quickDoctorSearch" class="form-control form-control-sm bg-light" placeholder="🔍 Tên BS (vd: Long, Vũ...)" style="width: 175px; font-size: 13px;" oninput="onQuickDoctorSearch(this.value)" autocomplete="off">
+                <button type="button" id="btnClearDoctorSearch" class="btn btn-sm position-absolute top-50 end-0 translate-middle-y text-muted me-1 border-0 py-0 px-1" style="display: none; font-size: 14px;" onclick="clearDoctorSearch()" title="Xóa tìm BS">×</button>
+              </div>
+              <select id="filterDoctor" class="form-select form-select-sm" style="max-width: 220px;" onchange="onFilterDoctorChange(this.value)">
+                <option value="">-- Tất cả bác sĩ --</option>
+              </select>
+            </div>
           </div>
           <!-- Filter Status -->
           <div>
@@ -332,7 +338,14 @@
               </div>
 
               <div class="col-md-6">
-                <label for="bac_si_id" class="form-label fw-semibold small text-secondary">Bác sĩ phụ trách</label>
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                  <label for="bac_si_id" class="form-label fw-semibold small text-secondary mb-0">Bác sĩ phụ trách</label>
+                  <small class="text-primary" style="font-size: 11px;">🔍 Gõ tên BS để chọn nhanh</small>
+                </div>
+                <div class="input-group input-group-sm mb-1">
+                  <span class="input-group-text bg-white border-end-0"><i class="fa-solid fa-magnifying-glass text-muted"></i></span>
+                  <input type="text" id="modalQuickDocSearch" class="form-control border-start-0 ps-0" placeholder="Nhập tên BS (vd: Long, Vũ...)" oninput="filterModalDocSelect(this.value)">
+                </div>
                 <select id="bac_si_id" class="form-select">
                   <option value="">-- Tự động điều phối theo chuyên khoa --</option>
                 </select>
@@ -388,9 +401,16 @@
             </div>
 
             <div class="mb-3">
-              <label for="assign_bac_si_id" class="form-label fw-semibold small text-secondary">
-                Chọn Bác sĩ phụ trách <span class="text-danger">*</span>
-              </label>
+              <div class="d-flex justify-content-between align-items-center mb-1">
+                <label for="assign_bac_si_id" class="form-label fw-semibold small text-secondary mb-0">
+                  Chọn Bác sĩ phụ trách <span class="text-danger">*</span>
+                </label>
+                <small class="text-primary" style="font-size: 11px;">🔍 Gõ tên BS để chọn nhanh</small>
+              </div>
+              <div class="input-group input-group-sm mb-2">
+                <span class="input-group-text bg-white border-end-0"><i class="fa-solid fa-magnifying-glass text-muted"></i></span>
+                <input type="text" id="quickAssignDocSearch" class="form-control border-start-0 ps-0" placeholder="Nhập tên BS (vd: Long, Vũ...)" oninput="filterAssignDocSelect(this.value)">
+              </div>
               <select id="assign_bac_si_id" class="form-select form-select-lg fs-6" required>
                 <option value="">-- Đang tải danh sách bác sĩ... --</option>
               </select>
@@ -663,11 +683,104 @@
         const filtered = currentAppointmentsList.filter(item => {
           const name = (item.ho_ten || "").toLowerCase();
           const phone = (item.so_dien_thoai || "").toLowerCase();
+          const doc = (item.ten_bac_si || "").toLowerCase();
+          const spec = (item.ten_chuyen_khoa || "").toLowerCase();
           const id = String(item.id);
           const stt = String(item.stt || "");
-          return name.includes(kw) || phone.includes(kw) || id.includes(kw) || stt.includes(kw);
+          return name.includes(kw) || phone.includes(kw) || doc.includes(kw) || spec.includes(kw) || id.includes(kw) || stt.includes(kw);
         });
         renderAppointmentsTable(filtered);
+      }
+
+      /**
+       * Tìm kiếm nhanh Bác sĩ trên thanh lọc
+       */
+      function onQuickDoctorSearch(val) {
+        const q = (val || "").trim().toLowerCase();
+        const btnClear = document.getElementById("btnClearDoctorSearch");
+        if (btnClear) btnClear.style.display = q ? "inline-block" : "none";
+
+        const docSel = document.getElementById("filterDoctor");
+        if (!docSel) return;
+
+        if (!q) {
+          docSel.value = "";
+          fetchAppointments();
+          return;
+        }
+
+        // Tìm bác sĩ khớp với từ khóa (tên, chuyên khoa hoặc phòng)
+        const matched = allDoctors.find(d => {
+          const name = (d.ho_ten || "").toLowerCase();
+          const spec = (d.chuyen_khoa || "").toLowerCase();
+          const room = (d.phong_kham || "").toLowerCase();
+          return name.includes(q) || spec.includes(q) || room.includes(q);
+        });
+
+        if (matched) {
+          docSel.value = matched.user_id || matched.id;
+          fetchAppointments();
+        } else {
+          // Lọc danh sách hiện có theo từ khóa bác sĩ
+          const filtered = currentAppointmentsList.filter(item => {
+            const docName = (item.ten_bac_si || "").toLowerCase();
+            const specName = (item.ten_chuyen_khoa || "").toLowerCase();
+            return docName.includes(q) || specName.includes(q);
+          });
+          renderAppointmentsTable(filtered);
+        }
+      }
+
+      function clearDoctorSearch() {
+        const inp = document.getElementById("quickDoctorSearch");
+        if (inp) inp.value = "";
+        onQuickDoctorSearch("");
+      }
+
+      function onFilterDoctorChange(val) {
+        const inp = document.getElementById("quickDoctorSearch");
+        const btnClear = document.getElementById("btnClearDoctorSearch");
+        if (val) {
+          const d = allDoctors.find(doc => (doc.user_id == val || doc.id == val));
+          if (inp && d) inp.value = d.ho_ten;
+          if (btnClear) btnClear.style.display = "inline-block";
+        } else {
+          if (inp) inp.value = "";
+          if (btnClear) btnClear.style.display = "none";
+        }
+        fetchAppointments();
+      }
+
+      /**
+       * Lọc nhanh bác sĩ trong Modal Đặt Lịch
+       */
+      function filterModalDocSelect(val) {
+        const q = (val || "").trim().toLowerCase();
+        const sel = document.getElementById("bac_si_id");
+        if (!sel || !q) return;
+        for (let i = 0; i < sel.options.length; i++) {
+          const text = sel.options[i].text.toLowerCase();
+          if (text.includes(q)) {
+            sel.selectedIndex = i;
+            break;
+          }
+        }
+      }
+
+      /**
+       * Lọc nhanh bác sĩ trong Modal Phân Công BS
+       */
+      function filterAssignDocSelect(val) {
+        const q = (val || "").trim().toLowerCase();
+        const sel = document.getElementById("assign_bac_si_id");
+        if (!sel || !q) return;
+        for (let i = 0; i < sel.options.length; i++) {
+          const text = sel.options[i].text.toLowerCase();
+          if (text.includes(q)) {
+            sel.selectedIndex = i;
+            break;
+          }
+        }
       }
 
       function setQuickDate(type) {
