@@ -16,14 +16,18 @@ if api_key:
 else:
     raise ValueError("GEMINI_API_KEY is missing in environment variables.")
 
-# Danh sách models ưu tiên khả dụng (đã được kiểm tra hạn ngạch và hỗ trợ trên API v1beta)
+import time
+import re
+
+# Danh sách models ưu tiên khả dụng (hỗ trợ cả Multimodal Vision & Text)
 PREFERRED_MODELS = [
-    "gemini-flash-lite-latest",
-    "gemma-4-26b-a4b-it",
-    "gemini-3.1-flash-lite",
-    "gemini-3.1-flash-lite-preview",
+    "gemini-1.5-flash",
     "gemini-flash-latest",
-    "gemini-pro-latest"
+    "gemini-flash-lite-latest",
+    "gemini-1.5-pro",
+    "gemini-pro-latest",
+    "gemini-3.1-flash-lite",
+    "gemma-4-26b-a4b-it"
 ]
 
 from database import get_db
@@ -76,24 +80,51 @@ def mask_patient_data(benh_nhan: models.BenhNhan) -> dict:
         "tien_su_benh": benh_nhan.tien_su_benh or "Không có ghi nhận"
     }
 
-async def call_llm_api(prompt: str) -> str:
+async def call_llm_multimodal_api(
+    prompt: str,
+    image_base64: Optional[str] = None,
+    mime_type: Optional[str] = None
+) -> tuple[str, str]:
     """
-    Gọi API Google Gemini với cơ chế thử lại đa mô hình (Multi-model Fallback).
+    Gọi Gemini API hỗ trợ Multimodal (Văn bản + Hình ảnh / Tài liệu PDF)
+    với cơ chế thử lại đa mô hình (Multi-model Fallback).
+    Trả về (response_text, model_name_used).
     """
+    contents = [prompt]
+    if image_base64:
+        clean_b64 = image_base64.strip()
+        detected_mime = mime_type or "image/jpeg"
+        if "," in clean_b64:
+            header, clean_b64 = clean_b64.split(",", 1)
+            if "data:" in header and ";base64" in header:
+                detected_mime = header.replace("data:", "").replace(";base64", "").strip()
+
+        contents.append({
+            "mime_type": detected_mime,
+            "data": clean_b64
+        })
+
     last_error = None
     for model_name in PREFERRED_MODELS:
         try:
             m = genai.GenerativeModel(model_name)
-            response = await asyncio.to_thread(m.generate_content, prompt)
+            response = await asyncio.to_thread(m.generate_content, contents)
             if response and response.text:
-                return response.text.strip()
+                return response.text.strip(), model_name
         except Exception as e:
             last_error = e
             logger.warning(f"Thử model {model_name} không thành công ({e}), chuyển sang model tiếp theo...")
             continue
-    
+
     logger.error(f"Tất cả các Gemini models đều gặp lỗi: {last_error}")
     raise last_error
+
+async def call_llm_api(prompt: str) -> str:
+    """
+    Gọi API Google Gemini dạng text thuần túy (Backward Compatibility).
+    """
+    text, _ = await call_llm_multimodal_api(prompt)
+    return text
 
 
 # ─── API ENDPOINT ────────────────────────────────────────────────────────
@@ -221,97 +252,258 @@ Hãy viết bản nháp Hướng dẫn sau khám ngắn gọn, rõ ràng, dễ h
     return AIGuideResponse(guide=guide_result)
 
 
-# ─── AI CHATBOT TƯ VẤN QUY TRÌNH HÀNH CHÍNH (FR-AI-02, UC-09 & SEC-AI-02) ───
+# ─── AI CHATBOT TƯ VẤN QUY TRÌNH HÀNH CHÍNH & ĐỊNH HƯỚNG KHÁM (FR-AI-02, UC-09 & SEC-AI-02) ───
 class AIChatbotRequest(BaseModel):
-    message: str
+    message: Optional[str] = ""
+    image_base64: Optional[str] = None
+    image_mime_type: Optional[str] = "image/jpeg"
+    file_name: Optional[str] = None
     session_id: Optional[str] = None
 
 class AIChatbotResponse(BaseModel):
     reply: str
     suggested_actions: Optional[List[str]] = None
+    specialties_recommended: Optional[List[str]] = None
+    preparation_guidelines: Optional[List[str]] = None
+
+def retrieve_rag_context(user_msg: str, db: Session) -> dict:
+    """
+    Truy vấn Cơ sở dữ liệu nội bộ của Clinova Hospital (Ground Truth)
+    để nạp vào Prompt cho Gemini (RAG):
+    - Danh mục Chuyên khoa phù hợp & bảng giá
+    - Bác sĩ phụ trách & lịch trực
+    - Quy định hướng dẫn chuẩn bị trước khám (nhịn ăn, giấy tờ, lưu ý)
+    """
+    query_lower = (user_msg or "").lower()
+
+    # 1. Tìm hướng dẫn chuẩn bị khám từ bảng huong_dan_chuan_bi_kham
+    matched_guides = []
+    try:
+        all_guides = db.query(models.HuongDanChuanBiKham).filter(models.HuongDanChuanBiKham.trang_thai == True).all()
+        for g in all_guides:
+            keywords = [k.strip() for k in (g.tu_khoa_nhan_dien or "").lower().split(",") if k.strip()]
+            keywords.append(g.ten_dich_vu.lower())
+            if any(kw in query_lower for kw in keywords):
+                matched_guides.append(g)
+    except Exception as e:
+        logger.warning(f"Lỗi truy vấn HuongDanChuanBiKham: {e}")
+
+    # 2. Tìm chuyên khoa phù hợp từ bảng chuyen_khoa
+    matched_specs = []
+    all_specs = []
+    try:
+        all_specs = db.query(models.ChuyenKhoa).filter(models.ChuyenKhoa.trang_thai == True).all()
+        for s in all_specs:
+            s_name_lower = s.ten_chuyen_khoa.lower()
+            words = [w for w in s_name_lower.replace("-", " ").replace("(", " ").replace(")", " ").split() if len(w) > 2]
+            if s_name_lower in query_lower or any(w in query_lower for w in words):
+                matched_specs.append(s)
+    except Exception as e:
+        logger.warning(f"Lỗi truy vấn ChuyenKhoa: {e}")
+
+    # Nếu guide có FK chuyen_khoa thì thêm vào matched_specs
+    for g in matched_guides:
+        if g.chuyen_khoa and g.chuyen_khoa not in matched_specs:
+            matched_specs.append(g.chuyen_khoa)
+
+    # 3. Lấy thông tin Bác sĩ thực tế từ bảng bac_si
+    doctors_info = []
+    try:
+        if matched_specs:
+            spec_names = [s.ten_chuyen_khoa for s in matched_specs[:3]]
+            doctors = db.query(models.BacSi).filter(
+                models.BacSi.chuyen_khoa.in_(spec_names),
+                models.BacSi.trang_thai == True
+            ).limit(6).all()
+        else:
+            doctors = db.query(models.BacSi).filter(models.BacSi.trang_thai == True).limit(3).all()
+
+        for d in doctors:
+            doctors_info.append(f"- {d.hoc_vi or 'BS.'} {d.ho_ten} (Chuyên khoa: {d.chuyen_khoa} | {d.phong_kham or 'Phòng khám đa khoa'} | Lịch trực: {d.lich_truc or 'Sáng 07:30 - 11:30 | Chiều 13:30 - 17:00'})")
+    except Exception as e:
+        logger.warning(f"Lỗi truy vấn BacSi: {e}")
+
+    # 4. Tạo khối Factual Context (Ground Truth)
+    lines = []
+    lines.append("=== DỮ LIỆU THỰC TẾ TRÍCH XUẤT TỪ CƠ SỞ DỮ LIỆU PHÒNG KHÁM CLINOVA (GROUND TRUTH) ===")
+
+    if matched_specs:
+        lines.append("1. CÁC CHUYÊN KHOA PHÙ HỢP TẠI CLINOVA:")
+        for s in matched_specs[:4]:
+            fee_str = f"{int(s.gia_kham_tieu_chuan):,} VNĐ" if s.gia_kham_tieu_chuan else "150.000 VNĐ"
+            lines.append(f"   • {s.ten_chuyen_khoa}: Giá khám tiêu chuẩn {fee_str}. Mô tả: {s.mo_ta or 'Khám và tư vấn chuyên sâu'}")
+    else:
+        lines.append("1. DANH MỤC MỘT SỐ CHUYÊN KHOA TIÊU BIỂU:")
+        for s in all_specs[:5]:
+            fee_str = f"{int(s.gia_kham_tieu_chuan):,} VNĐ" if s.gia_kham_tieu_chuan else "150.000 VNĐ"
+            lines.append(f"   • {s.ten_chuyen_khoa}: Giá khám tiêu chuẩn {fee_str}")
+
+    if doctors_info:
+        lines.append("2. BÁC SĨ PHỤ TRÁCH TIÊU BIỂU:")
+        lines.extend([f"   {d}" for d in doctors_info])
+
+    if matched_guides:
+        lines.append("3. QUY ĐỊNH HƯỚNG DẪN CHUẨN BỊ TRƯỚC KHI KHÁM (BẮT BUỘC TUÂN THỦ TỪ DB):")
+        for g in matched_guides:
+            lines.append(f"   📌 Dịch vụ: {g.ten_dich_vu}")
+            if g.huong_dan_nhin_an:
+                lines.append(f"      - Nhịn ăn / uống: {g.huong_dan_nhin_an}")
+            if g.giay_to_can_mang:
+                lines.append(f"      - Giấy tờ cần mang: {g.giay_to_can_mang}")
+            if g.luu_y_quan_trong:
+                lines.append(f"      - Lưu ý quan trọng: {g.luu_y_quan_trong}")
+    else:
+        lines.append("3. QUY ĐỊNH CHUẨN BỊ CHUNG KHI ĐẾN KHÁM:")
+        lines.append("   - Giấy tờ cần mang: Căn cước công dân (CCCD) hoặc hộ chiếu gốc, thẻ BHYT (nếu có), sổ khám hoặc đơn thuốc cũ trong 6 tháng gần nhất.")
+        lines.append("   - Nhịn ăn uống: Nếu cần làm xét nghiệm máu, nội soi dạ dày hoặc đại tràng, người bệnh cần nhịn ăn ít nhất 8 tiếng trước khi khám (chỉ uống nước lọc).")
+
+    lines.append("4. THÔNG TIN HÀNH CHÍNH & TIẾP NHẬN:")
+    lines.append("   - Giờ làm việc: Thứ Hai - Thứ Bảy (Sáng 07:30 - 11:30 | Chiều 13:30 - 17:00). Chủ Nhật: Cấp cứu tiếp nhận 24/7.")
+    lines.append("   - Địa chỉ: 123 Đường Sức Khỏe, Quận 1, TP. Hồ Chí Minh. Hotline hỗ trợ & cấp cứu: 1900 6868.")
+    lines.append("   - Áp dụng Bảo hiểm Y tế (BHYT) theo quy định hiện hành của Bộ Y tế.")
+    lines.append("=============================================================================")
+
+    return {
+        "context_text": "\n".join(lines),
+        "matched_specs": [s.ten_chuyen_khoa for s in matched_specs],
+        "matched_guides": [g.ten_dich_vu for g in matched_guides],
+        "first_guide": matched_guides[0] if matched_guides else None,
+        "first_spec": matched_specs[0] if matched_specs else None
+    }
+
 
 @router.post("/chatbot", response_model=AIChatbotResponse)
-async def ai_chatbot_consult(request: AIChatbotRequest):
+async def ai_chatbot_consult(request: AIChatbotRequest, db: Session = Depends(get_db)):
     """
-    API AI Chatbot tư vấn hành chính y tế cho Bệnh nhân (FR-AI-02 / UC-09).
-    - Giải đáp: Giờ khám, bảng giá dịch vụ, thủ tục BHYT, quy trình khám bệnh.
-    - Tuân thủ Guardrails nghiêm ngặt: Từ chối chẩn đoán, không kê đơn thuốc.
-    - Tự động chuyển đổi đa mô hình (Multi-model Fallback) & Fallback nội bộ an toàn.
+    API AI Chatbot Đa phương thức (Multimodal) & RAG CSDL Nội bộ (FR-AI-02, UC-09 & SEC-AI-02).
+    - Hỗ trợ câu hỏi văn bản (từ gõ tay hoặc Voice-to-Text kiểm duyệt).
+    - Hỗ trợ tải lên hình ảnh / tài liệu (kết quả xét nghiệm cũ, đơn thuốc, thẻ BHYT, vùng da...).
+    - Truy vấn RAG vào CSDL (chuyen_khoa, bac_si, huong_dan_chuan_bi_kham).
+    - Ép Guardrails nghiêm ngặt: Tuyệt đối không chẩn đoán, không kê đơn thuốc.
+    - Tự động nhận diện đa ngôn ngữ của người dùng (Tiếng Việt, Tiếng Anh...).
+    - Luôn đính kèm câu khuyến cáo miễn trừ trách nhiệm y tế (Disclaimer).
     """
+    start_time = time.time()
     user_msg = (request.message or "").strip()
-    if not user_msg:
-        raise HTTPException(status_code=400, detail="Nội dung câu hỏi không được để trống.")
+    has_image = bool(request.image_base64)
 
+    if not user_msg and not has_image:
+        raise HTTPException(status_code=400, detail="Vui lòng nhập câu hỏi hoặc đính kèm tài liệu/hình ảnh.")
+
+    # 1. RAG Retrieval từ Database
+    rag_data = retrieve_rag_context(user_msg, db)
+
+    # 2. Xây dựng System Prompt với Guardrails y đức và Data Grounding
     system_prompt = f"""
-Bạn là Trợ lý AI Hành chính của Hệ thống Phòng khám Đa khoa Clinova AI Hospital (Hospital-AI).
-Nhiệm vụ: Tư vấn, giải đáp thân thiện, ngắn gọn và chính xác các thông tin hành chính, quy trình và dịch vụ của phòng khám cho bệnh nhân.
+Bạn là Trợ lý AI Định hướng Khám bệnh của Hệ thống Phòng khám Đa khoa CLINOVA (Hospital-AI).
+Nhiệm vụ cốt lõi: Hướng dẫn người bệnh chuẩn bị chu đáo trước khi đến khám (gợi ý đúng chuyên khoa, bác sĩ phụ trách, bảng giá, giấy tờ cần mang, và dặn dò nhịn ăn/nước uống).
 
-THÔNG TIN CHÍNH THỨC CỦA PHÒNG KHÁM CLINOVA:
-1. Thời gian làm việc:
-   - Thứ Hai đến Thứ Bảy:
-     * Buổi sáng: 07:30 - 11:30
-     * Buổi chiều: 13:30 - 17:00
-   - Chủ Nhật: Nghỉ khám định kỳ (Khoa Cấp cứu tiếp nhận 24/7).
-2. Chi phí & Giá dịch vụ:
-   - Giá khám chuyên khoa tiêu chuẩn: 100.000 VNĐ / lượt khám.
-   - Các gói khám tổng quát, xét nghiệm và chẩn đoán hình ảnh từ 150.000 VNĐ tùy chỉ định.
-   - Có hỗ trợ tiếp nhận Bảo hiểm Y tế (BHYT) và bảo lãnh viện phí tư nhân.
-3. Quy trình khám bệnh chuẩn 4 bước:
-   - Bước 1: Đăng ký đặt lịch trực tuyến (tại website) hoặc lấy số tiếp nhận tại Quầy Lễ tân.
-   - Bước 2: Chờ gọi số thứ tự (STT) vào phòng khám bác sĩ chuyên khoa.
-   - Bước 3: Bác sĩ thăm khám, chẩn đoán và kê đơn thuốc điện tử.
-   - Bước 4: Thanh toán viện phí tại Quầy Kế toán và nhận thuốc tại Quầy Dược (hỗ trợ tiền mặt, chuyển khoản VietQR, quẹt thẻ).
-4. Địa chỉ & Liên hệ:
-   - Địa chỉ: 123 Đường Sức Khỏe, Quận 1, TP. Hồ Chí Minh.
-   - Hotline hỗ trợ & Cấp cứu: 1900 6868.
-   - Website: Đặt lịch trực tuyến 24/7 qua cổng "Đặt lịch khám".
+NGUYÊN TẮC 'LẤY DỮ LIỆU THẬT TỪ DATABASE - TUYỆT ĐỐI KHÔNG XUYÊN TẠC' (GROUND TRUTH):
+Dưới đây là thông tin thực tế duy nhất được cấp phép từ Cơ sở dữ liệu phòng khám:
+{rag_data['context_text']}
 
-RÀNG BUỘC Y ĐỨC & BẢO MẬT (SEC-AI-02 - TUYỆT ĐỐI TUÂN THỦ 3 QUY TẮC):
-1. TUYỆT ĐỐI KHÔNG TỰ CHẨN ĐOÁN BỆNH: Nếu người dùng mô tả các triệu chứng bệnh hoặc hỏi bệnh gì, hãy đồng cảm nhưng TỪ CHỐI chẩn đoán, đồng thời khuyên họ bấm "Đặt lịch khám" để gặp bác sĩ chuyên khoa hoặc gọi cấp cứu 115 nếu có triệu chứng nguy kịch (khó thở, đau thắt ngực...).
-2. TUYỆT ĐỐI KHÔNG KÊ ĐƠN THUỐC: Không gợi ý hoặc đề xuất tên bất kỳ loại thuốc điều trị nào.
-3. PHONG CÁCH TRẢ LỜI: Tiếng Việt văn minh, ấm áp, rõ ràng, gạch đầu dòng súc tích (dưới 150 từ).
+RÀNG BUỘC Y ĐỨC & GUARDRAILS (SEC-AI-02 - BẮT BUỘC TUÂN THỦ 5 NGUYÊN TẮC):
+1. VAI TRÒ DUY NHẤT LÀ HƯỚNG DẪN CHUẨN BỊ:
+   - Gợi ý đúng chuyên khoa nên đăng ký khám và bác sĩ phụ trách từ dữ liệu CSDL ở trên.
+   - Nêu rõ bảng giá khám niêm yết của chuyên khoa.
+   - Dặn dò đầy đủ giấy tờ cần mang theo (CCCD, BHYT, đơn thuốc/hồ sơ xét nghiệm cũ).
+   - Dặn dò lưu ý chuẩn bị (có cần nhịn ăn không, uống nước như thế nào) dựa ĐÚNG vào mục 'QUY ĐỊNH HƯỚNG DẪN CHUẨN BỊ' được cấp ở trên.
+2. TUYỆT ĐỐI KHÔNG TỰ CHẨN ĐOÁN BỆNH:
+   - Dù người bệnh có mô tả triệu chứng gì hoặc tải lên hình ảnh (kết quả xét nghiệm, đơn thuốc, ảnh vùng da...), bạn KHÔNG ĐƯỢC kết luận người đó mắc bệnh gì.
+   - Nếu có hình ảnh kết quả xét nghiệm cũ hay đơn thuốc cũ: Bạn có thể trích xuất các thông số khách quan (ví dụ: 'Trên phiếu ghi nhận chỉ số Glucose là...', 'Đơn thuốc cũ gồm...') nhưng KHÔNG kết luận bệnh hay kê đơn mới, mà định hướng người bệnh đến đúng chuyên khoa để bác sĩ thăm khám.
+3. TUYỆT ĐỐI KHÔNG KÊ ĐƠN THUỐC:
+   - Không gợi ý, không nhắc tên thuốc điều trị mới cho người bệnh uống.
+4. NẾU THÔNG TIN KHÔNG CÓ TRONG CƠ SỞ DỮ LIỆU ĐƯỢC CẤP:
+   - Phải thông báo rõ ràng cho người bệnh: 'Hiện tại hệ thống cơ sở dữ liệu của phòng khám chưa có thông tin về nội dung này, bạn vui lòng liên hệ Tổng đài 1900 6868 hoặc trực tiếp tại Quầy Lễ tân để được nhân viên y tế hỗ trợ.'
+5. TỰ ĐỘNG NHẬN DIỆN VÀ PHẢN HỒI BẰNG ĐÚNG NGÔN NGỮ CỦA NGƯỜI DÙNG:
+   - Nếu người dùng dùng Tiếng Việt -> Trả lời bằng Tiếng Việt văn minh, ấm áp, rõ ràng.
+   - Nếu người dùng dùng Tiếng Anh (English) -> Trả lời bằng Tiếng Anh chuẩn mực.
+   - Luôn định dạng danh sách gạch đầu dòng rõ ràng, súc tích (dưới 200 từ).
 
-CÂU HỎI CỦA BỆNH NHÂN:
-{user_msg}
+CÂU HỎI HOẶC YÊU CẦU CỦA BỆNH NHÂN:
+{user_msg if user_msg else '[Người dùng đã đính kèm hình ảnh / tài liệu đính kèm bên dưới, hãy trích xuất ngữ cảnh khách quan và định hướng chuẩn bị đi khám]'}
 """
-    suggested = ["Giờ làm việc", "Bảng giá khám", "Quy trình khám", "Đặt lịch ngay"]
-    
+
+    used_model = "unknown"
+    log_status = "success"
+    disclaimer_str = "Lưu ý: Mọi thông tin chỉ mang tính chất hướng dẫn chuẩn bị trước khi đến cơ sở y tế, không thay thế cho chẩn đoán chuyên môn của bác sĩ."
+
     try:
-        reply_text = await call_llm_api(system_prompt)
+        # 3. Gọi Gemini Multimodal API (Hỗ trợ cả Text + Image/File)
+        reply_text, used_model = await call_llm_multimodal_api(
+            prompt=system_prompt,
+            image_base64=request.image_base64,
+            mime_type=request.image_mime_type
+        )
     except Exception as e:
-        logger.error(f"[AI Chatbot Fallback] {str(e)}")
-        # Cơ chế Fallback thông minh dựa trên từ khóa nếu mất kết nối LLM
-        lower_msg = user_msg.lower()
-        if "giờ" in lower_msg or "mấy giờ" in lower_msg or "thời gian" in lower_msg or "lịch làm" in lower_msg:
+        logger.error(f"[AI Chatbot Fallback] Lỗi gọi Gemini: {str(e)}")
+        log_status = "fallback"
+        used_model = "internal-db-fallback"
+
+        # 4. Cơ chế Fallback an toàn lấy trực tiếp từ Database nội bộ
+        if rag_data.get("first_guide"):
+            g = rag_data["first_guide"]
+            s_name = rag_data["first_spec"].ten_chuyen_khoa if rag_data.get("first_spec") else "Chuyên khoa tương ứng"
+            reply_text = (
+                f"📋 **Hướng dẫn chuẩn bị khám: {g.ten_dich_vu}**\n\n"
+                f"• **Chuyên khoa đề xuất:** {s_name}\n"
+                f"• **Lưu ý nhịn ăn / uống:** {g.huong_dan_nhin_an or 'Ăn uống nhẹ nhàng.'}\n"
+                f"• **Giấy tờ cần mang:** {g.giay_to_can_mang or 'CCCD, thẻ BHYT, đơn thuốc cũ.'}\n"
+                f"• **Lưu ý quan trọng:** {g.luu_y_quan_trong or 'Đến đúng giờ hẹn đã đăng ký.'}\n"
+                f"• **Giờ làm việc:** Sáng 07:30 - 11:30 | Chiều 13:30 - 17:00 (Thứ 2 - Thứ 7).\n"
+                f"Bạn có thể nhấn **Đặt lịch khám ngay** trên website để được xếp số thứ tự ưu tiên nhé!"
+            )
+        elif any(k in user_msg.lower() for k in ["giờ", "thời gian", "mấy giờ"]):
             reply_text = (
                 "🕒 **Thời gian làm việc của Clinova:**\n"
                 "- Thứ 2 - Thứ 7: Sáng 07:30 - 11:30 | Chiều 13:30 - 17:00.\n"
                 "- Chủ Nhật: Nghỉ định kỳ (Cấp cứu trực 24/7).\n"
                 "Bạn có thể đặt lịch trước trên website để chọn khung giờ phù hợp nhé!"
             )
-        elif "giá" in lower_msg or "chi phí" in lower_msg or "bao nhiêu" in lower_msg or "tiền" in lower_msg:
+        elif any(k in user_msg.lower() for k in ["giá", "chi phí", "bao nhiêu", "tiền"]):
             reply_text = (
                 "💰 **Bảng giá khám tại Clinova:**\n"
-                "- Khám chuyên khoa tiêu chuẩn: 100.000 VNĐ / lượt.\n"
+                "- Khám chuyên khoa tiêu chuẩn: 150.000 VNĐ - 250.000 VNĐ tùy chuyên khoa.\n"
                 "- Phòng khám có áp dụng Bảo hiểm Y tế (BHYT) theo quy định hiện hành."
-            )
-        elif "quy trình" in lower_msg or "các bước" in lower_msg or "thủ tục" in lower_msg:
-            reply_text = (
-                "📝 **Quy trình khám bệnh 4 bước tại Clinova:**\n"
-                "1. Đặt lịch khám online hoặc lấy số tại Lễ tân.\n"
-                "2. Nhận số thứ tự (STT) và vào phòng khám bác sĩ.\n"
-                "3. Bác sĩ thăm khám và kê đơn thuốc điện tử.\n"
-                "4. Thanh toán viện phí và nhận thuốc tại quầy dược."
-            )
-        elif any(k in lower_msg for k in ["đau", "bệnh", "thuốc", "sốt", "uống gì", "bị làm sao"]):
-            reply_text = (
-                "⚠️ **Lưu ý Y tế:** Trợ lý AI không được phép đưa ra chẩn đoán y khoa hoặc kê đơn thuốc. "
-                "Để đảm bảo an toàn sức khỏe, bạn vui lòng nhấn nút **Đặt lịch khám** để được các bác sĩ chuyên khoa thăm khám trực tiếp, hoặc liên hệ Hotline 1900 6868 nếu cần hỗ trợ khẩn cấp."
             )
         else:
             reply_text = (
-                "Chào bạn, tôi là Trợ lý AI của Clinova. Tôi có thể hỗ trợ bạn tìm hiểu giờ làm việc, giá dịch vụ khám, quy trình khám và hướng dẫn đặt lịch khám. Bạn cần thông tin gì ạ?"
+                "Chào bạn, tôi là Trợ lý AI Hướng dẫn chuẩn bị khám của Clinova Hospital. "
+                "Để chuẩn bị tốt nhất trước khi đến viện, bạn vui lòng mang theo Căn cước công dân (CCCD), thẻ BHYT và các đơn thuốc hoặc kết quả khám cũ. "
+                "Nếu bạn có dự định làm xét nghiệm máu hoặc nội soi dạ dày, hãy nhịn ăn ít nhất 8 tiếng trước khi đến khám nhé!"
             )
 
-    return AIChatbotResponse(reply=reply_text, suggested_actions=suggested)
+    # 5. Đính kèm Disclaimer y tế bắt buộc
+    if "không thay thế cho chẩn đoán" not in reply_text.lower():
+        reply_text += f"\n\n---\n⚠️ **Khuyến cáo y tế:** *{disclaimer_str}*"
+
+    # 6. Ghi nhật ký kiểm toán AILog (SEC-AI-04)
+    elapsed_ms = int((time.time() - start_time) * 1000)
+    try:
+        log_entry = models.AILog(
+            user_id=None,
+            chuc_nang="ai_chatbot",
+            prompt_masked=user_msg[:500] if user_msg else "[Multimodal Attachment]",
+            response_text=reply_text[:1000],
+            model_name=used_model,
+            response_time_ms=elapsed_ms,
+            trang_thai=log_status,
+            thoi_gian=datetime.utcnow()
+        )
+        db.add(log_entry)
+        db.commit()
+    except Exception as log_err:
+        logger.warning(f"Không thể ghi nhật ký AILog: {log_err}")
+
+    suggested = ["Đặt lịch khám ngay", "Hướng dẫn nhịn ăn", "Giờ làm việc & Địa chỉ", "Giấy tờ cần mang"]
+    if rag_data.get("matched_specs"):
+        suggested.insert(0, f"Khám {rag_data['matched_specs'][0]}")
+
+    return AIChatbotResponse(
+        reply=reply_text,
+        suggested_actions=suggested[:4],
+        specialties_recommended=rag_data.get("matched_specs"),
+        preparation_guidelines=rag_data.get("matched_guides")
+    )
+
 
