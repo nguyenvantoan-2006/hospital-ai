@@ -21,13 +21,15 @@ import re
 
 # Danh sách models ưu tiên khả dụng (hỗ trợ cả Multimodal Vision & Text)
 PREFERRED_MODELS = [
-    "gemini-1.5-flash",
-    "gemini-flash-latest",
     "gemini-flash-lite-latest",
-    "gemini-1.5-pro",
-    "gemini-pro-latest",
+    "gemini-flash-latest",
     "gemini-3.1-flash-lite",
-    "gemma-4-26b-a4b-it"
+    "gemini-3.1-flash-lite-preview",
+    "gemini-3.5-flash-lite",
+    "gemini-2.5-flash-lite",
+    "gemini-3.8-flash",
+    "gemma-4-26b-a4b-it",
+    "gemini-pro-latest"
 ]
 
 from database import get_db
