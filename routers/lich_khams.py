@@ -139,9 +139,9 @@ def resolve_appointment_doctor_and_room(db: Session, bac_si_id: Optional[int], c
 
     doc = None
     if bac_si_id:
-        doc = db.query(models.BacSi).filter(
-            or_(models.BacSi.user_id == bac_si_id, models.BacSi.id == bac_si_id)
-        ).first()
+        doc = db.query(models.BacSi).filter(models.BacSi.id == bac_si_id).first()
+        if not doc:
+            doc = db.query(models.BacSi).filter(models.BacSi.user_id == bac_si_id).first()
 
     ck = None
     if chuyen_khoa_id:
@@ -161,7 +161,17 @@ def resolve_appointment_doctor_and_room(db: Session, bac_si_id: Optional[int], c
         ).first()
         if sample_doc and sample_doc.phong_kham:
             phong_kham = sample_doc.phong_kham
-            ten_bac_si = f"BS. Trực ({sample_doc.hoc_vi or 'BS.'} {sample_doc.ho_ten})"
+            ten_bac_si = f"{sample_doc.hoc_vi or 'BS.'} {sample_doc.ho_ten}"
+    else:
+        # Nếu cả bác sĩ và chuyên khoa đều chưa có, tự động lấy bác sĩ trực thật từ CSDL
+        fallback_doc = db.query(models.BacSi).filter(
+            models.BacSi.chuyen_khoa.ilike("%Nội%"),
+            models.BacSi.trang_thai == True
+        ).first() or db.query(models.BacSi).filter(models.BacSi.trang_thai == True).first()
+        if fallback_doc:
+            ten_bac_si = f"{fallback_doc.hoc_vi or 'BS.'} {fallback_doc.ho_ten}"
+            phong_kham = fallback_doc.phong_kham or "Phòng 101 (Khu B)"
+            ten_chuyen_khoa = fallback_doc.chuyen_khoa or "Khám Tổng Quát"
 
     return ten_bac_si, phong_kham, ten_chuyen_khoa
 
@@ -277,7 +287,9 @@ def get_queue_display(
     doc_name = "Bác sĩ phụ trách"
 
     if bac_si_id:
-        doc = db.query(models.BacSi).filter(or_(models.BacSi.id == bac_si_id, models.BacSi.user_id == bac_si_id)).first()
+        doc = db.query(models.BacSi).filter(models.BacSi.id == bac_si_id).first()
+        if not doc:
+            doc = db.query(models.BacSi).filter(models.BacSi.user_id == bac_si_id).first()
         if doc:
             doc_info = doc
             doc_name = f"{doc.hoc_vi or 'BS.'} {doc.ho_ten}"
@@ -417,6 +429,7 @@ def public_tra_cuu_lich_kham(
             "trang_thai_badge": st_info["badge"],
             "bac_si": ten_bs,
             "phong_kham": phong,
+            "so_phong": phong,
             "chuyen_khoa": ten_ck,
             "ly_do_kham": lk.ly_do_kham,
             "phieu_kham": pk_info
@@ -713,6 +726,7 @@ def get_all_lich_khams(
             "bac_si_id": lk.bac_si_id,
             "ten_bac_si": ten_bac_si,
             "phong_kham": phong_kham,
+            "so_phong": phong_kham,
             "chuyen_khoa_id": lk.chuyen_khoa_id,
             "ten_chuyen_khoa": ten_chuyen_khoa,
             "thoi_gian": lk.thoi_gian.strftime("%Y-%m-%d %H:%M"),
@@ -723,6 +737,43 @@ def get_all_lich_khams(
         })
 
     return results
+
+
+@router.get("/{lich_kham_id}", status_code=status.HTTP_200_OK)
+def get_lich_kham_detail(
+    lich_kham_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(require_roles(["le_tan", "admin", "bac_si", "ke_toan"]))
+):
+    """
+    GET /{lich_kham_id}
+    Chi tiết một lịch khám kèm bác sĩ và số phòng khám thật từ CSDL.
+    """
+    lk = db.query(models.LichKham).filter(models.LichKham.id == lich_kham_id).first()
+    if not lk:
+        raise HTTPException(status_code=404, detail="Không tìm thấy lịch khám!")
+
+    benh_nhan = db.query(models.BenhNhan).filter(models.BenhNhan.id == lk.benh_nhan_id).first()
+    ten_bac_si, phong_kham, ten_chuyen_khoa = resolve_appointment_doctor_and_room(db, lk.bac_si_id, lk.chuyen_khoa_id)
+    gio_du_kien = calculate_gio_du_kien(lk.stt, lk.thoi_gian)
+
+    return {
+        "id": lk.id,
+        "stt": lk.stt,
+        "benh_nhan_id": lk.benh_nhan_id,
+        "ho_ten": benh_nhan.ho_ten if benh_nhan else "Bệnh nhân",
+        "so_dien_thoai": benh_nhan.so_dien_thoai if benh_nhan else None,
+        "bac_si_id": lk.bac_si_id,
+        "ten_bac_si": ten_bac_si,
+        "phong_kham": phong_kham,
+        "so_phong": phong_kham,
+        "chuyen_khoa_id": lk.chuyen_khoa_id,
+        "ten_chuyen_khoa": ten_chuyen_khoa,
+        "thoi_gian": lk.thoi_gian.strftime("%Y-%m-%d %H:%M") if lk.thoi_gian else None,
+        "gio_du_kien": gio_du_kien,
+        "ly_do_kham": lk.ly_do_kham,
+        "trang_thai": lk.trang_thai
+    }
 
 
 @router.post("/", status_code=status.HTTP_201_CREATED)
@@ -971,6 +1022,7 @@ def tiep_don_tai_quay(
         "ten_chuyen_khoa": ten_chuyen_khoa,
         "ten_bac_si": ten_bac_si,
         "phong_kham": phong_kham,
+        "so_phong": phong_kham,
         "gio_du_kien": gio_du_kien,
         "thoi_gian": new_lich_kham.thoi_gian.strftime("%Y-%m-%d %H:%M"),
         "trang_thai": new_lich_kham.trang_thai
@@ -1031,6 +1083,7 @@ def update_trang_thai_lich_kham(
         "stt": lich_kham.stt,
         "gio_du_kien": gio_du_kien,
         "phong_kham": phong_kham,
+        "so_phong": phong_kham,
         "ten_bac_si": ten_bac_si,
         "trang_thai": lich_kham.trang_thai
     }
