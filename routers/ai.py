@@ -359,9 +359,12 @@ def retrieve_rag_context(user_msg: str, db: Session) -> dict:
         lines.append("   - Giấy tờ cần mang: Căn cước công dân (CCCD) hoặc hộ chiếu gốc, thẻ BHYT (nếu có), sổ khám hoặc đơn thuốc cũ trong 6 tháng gần nhất.")
         lines.append("   - Nhịn ăn uống: Nếu cần làm xét nghiệm máu, nội soi dạ dày hoặc đại tràng, người bệnh cần nhịn ăn ít nhất 8 tiếng trước khi khám (chỉ uống nước lọc).")
 
-    lines.append("4. THÔNG TIN HÀNH CHÍNH & TIẾP NHẬN:")
-    lines.append("   - Giờ làm việc: Thứ Hai - Thứ Bảy (Sáng 07:30 - 11:30 | Chiều 13:30 - 17:00). Chủ Nhật: Cấp cứu tiếp nhận 24/7.")
-    lines.append("   - Địa chỉ: 123 Đường Sức Khỏe, Quận 1, TP. Hồ Chí Minh. Hotline hỗ trợ & cấp cứu: 1900 6868.")
+    lines.append("4. THÔNG TIN HÀNH CHÍNH & LIÊN HỆ CHÍNH THỨC CỦA CLINOVA:")
+    lines.append("   - Địa chỉ phòng khám: 123 Tuyến Y Tế Trọng Điểm, TP. Thái Nguyên.")
+    lines.append("   - Hotline hỗ trợ & Cấp cứu 24/7: 1900 8888.")
+    lines.append("   - Email liên hệ: lienhe@clinova.vn.")
+    lines.append("   - Thời gian làm việc: Thứ 2 - Thứ 6: 07:00 - 20:00 | Thứ 7 & Chủ Nhật: 07:30 - 18:00 (Khoa Cấp cứu & Hồi sức trực 24/7).")
+    lines.append("   - Quy mô: 37 Chuyên khoa tiêu chuẩn y tế và hơn 185 bác sĩ chuyên khoa giàu kinh nghiệm.")
     lines.append("   - Áp dụng Bảo hiểm Y tế (BHYT) theo quy định hiện hành của Bộ Y tế.")
     lines.append("=============================================================================")
 
@@ -382,6 +385,7 @@ async def ai_chatbot_consult(request: AIChatbotRequest, db: Session = Depends(ge
     - Hỗ trợ tải lên hình ảnh / tài liệu (kết quả xét nghiệm cũ, đơn thuốc, thẻ BHYT, vùng da...).
     - Truy vấn RAG vào CSDL (chuyen_khoa, bac_si, huong_dan_chuan_bi_kham).
     - Ép Guardrails nghiêm ngặt: Tuyệt đối không chẩn đoán, không kê đơn thuốc.
+    - Cung cấp CHÍNH XÁC thông tin địa chỉ (TP. Thái Nguyên), Hotline 1900 8888 và giờ làm việc theo giao diện.
     - Tự động nhận diện đa ngôn ngữ của người dùng (Tiếng Việt, Tiếng Anh...).
     - Luôn đính kèm câu khuyến cáo miễn trừ trách nhiệm y tế (Disclaimer).
     """
@@ -400,8 +404,8 @@ async def ai_chatbot_consult(request: AIChatbotRequest, db: Session = Depends(ge
 Bạn là Trợ lý AI Định hướng Khám bệnh của Hệ thống Phòng khám Đa khoa CLINOVA (Hospital-AI).
 Nhiệm vụ cốt lõi: Hướng dẫn người bệnh chuẩn bị chu đáo trước khi đến khám (gợi ý đúng chuyên khoa, bác sĩ phụ trách, bảng giá, giấy tờ cần mang, và dặn dò nhịn ăn/nước uống).
 
-NGUYÊN TẮC 'LẤY DỮ LIỆU THẬT TỪ DATABASE - TUYỆT ĐỐI KHÔNG XUYÊN TẠC' (GROUND TRUTH):
-Dưới đây là thông tin thực tế duy nhất được cấp phép từ Cơ sở dữ liệu phòng khám:
+NGUYÊN TẮC 'LẤY DỮ LIỆU THẬT TỪ DATABASE - TUYỆT ĐỐI KHÔNG XUYÊN TẠC HOẶC TỰ BỊA ĐẶT' (GROUND TRUTH):
+Dưới đây là thông tin thực tế duy nhất được cấp phép từ Cơ sở dữ liệu và Hồ sơ phòng khám:
 {rag_data['context_text']}
 
 RÀNG BUỘC Y ĐỨC & GUARDRAILS (SEC-AI-02 - BẮT BUỘC TUÂN THỦ 5 NGUYÊN TẮC):
@@ -415,8 +419,12 @@ RÀNG BUỘC Y ĐỨC & GUARDRAILS (SEC-AI-02 - BẮT BUỘC TUÂN THỦ 5 NGUY�
    - Nếu có hình ảnh kết quả xét nghiệm cũ hay đơn thuốc cũ: Bạn có thể trích xuất các thông số khách quan (ví dụ: 'Trên phiếu ghi nhận chỉ số Glucose là...', 'Đơn thuốc cũ gồm...') nhưng KHÔNG kết luận bệnh hay kê đơn mới, mà định hướng người bệnh đến đúng chuyên khoa để bác sĩ thăm khám.
 3. TUYỆT ĐỐI KHÔNG KÊ ĐƠN THUỐC:
    - Không gợi ý, không nhắc tên thuốc điều trị mới cho người bệnh uống.
-4. NẾU THÔNG TIN KHÔNG CÓ TRONG CƠ SỞ DỮ LIỆU ĐƯỢC CẤP:
-   - Phải thông báo rõ ràng cho người bệnh: 'Hiện tại hệ thống cơ sở dữ liệu của phòng khám chưa có thông tin về nội dung này, bạn vui lòng liên hệ Tổng đài 1900 6868 hoặc trực tiếp tại Quầy Lễ tân để được nhân viên y tế hỗ trợ.'
+4. THÔNG TIN ĐỊA CHỈ & LIÊN HỆ PHẢI CHÍNH XÁC 100%:
+   - Địa chỉ duy nhất: 123 Tuyến Y Tế Trọng Điểm, TP. Thái Nguyên.
+   - Hotline: 1900 8888. Email: lienhe@clinova.vn.
+   - Thời gian làm việc: Thứ 2 - Thứ 6: 07:00 - 20:00 | Thứ 7 & Chủ Nhật: 07:30 - 18:00 (Cấp cứu trực 24/7).
+   - Tuyệt đối KHÔNG tự sáng tác địa chỉ ở TP. Hồ Chí Minh hay số hotline khác.
+   - Nếu thông tin không có trong CSDL được cấp, phải thông báo: 'Hiện tại hệ thống cơ sở dữ liệu của phòng khám chưa có thông tin về nội dung này, bạn vui lòng liên hệ Hotline 1900 8888 hoặc trực tiếp tại Quầy Tiếp đón của phòng khám tại 123 Tuyến Y Tế Trọng Điểm, TP. Thái Nguyên để được hỗ trợ.'
 5. TỰ ĐỘNG NHẬN DIỆN VÀ PHẢN HỒI BẰNG ĐÚNG NGÔN NGỮ CỦA NGƯỜI DÙNG:
    - Nếu người dùng dùng Tiếng Việt -> Trả lời bằng Tiếng Việt văn minh, ấm áp, rõ ràng.
    - Nếu người dùng dùng Tiếng Anh (English) -> Trả lời bằng Tiếng Anh chuẩn mực.
@@ -452,26 +460,37 @@ CÂU HỎI HOẶC YÊU CẦU CỦA BỆNH NHÂN:
                 f"• **Lưu ý nhịn ăn / uống:** {g.huong_dan_nhin_an or 'Ăn uống nhẹ nhàng.'}\n"
                 f"• **Giấy tờ cần mang:** {g.giay_to_can_mang or 'CCCD, thẻ BHYT, đơn thuốc cũ.'}\n"
                 f"• **Lưu ý quan trọng:** {g.luu_y_quan_trong or 'Đến đúng giờ hẹn đã đăng ký.'}\n"
-                f"• **Giờ làm việc:** Sáng 07:30 - 11:30 | Chiều 13:30 - 17:00 (Thứ 2 - Thứ 7).\n"
+                f"• **Địa chỉ phòng khám:** 123 Tuyến Y Tế Trọng Điểm, TP. Thái Nguyên.\n"
+                f"• **Thời gian làm việc:** Thứ 2 - Thứ 6: 07:00 - 20:00 | Thứ 7 & CN: 07:30 - 18:00 (Hotline: 1900 8888).\n"
                 f"Bạn có thể nhấn **Đặt lịch khám ngay** trên website để được xếp số thứ tự ưu tiên nhé!"
             )
         elif any(k in user_msg.lower() for k in ["giờ", "thời gian", "mấy giờ"]):
             reply_text = (
-                "🕒 **Thời gian làm việc của Clinova:**\n"
-                "- Thứ 2 - Thứ 7: Sáng 07:30 - 11:30 | Chiều 13:30 - 17:00.\n"
-                "- Chủ Nhật: Nghỉ định kỳ (Cấp cứu trực 24/7).\n"
+                "🕒 **Thời gian làm việc chính thức của Clinova:**\n"
+                "- Thứ 2 - Thứ 6: 07:00 - 20:00.\n"
+                "- Thứ 7 & Chủ Nhật: 07:30 - 18:00.\n"
+                "- Cấp cứu & Hồi sức: Trực 24/7.\n"
+                "📍 **Địa chỉ:** 123 Tuyến Y Tế Trọng Điểm, TP. Thái Nguyên | 📞 **Hotline:** 1900 8888.\n"
                 "Bạn có thể đặt lịch trước trên website để chọn khung giờ phù hợp nhé!"
+            )
+        elif any(k in user_msg.lower() for k in ["địa chỉ", "ở đâu", "dia chi", "nơi khám", "tại đâu"]):
+            reply_text = (
+                "📍 **Địa chỉ và thông tin liên hệ của Clinova:**\n"
+                "- **Địa chỉ:** 123 Tuyến Y Tế Trọng Điểm, TP. Thái Nguyên.\n"
+                "- **Hotline Cấp cứu & Tư vấn 24/7:** 1900 8888.\n"
+                "- **Email:** lienhe@clinova.vn.\n"
+                "- **Giờ mở cửa:** Thứ 2 - Thứ 6: 07:00 - 20:00 | Thứ 7 & CN: 07:30 - 18:00 (Cấp cứu 24/7)."
             )
         elif any(k in user_msg.lower() for k in ["giá", "chi phí", "bao nhiêu", "tiền"]):
             reply_text = (
                 "💰 **Bảng giá khám tại Clinova:**\n"
-                "- Khám chuyên khoa tiêu chuẩn: 150.000 VNĐ - 250.000 VNĐ tùy chuyên khoa.\n"
-                "- Phòng khám có áp dụng Bảo hiểm Y tế (BHYT) theo quy định hiện hành."
+                "- Khám chuyên khoa tiêu chuẩn: 150.000 VNĐ - 250.000 VNĐ tùy chuyên khoa niêm yết.\n"
+                "- Phòng khám có áp dụng Bảo hiểm Y tế (BHYT) theo quy định hiện hành của Bộ Y tế."
             )
         else:
             reply_text = (
-                "Chào bạn, tôi là Trợ lý AI Hướng dẫn chuẩn bị khám của Clinova Hospital. "
-                "Để chuẩn bị tốt nhất trước khi đến viện, bạn vui lòng mang theo Căn cước công dân (CCCD), thẻ BHYT và các đơn thuốc hoặc kết quả khám cũ. "
+                "Chào bạn, tôi là Trợ lý AI Hướng dẫn chuẩn bị khám của Phòng khám Đa khoa CLINOVA (123 Tuyến Y Tế Trọng Điểm, TP. Thái Nguyên - Hotline 1900 8888). "
+                "Để chuẩn bị tốt nhất trước khi đến khám, bạn vui lòng mang theo Căn cước công dân (CCCD), thẻ BHYT và các đơn thuốc hoặc kết quả khám cũ. "
                 "Nếu bạn có dự định làm xét nghiệm máu hoặc nội soi dạ dày, hãy nhịn ăn ít nhất 8 tiếng trước khi đến khám nhé!"
             )
 
