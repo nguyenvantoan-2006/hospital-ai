@@ -285,11 +285,11 @@
                 <div class="row g-3">
                   <div class="col-md-6">
                     <label class="form-label">Ngày Khám <span class="text-danger">*</span></label>
-                    <input type="date" id="ngayKhamInput" class="form-control" required />
+                    <input type="date" id="ngayKhamInput" class="form-control" required onchange="checkAndLoadDoctorCapacity()" />
                   </div>
                   <div class="col-md-6">
                     <label class="form-label">Khung Giờ Khám <span class="text-danger">*</span></label>
-                    <select id="gioKhamSelect" class="form-select" required>
+                    <select id="gioKhamSelect" class="form-select" required onchange="onSlotChange()">
                       <option value="08:00">Ca sáng: 08:00 - 09:00</option>
                       <option value="09:00" selected>Ca sáng: 09:00 - 10:00</option>
                       <option value="10:00">Ca sáng: 10:00 - 11:00</option>
@@ -298,7 +298,9 @@
                       <option value="15:30">Ca chiều: 15:30 - 16:30</option>
                       <option value="17:00">Ca ngoài giờ: 17:00 - 18:00</option>
                     </select>
+                    <div id="slotCapacityText" class="form-text small mt-1 text-muted"></div>
                   </div>
+                  <div class="col-12" id="doctorCapacityAlertBox" style="display: none;"></div>
                 </div>
               </div>
 
@@ -527,7 +529,66 @@
     </div>
   </div>
 
-  </div> <!-- /.container py-4 flex-grow-1 -->
+  <!-- MODAL ĐIỀU HƯỚNG KHI BÁC SĨ ĐẦY LỊCH (CHỌN GIỜ / NGÀY / BÁC SĨ KHÁC) -->
+  <div class="modal fade" id="doctorFullModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+      <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+        <div class="modal-header bg-warning text-dark py-3">
+          <h5 class="modal-title fw-bold">
+            <i class="fa-solid fa-triangle-exclamation me-2"></i>Bác Sĩ Đã Đủ Số Lượng Bệnh Nhân
+          </h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body p-4">
+          <div id="doctorFullMessage" class="alert alert-warning border-0 rounded-3 mb-4">
+            <!-- Dynamic message -->
+          </div>
+
+          <!-- Nav Tabs: 3 Lựa Chọn Theo Yêu Cầu -->
+          <ul class="nav nav-pills nav-fill mb-3 p-1 bg-light rounded-pill border" id="altTabs" role="tablist">
+            <li class="nav-item">
+              <button class="nav-link active rounded-pill fw-semibold py-2" id="tab-alt-slots" data-bs-toggle="pill" data-bs-target="#pane-alt-slots" type="button">
+                <i class="fa-solid fa-clock me-1"></i> 1. Giờ khác (Trong ngày)
+              </button>
+            </li>
+            <li class="nav-item">
+              <button class="nav-link rounded-pill fw-semibold py-2" id="tab-alt-dates" data-bs-toggle="pill" data-bs-target="#pane-alt-dates" type="button">
+                <i class="fa-solid fa-calendar-day me-1"></i> 2. Ngày khác (Cùng BS)
+              </button>
+            </li>
+            <li class="nav-item">
+              <button class="nav-link rounded-pill fw-semibold py-2" id="tab-alt-doctors" data-bs-toggle="pill" data-bs-target="#pane-alt-doctors" type="button">
+                <i class="fa-solid fa-user-doctor me-1"></i> 3. Bác sĩ khác (Cùng khoa)
+              </button>
+            </li>
+          </ul>
+
+          <div class="tab-content pt-2" id="altTabsContent">
+            <!-- Pane 1: Khung giờ khác -->
+            <div class="tab-pane fade show active" id="pane-alt-slots">
+              <p class="text-muted small mb-2"><i class="fa-solid fa-circle-info me-1 text-primary"></i>Chọn khung giờ khác còn chỗ trong ngày của Bác sĩ:</p>
+              <div id="altSlotsContainer" class="row g-2"></div>
+            </div>
+
+            <!-- Pane 2: Ngày khác -->
+            <div class="tab-pane fade" id="pane-alt-dates">
+              <p class="text-muted small mb-2"><i class="fa-solid fa-circle-info me-1 text-primary"></i>Nếu quý khách vẫn muốn khám đúng Bác sĩ này, vui lòng chọn ngày khác còn chỗ:</p>
+              <div id="altDatesContainer" class="list-group"></div>
+            </div>
+
+            <!-- Pane 3: Bác sĩ khác -->
+            <div class="tab-pane fade" id="pane-alt-doctors">
+              <p class="text-muted small mb-2"><i class="fa-solid fa-circle-info me-1 text-primary"></i>Nếu quý khách muốn khám sớm hơn vào ngày đã chọn, hãy chọn Bác sĩ khác cùng chuyên khoa:</p>
+              <div id="altDoctorsContainer" class="row g-3"></div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer bg-light border-0">
+          <button type="button" class="btn btn-outline-secondary px-4 rounded-3" data-bs-dismiss="modal">Đóng</button>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <!-- Toast Container -->
   <div class="toast-container position-fixed bottom-0 end-0 p-3" id="toastBox"></div>
@@ -540,12 +601,18 @@
     let doctorsBySpec = [];
     let countdownInterval = null;
     let cachedBookingPayload = null;
+    let doctorFullModal = null;
+    let currentDoctorCapacity = null;
 
     // Thiết lập ngày tối thiểu là ngày hôm nay
     document.addEventListener("DOMContentLoaded", () => {
       const today = new Date().toISOString().split('T')[0];
       document.getElementById("ngayKhamInput").min = today;
       document.getElementById("ngayKhamInput").value = today;
+      const modalEl = document.getElementById("doctorFullModal");
+      if (modalEl) {
+        doctorFullModal = new bootstrap.Modal(modalEl);
+      }
 
       // Đọc query parameters nếu chuyển từ trang chủ sang
       const urlParams = new URLSearchParams(window.location.search);
@@ -585,6 +652,7 @@
       if (!specName) {
         note.innerHTML = "";
         document.getElementById("bacSiSelect").innerHTML = '<option value="">-- Hệ thống tự phân bổ bác sĩ trực phù hợp --</option>';
+        resetSlotDisplay();
         return;
       }
 
@@ -604,6 +672,8 @@
           if (preDocId) {
             docSelect.value = preDocId;
             handleDoctorChange();
+          } else {
+            handleDoctorChange();
           }
         }
       } catch (e) {
@@ -617,12 +687,265 @@
       if (docSelect.value) {
         const opt = docSelect.options[docSelect.selectedIndex];
         note.innerHTML = `Lịch trực: ${opt.getAttribute('data-shift')} | ${opt.getAttribute('data-room')}`;
+        checkAndLoadDoctorCapacity();
       } else {
         note.innerHTML = "";
+        resetSlotDisplay();
       }
     }
 
-    // 3. Gửi OTP
+    function resetSlotDisplay() {
+      const alertBox = document.getElementById("doctorCapacityAlertBox");
+      if (alertBox) {
+        alertBox.style.display = "none";
+        alertBox.innerHTML = "";
+      }
+      const slotText = document.getElementById("slotCapacityText");
+      if (slotText) slotText.innerHTML = "";
+    }
+
+    // Kiểm tra sức chứa của bác sĩ theo ngày và cập nhật các khung giờ
+    async function checkAndLoadDoctorCapacity() {
+      const docSelect = document.getElementById("bacSiSelect");
+      const dateInput = document.getElementById("ngayKhamInput");
+      const alertBox = document.getElementById("doctorCapacityAlertBox");
+      const slotText = document.getElementById("slotCapacityText");
+      const slotSelect = document.getElementById("gioKhamSelect");
+
+      if (!docSelect.value || !dateInput.value) {
+        resetSlotDisplay();
+        return;
+      }
+
+      const docId = docSelect.value;
+      const ngayKham = dateInput.value;
+
+      try {
+        const res = await fetch(`/api/v1/lich-khams/public/doctor-availability?bac_si_id=${docId}&ngay_kham=${ngayKham}`);
+        if (!res.ok) return;
+
+        const data = await res.json();
+        currentDoctorCapacity = data;
+
+        // Cập nhật trạng thái từng option trong select giờ khám
+        Array.from(slotSelect.options).forEach(opt => {
+          const slotVal = opt.value;
+          const slotInfo = data.khung_gio.find(s => s.gio === slotVal);
+          if (slotInfo) {
+            if (slotInfo.is_full) {
+              opt.disabled = true;
+              opt.textContent = `${slotInfo.gio_hien_thi} - [ĐÃ ĐẦY 20/20]`;
+            } else {
+              opt.disabled = false;
+              opt.textContent = `${slotInfo.gio_hien_thi} (Còn ${slotInfo.con_lai} chỗ)`;
+            }
+          }
+        });
+
+        // Cập nhật thông báo toàn ngày
+        if (data.is_full_ngay) {
+          alertBox.style.display = "block";
+          alertBox.innerHTML = `
+            <div class="alert alert-danger d-flex align-items-center justify-content-between p-3 rounded-3 mb-0">
+              <div>
+                <i class="fa-solid fa-triangle-exclamation me-2 fs-5"></i>
+                <strong>Bác sĩ ${escapeHtml(data.ho_ten)}</strong> đã đủ số lượng bệnh nhân trong ngày ${formatDateDMY(ngayKham)} (${data.da_dat_ngay}/${data.toi_da_ngay} người).
+              </div>
+              <button type="button" class="btn btn-sm btn-dark text-warning fw-bold px-3 text-nowrap rounded-pill" onclick="triggerDoctorFullOptionsModal()">
+                <i class="fa-solid fa-hand-pointer me-1"></i> Xem 3 lựa chọn khác
+              </button>
+            </div>
+          `;
+        } else {
+          alertBox.style.display = "block";
+          alertBox.innerHTML = `
+            <div class="alert alert-success py-2 px-3 small rounded-3 mb-0 d-flex justify-content-between align-items-center">
+              <span><i class="fa-solid fa-circle-check me-1"></i>Bác sĩ <strong>${escapeHtml(data.ho_ten)}</strong> ngày ${formatDateDMY(ngayKham)}: Đã nhận <strong>${data.da_dat_ngay}/${data.toi_da_ngay}</strong> bệnh nhân (Còn <strong>${data.con_lai_ngay}</strong> chỗ).</span>
+              <span class="badge bg-success-subtle text-success">Còn chỗ</span>
+            </div>
+          `;
+        }
+
+        onSlotChange();
+
+      } catch (err) {
+        console.error("Lỗi khi kiểm tra sức chứa bác sĩ:", err);
+      }
+    }
+
+    function onSlotChange() {
+      const slotSelect = document.getElementById("gioKhamSelect");
+      const slotText = document.getElementById("slotCapacityText");
+      if (!currentDoctorCapacity) return;
+
+      const curVal = slotSelect.value;
+      const slotInfo = currentDoctorCapacity.khung_gio.find(s => s.gio === curVal);
+      if (slotInfo) {
+        if (slotInfo.is_full) {
+          slotText.innerHTML = `<span class="text-danger fw-bold"><i class="fa-solid fa-circle-xmark me-1"></i>Khung giờ ${curVal} đã đạt tối đa ${slotInfo.da_dat}/${slotInfo.toi_da} bệnh nhân.</span>`;
+        } else {
+          slotText.innerHTML = `<span class="text-success"><i class="fa-solid fa-check me-1"></i>Khung giờ ${curVal} còn tiếp nhận <strong>${slotInfo.con_lai}</strong> bệnh nhân nữa.</span>`;
+        }
+      }
+    }
+
+    function formatDateDMY(dStr) {
+      if (!dStr) return "";
+      const p = dStr.split("-");
+      if (p.length === 3) return `${p[2]}/${p[1]}/${p[0]}`;
+      return dStr;
+    }
+
+    // Kích hoạt Modal 3 lựa chọn thông minh khi Bác sĩ bị đầy lịch
+    async function triggerDoctorFullOptionsModal(customMsg) {
+      const docSelect = document.getElementById("bacSiSelect");
+      const dateInput = document.getElementById("ngayKhamInput");
+      const specSelect = document.getElementById("chuyenKhoaSelect");
+
+      const docId = docSelect.value;
+      const docOpt = docSelect.options[docSelect.selectedIndex];
+      const docName = docOpt ? docOpt.getAttribute("data-name") : "Bác sĩ";
+      const ngayKham = dateInput.value;
+      const specName = specSelect.value;
+      const specOpt = specSelect.options[specSelect.selectedIndex];
+      const specId = specOpt ? specOpt.getAttribute("data-id") : null;
+
+      const msgContainer = document.getElementById("doctorFullMessage");
+      msgContainer.innerHTML = customMsg || `
+        <div class="fw-bold fs-6 mb-1 text-danger"><i class="fa-solid fa-ban me-2"></i>Bác sĩ ${escapeHtml(docName)} đã đủ số lượng bệnh nhân trong ngày ${formatDateDMY(ngayKham)}.</div>
+        <div>Hệ thống không thể tiếp nhận thêm vào lịch này. Quý khách vui lòng lựa chọn 1 trong 3 giải pháp bên dưới:</div>
+      `;
+
+      // 1. Tải các khung giờ khác trong ngày (nếu ngày chưa full)
+      const slotsContainer = document.getElementById("altSlotsContainer");
+      slotsContainer.innerHTML = '<div class="col-12 text-center py-3"><span class="spinner-border spinner-border-sm text-primary"></span> Đang tải khung giờ...</div>';
+      
+      // 2. Tải 7 ngày tiếp theo của bác sĩ này
+      const datesContainer = document.getElementById("altDatesContainer");
+      datesContainer.innerHTML = '<div class="text-center py-3"><span class="spinner-border spinner-border-sm text-primary"></span> Đang tải lịch 7 ngày tới...</div>';
+
+      // 3. Tải các bác sĩ khác cùng chuyên khoa
+      const docsContainer = document.getElementById("altDoctorsContainer");
+      docsContainer.innerHTML = '<div class="col-12 text-center py-3"><span class="spinner-border spinner-border-sm text-primary"></span> Đang tải bác sĩ cùng chuyên khoa...</div>';
+
+      if (doctorFullModal) doctorFullModal.show();
+
+      // Gọi đồng thời 3 API
+      try {
+        const [availRes, datesRes, docsRes] = await Promise.all([
+          fetch(`/api/v1/lich-khams/public/doctor-availability?bac_si_id=${docId}&ngay_kham=${ngayKham}`),
+          fetch(`/api/v1/lich-khams/public/doctor-alternative-dates?bac_si_id=${docId}&from_date=${ngayKham}`),
+          fetch(`/api/v1/lich-khams/public/specialty-alternative-doctors?ngay_kham=${ngayKham}&chuyen_khoa=${encodeURIComponent(specName)}&exclude_bac_si_id=${docId}`)
+        ]);
+
+        // Xử lý Pane 1: Khung giờ khác
+        if (availRes.ok) {
+          const availData = await availRes.json();
+          const openSlots = availData.khung_gio.filter(s => !s.is_full);
+          if (openSlots.length > 0) {
+            slotsContainer.innerHTML = openSlots.map(s => `
+              <div class="col-md-6">
+                <div class="border rounded-3 p-3 d-flex justify-content-between align-items-center bg-white shadow-sm hover-shadow">
+                  <div>
+                    <div class="fw-bold text-dark fs-6">${s.gio_hien_thi}</div>
+                    <small class="text-success"><i class="fa-solid fa-circle-check me-1"></i>Còn ${s.con_lai} chỗ trống</small>
+                  </div>
+                  <button type="button" class="btn btn-sm btn-primary rounded-pill px-3 fw-semibold" onclick="selectAlternativeSlot('${s.gio}')">
+                    Chọn giờ này
+                  </button>
+                </div>
+              </div>
+            `).join("");
+          } else {
+            slotsContainer.innerHTML = `
+              <div class="col-12">
+                <div class="alert alert-secondary text-center mb-0">
+                  <i class="fa-solid fa-circle-xmark text-danger me-1"></i> Toàn bộ các khung giờ trong ngày ${formatDateDMY(ngayKham)} của Bác sĩ ${escapeHtml(docName)} đã đầy 200/200 bệnh nhân. Quý khách vui lòng chọn Tab 2 (Ngày khác) hoặc Tab 3 (Bác sĩ khác).
+                </div>
+              </div>
+            `;
+            // Tự chuyển sang Tab 2 nếu ngày đã FULL
+            const tab2Btn = document.getElementById("tab-alt-dates");
+            if (tab2Btn) new bootstrap.Tab(tab2Btn).show();
+          }
+        }
+
+        // Xử lý Pane 2: Ngày khác
+        if (datesRes.ok) {
+          const datesData = await datesRes.json();
+          const openDates = (datesData.ngay_goi_y || []).filter(d => !d.is_full);
+          if (openDates.length > 0) {
+            datesContainer.innerHTML = openDates.map(d => `
+              <div class="list-group-item d-flex justify-content-between align-items-center p-3 mb-2 rounded-3 border">
+                <div>
+                  <div class="fw-bold text-dark fs-6"><i class="fa-regular fa-calendar-check text-primary me-2"></i>${d.thu}, ngày ${d.ngay_dinh_dang}</div>
+                  <small class="text-muted">Đã đặt ${d.da_dat}/${d.toi_da} bệnh nhân &bull; <strong class="text-success">Còn ${d.con_lai} chỗ</strong></small>
+                </div>
+                <button type="button" class="btn btn-sm btn-outline-primary rounded-pill px-3 fw-bold" onclick="selectAlternativeDate('${d.ngay}')">
+                  Khám ngày này
+                </button>
+              </div>
+            `).join("");
+          } else {
+            datesContainer.innerHTML = '<div class="alert alert-warning text-center">Các ngày tiếp theo trong tuần của bác sĩ hiện đều đã kín lịch.</div>';
+          }
+        }
+
+        // Xử lý Pane 3: Bác sĩ khác
+        if (docsRes.ok) {
+          const altDocs = await docsRes.json();
+          const openDocs = (altDocs || []).filter(d => !d.is_full);
+          if (openDocs.length > 0) {
+            docsContainer.innerHTML = openDocs.map(d => `
+              <div class="col-md-6">
+                <div class="border rounded-3 p-3 bg-white shadow-sm h-100 d-flex flex-column justify-content-between">
+                  <div>
+                    <div class="d-flex justify-content-between align-items-start mb-1">
+                      <h6 class="fw-bold text-primary mb-0">${d.hoc_vi} ${d.ho_ten}</h6>
+                      <span class="badge bg-success-subtle text-success">Còn ${d.con_lai} chỗ</span>
+                    </div>
+                    <small class="text-muted d-block mb-1"><i class="fa-solid fa-door-open me-1"></i>${d.phong_kham}</small>
+                    <small class="text-secondary d-block">Chuyên khoa: ${d.chuyen_khoa}</small>
+                  </div>
+                  <button type="button" class="btn btn-sm btn-outline-success rounded-pill px-3 fw-bold mt-3 w-100" onclick="selectAlternativeDoctor('${d.bac_si_id}')">
+                    <i class="fa-solid fa-user-check me-1"></i> Đổi sang bác sĩ này
+                  </button>
+                </div>
+              </div>
+            `).join("");
+          } else {
+            docsContainer.innerHTML = '<div class="col-12"><div class="alert alert-secondary text-center">Tất cả bác sĩ thuộc chuyên khoa này trong ngày đã kín lịch.</div></div>';
+          }
+        }
+
+      } catch (err) {
+        console.error("Lỗi khi tải các lựa chọn thay thế:", err);
+      }
+    }
+
+    // Các hàm chọn từ Modal
+    function selectAlternativeSlot(slotHour) {
+      document.getElementById("gioKhamSelect").value = slotHour;
+      if (doctorFullModal) doctorFullModal.hide();
+      onSlotChange();
+      showToast(`Đã đổi sang khung giờ ${slotHour}!`, "info");
+    }
+
+    function selectAlternativeDate(dateYMD) {
+      document.getElementById("ngayKhamInput").value = dateYMD;
+      if (doctorFullModal) doctorFullModal.hide();
+      checkAndLoadDoctorCapacity();
+      showToast(`Đã đổi sang ngày khám ${formatDateDMY(dateYMD)}!`, "info");
+    }
+
+    function selectAlternativeDoctor(docId) {
+      document.getElementById("bacSiSelect").value = docId;
+      if (doctorFullModal) doctorFullModal.hide();
+      handleDoctorChange();
+      showToast("Đã đổi Bác sĩ phụ trách theo lựa chọn của bạn!", "info");
+    }
+
+    // 3. Gửi OTP (Kiểm tra capacity trước khi phát sinh mã)
     async function handleSendOtp(event) {
       event.preventDefault();
 
@@ -640,6 +963,27 @@
 
       const specOpt = document.getElementById("chuyenKhoaSelect").options[document.getElementById("chuyenKhoaSelect").selectedIndex];
       const specId = specOpt ? parseInt(specOpt.getAttribute("data-id")) : null;
+
+      // Kiểm tra sức chứa bác sĩ trước
+      if (bacSiId) {
+        try {
+          const capRes = await fetch(`/api/v1/lich-khams/public/doctor-availability?bac_si_id=${bacSiId}&ngay_kham=${ngayKham}`);
+          if (capRes.ok) {
+            const capData = await capRes.json();
+            if (capData.is_full_ngay) {
+              triggerDoctorFullOptionsModal(`Bác sĩ <strong>${escapeHtml(bacSiName)}</strong> đã đủ giới hạn 200 bệnh nhân trong ngày ${formatDateDMY(ngayKham)}. Vui lòng chọn ngày khác hoặc bác sĩ khác.`);
+              return;
+            }
+            const chosenSlot = capData.khung_gio.find(s => s.gio === gioKham);
+            if (chosenSlot && chosenSlot.is_full) {
+              triggerDoctorFullOptionsModal(`Khung giờ <strong>${gioKham}</strong> của Bác sĩ <strong>${escapeHtml(bacSiName)}</strong> ngày ${formatDateDMY(ngayKham)} đã đủ 20 bệnh nhân. Vui lòng chọn khung giờ khác hoặc ngày khác.`);
+              return;
+            }
+          }
+        } catch (e) {
+          console.warn("Không thể kiểm tra sức chứa trước gửi OTP:", e);
+        }
+      }
 
       const thoiGianStr = `${ngayKham} ${gioKham}`;
 
@@ -747,6 +1091,13 @@
 
         const data = await response.json();
         if (!response.ok) {
+          if (data && data.detail && typeof data.detail === 'object') {
+            if (data.detail.error_code === 'DOCTOR_DAY_FULL' || data.detail.error_code === 'DOCTOR_SLOT_FULL') {
+              triggerDoctorFullOptionsModal(data.detail.message);
+              throw new Error(data.detail.message);
+            }
+            throw new Error(data.detail.message || "Không thể hoàn tất đặt lịch!");
+          }
           throw new Error(data.detail || "Mã OTP không đúng hoặc đã hết hạn!");
         }
 
