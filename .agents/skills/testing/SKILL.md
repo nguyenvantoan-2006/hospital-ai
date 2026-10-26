@@ -121,3 +121,34 @@ def test_doctor_cannot_access_admin(client, doctor_token):
 - `tests/test_patients.py`
 - `tests/test_schedules.py`
 - `tests/test_ai_service.py`
+
+---
+
+## 📝 Lịch sử Prompt AI — Bằng chứng AI-Augmented SDLC
+
+> File đầy đủ: [`docs/ai-prompt-history.md`](../../docs/ai-prompt-history.md)
+
+Bảng tóm tắt các prompt AI đã sử dụng trong giai đoạn **Testing**:
+
+| # | Prompt (tóm tắt) | Output tạo ra |
+|---|-----------------|---------------|
+| T-01 | "Chạy test toàn hệ thống và báo cáo kết quả" | `run_full_system_test.py` |
+| T-02 | "Test closed-loop routing: đặt lịch → khám → hóa đơn" | `test_closed_loop_and_sync.py` |
+| T-03 | "Test capacity sync: giới hạn STT/ngày và STT/khung giờ" | `test_appointment_capacity_sync.py` |
+| T-04 | "Tạo test cases cho AI Guardrails — từ chối chẩn đoán" | Test cases TC-AI-02-02 |
+| T-05 | "Kiểm tra Data Masking PII trước khi gửi Gemini API" | Test cases TC-AI-01-01 |
+
+**Thống kê toàn dự án (xem chi tiết tại `docs/ai-prompt-history.md`):**
+
+| Giai đoạn SDLC | Số prompt | Giai đoạn |
+|----------------|-----------|-----------|
+| Requirements Analysis | 5 prompt | 📐 Requirements |
+| Architecture Design | 4 prompt | 🏗️ Architecture |
+| Implementation | 10 prompt | 💻 Implementation |
+| AI Feature Integration | 5 prompt | 🤖 AI Integration |
+| Testing | 5 prompt | 🧪 Testing |
+| Documentation & DevOps | 3 prompt | 📋 Docs |
+| **Tổng** | **32+ prompt** | **Toàn bộ SDLC** |
+
+> 💡 **Cách cập nhật:** Sau mỗi phiên làm việc với AI, mở `docs/ai-prompt-history.md`  
+> và thêm prompt mới vào bảng tương ứng theo giai đoạn SDLC.
