@@ -10,7 +10,7 @@ const ROLE_NAMES = {
 const DEFAULT_HOME_PAGE = {
   admin: "admin_dashboard.html",
   bac_si: "lap_phieu_kham.html",
-  le_tan: "patient_management.html",
+  le_tan: "lich_kham.html",
   ke_toan: "ke_toan.html"
 };
 
