@@ -314,6 +314,12 @@
                 </div>
               </div>
 
+              <!-- Cảnh báo quy định thu tiền đối với Bác sĩ -->
+              <div id="doctorPaymentNotice" class="alert alert-info py-2 px-3 small rounded-3 mb-3 border-info-subtle" style="display: none;">
+                <i class="fa-solid fa-shield-halved me-2 text-info"></i>
+                <strong>Quy định Bác sĩ thu viện phí:</strong> Bác sĩ có quyền thu tiền nhưng <strong>chỉ thu qua chuyển khoản VietQR</strong> về tài khoản ngân hàng Bệnh viện Clinova. Tuyệt đối không thu tiền mặt tại phòng khám.
+              </div>
+
               <!-- Chọn Hình thức Thanh toán -->
               <div class="mb-3">
                 <label for="selectHinhThucTT" class="form-label fw-bold small text-uppercase text-secondary">
@@ -514,7 +520,19 @@
     let currentSelectedPhieu = null;
 
     document.addEventListener("DOMContentLoaded", () => {
-      if (initAuthGuard(["admin", "ke_toan", "le_tan"])) {
+      if (initAuthGuard(["admin", "ke_toan", "le_tan", "bac_si"])) {
+        const role = localStorage.getItem("role");
+        if (role === "bac_si") {
+          const noticeEl = document.getElementById("doctorPaymentNotice");
+          if (noticeEl) noticeEl.style.display = "block";
+          const optTienMat = document.querySelector("#selectHinhThucTT option[value='tien_mat']");
+          if (optTienMat) {
+            optTienMat.disabled = true;
+            optTienMat.textContent = "❌ Tiền mặt (Bác sĩ không được thu tiền mặt)";
+          }
+          const selTT = document.getElementById("selectHinhThucTT");
+          if (selTT) selTT.value = "chuyen_khoan";
+        }
         loadAllData();
       }
     });
@@ -662,6 +680,11 @@
         boxThuoc.innerHTML = `<div class="p-2 text-center text-muted fst-italic">Bác sĩ không kê đơn thuốc cho bệnh nhân này</div>`;
       }
 
+      if (localStorage.getItem("role") === "bac_si") {
+        const selTT = document.getElementById("selectHinhThucTT");
+        if (selTT) selTT.value = "chuyen_khoan";
+      }
+
       // Cập nhật lại mã QR theo thông tin phiếu khám vừa chọn
       updateQRCodeDisplay();
     }
@@ -738,6 +761,7 @@
         const response = await fetch(API_HOA_DON_URL, {
           method: "POST",
           headers: {
+            ...getAuthHeaders(),
             "Content-Type": "application/json",
             "Accept": "application/json"
           },
