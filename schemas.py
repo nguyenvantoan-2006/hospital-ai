@@ -452,6 +452,51 @@ class PhieuNhapKhoCreate(BaseModel):
 
 
 # ════════════════════════════════════════════════════════════════════════════════
+#  10. CAPACITY & SCHEDULING SCHEMAS
+# ════════════════════════════════════════════════════════════════════════════════
+class KhungGioAvailability(BaseModel):
+    gio: str
+    gio_hien_thi: str
+    toi_da: int
+    da_dat: int
+    con_lai: int
+    is_full: bool
+
+
+class BacSiAvailabilityResponse(BaseModel):
+    bac_si_id: int
+    ho_ten: str
+    chuyen_khoa: Optional[str] = None
+    phong_kham: Optional[str] = None
+    ngay_kham: str
+    toi_da_ngay: int
+    da_dat_ngay: int
+    con_lai_ngay: int
+    is_full_ngay: bool
+    khung_gio: List[KhungGioAvailability]
+
+
+class AlternativeDateOption(BaseModel):
+    ngay: str
+    ngay_dinh_dang: str
+    thu: str
+    con_lai: int
+    toi_da: int
+    is_full: bool
+
+
+class AlternativeDoctorOption(BaseModel):
+    bac_si_id: int
+    ho_ten: str
+    hoc_vi: str
+    chuyen_khoa: str
+    phong_kham: str
+    con_lai: int
+    toi_da: int
+    is_full: bool
+
+
+# ════════════════════════════════════════════════════════════════════════════════
 #  RESOLVE FORWARD REFERENCES
 #  Cần thiết vì BenhNhanDetailResponse, LichKhamDetailResponse,
 #  PhieuKhamDetailResponse dùng forward reference ("...Response")

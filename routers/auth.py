@@ -128,8 +128,15 @@ def seed_default_users(db: Session):
     ]
 
     for u in default_users:
-        existing = db.query(models.User).filter(models.User.username == u["username"]).first()
-        if not existing:
+        # Kiểm tra cả username VÀ email để tránh IntegrityError (Duplicate entry)
+        existing_by_username = db.query(models.User).filter(
+            models.User.username == u["username"]
+        ).first()
+        existing_by_email = db.query(models.User).filter(
+            models.User.email == u["email"]
+        ).first()
+
+        if not existing_by_username and not existing_by_email:
             new_user = models.User(
                 username      = u["username"],
                 password_hash = hash_password(u["password"]),  # ← bcrypt hash
@@ -139,7 +146,10 @@ def seed_default_users(db: Session):
             )
             db.add(new_user)
 
-    db.commit()
+    try:
+        db.commit()
+    except Exception:
+        db.rollback()  # Không crash server nếu đã có dữ liệu
 
     # Seed mẫu hồ sơ Bác sĩ vào bảng bac_si (nếu chưa có)
     try:

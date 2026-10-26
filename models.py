@@ -284,6 +284,8 @@ class BacSi(Base):
     phong_kham     = Column(String(100), nullable=True)
     lich_truc      = Column(String(200), nullable=True)   # VD: "Thứ 2-6 Ca sáng"
     trang_thai     = Column(Boolean, default=True)
+    so_benh_nhan_toi_da_ngay      = Column(Integer, default=200, nullable=False) # Tối đa bệnh nhân/ngày (mặc định 200)
+    so_benh_nhan_toi_da_khung_gio = Column(Integer, default=20,  nullable=False) # Tối đa bệnh nhân/khung giờ (mặc định 20)
 
     def __repr__(self) -> str:
         return f"<BacSi id={self.id} ma='{self.ma_bac_si}' ho_ten='{self.ho_ten}' chuyen_khoa='{self.chuyen_khoa}'>"
