@@ -511,7 +511,7 @@
                   <i class="fa-solid fa-sparkles me-1"></i> AI Gợi ý dặn dò sau khám
                 </button>
               </div>
-              <textarea id="aiSummary" class="form-control" rows="3" placeholder="Lời dặn dò chế độ sinh hoạt, dinh dưỡng và lưu ý điều trị sau khám..."></textarea>
+              <textarea id="aiGuideOutput" class="form-control" rows="3" placeholder="Lời dặn dò chế độ sinh hoạt, dinh dưỡng và lưu ý điều trị sau khám..."></textarea>
             </div>
 
             <!-- Đơn thuốc đi kèm -->
@@ -1826,7 +1826,8 @@
 
       const trieuChung = document.getElementById("trieu_chung").value.trim();
       const chanDoan = document.getElementById("chan_doan").value.trim();
-      const huongDan = document.getElementById("huong_dan_sau_kham").value.trim();
+      const guideEl = document.getElementById("aiGuideOutput") || document.getElementById("huong_dan_sau_kham");
+      const huongDan = guideEl ? guideEl.value.trim() : "";
 
       // Đọc danh sách thuốc đang kê trên bảng
       const rows = document.querySelectorAll("#prescriptionTableBody tr");
