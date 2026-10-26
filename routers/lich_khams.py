@@ -1371,6 +1371,27 @@ def update_trang_thai_lich_kham(
         raise HTTPException(status_code=404, detail="Không tìm thấy lịch khám!")
 
     new_status = data.trang_thai
+
+    # ── Phân quyền nghiệp vụ RBAC ──────────────────────────────────────────
+    # Bác sĩ chỉ có quyền tiếp nhận bệnh nhân vào phòng khám (cho_kham -> dang_kham) hoặc hoàn thành khám.
+    # Bác sĩ KHÔNG có quyền cấp số thứ tự (STT) tại quầy tiếp đón (chuyển sang cho_kham).
+    user_role = current_user.role.value if hasattr(current_user.role, "value") else str(current_user.role)
+    if new_status == "cho_kham" and user_role == "bac_si":
+        raise HTTPException(
+            status_code=403,
+            detail="Bác sĩ chỉ có quyền tiếp nhận bệnh nhân vào phòng khám, không có quyền cấp số thứ tự (STT) tại quầy. Nghiệp vụ cấp STT thuộc về Lễ tân!"
+        )
+    if new_status == "da_dat_lich" and user_role == "bac_si":
+        raise HTTPException(
+            status_code=403,
+            detail="Bác sĩ không có quyền xác nhận lịch hẹn tại quầy. Nghiệp vụ này thuộc về Lễ tân!"
+        )
+    if new_status == "dang_kham" and user_role == "bac_si":
+        if not lich_kham.stt or lich_kham.trang_thai not in ["cho_kham", "da_co_ket_qua"]:
+            raise HTTPException(
+                status_code=400,
+                detail="Bác sĩ chỉ có thể tiếp nhận bệnh nhân đã được Lễ tân cấp số thứ tự (trạng thái Chờ khám)!"
+            )
     
     # Nếu chuyển sang "cho_kham" (Lễ tân tiếp nhận bệnh nhân có mặt tại phòng khám)
     # Tự động tính Số thứ tự (Queue STT) lớn nhất trong ngày của phòng khám
@@ -1522,7 +1543,13 @@ def goi_vao_kham(
         raise HTTPException(status_code=404, detail="Không tìm thấy lịch khám!")
 
     today_date = date.today()
+    user_role = current_user.role.value if hasattr(current_user.role, "value") else str(current_user.role)
     if not lich_kham.stt:
+        if user_role == "bac_si":
+            raise HTTPException(
+                status_code=400,
+                detail="Bệnh nhân chưa được Lễ tân cấp số thứ tự (STT). Bác sĩ không có quyền cấp STT tại quầy, vui lòng hướng dẫn bệnh nhân qua quầy Lễ tân tiếp đón!"
+            )
         max_stt = db.query(func.max(models.LichKham.stt)).filter(
             func.date(models.LichKham.thoi_gian) == today_date
         ).scalar() or 0
