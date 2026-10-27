@@ -10,18 +10,24 @@ from sqlalchemy.orm import sessionmaker
 # Tải biến môi trường từ file .env
 load_dotenv()
 
-# ─── CẤU HÌNH KẾT NỐI MYSQL ──────────────────────────────────────────────────
-# Cú pháp: mysql+pymysql://<user>:<password>@<host>:<port>/<dbname>
-DEFAULT_DB_URL = "mysql+pymysql://root:password@localhost:3306/hospital_ai"
-DATABASE_URL = os.getenv("DATABASE_URL", DEFAULT_DB_URL)
+# ─── CẤU HÌNH KẾT NỐI CƠ SỞ DỮ LIỆU ──────────────────────────────────────────
+# Ưu tiên đọc từ biến môi trường DATABASE_URL; nếu không có sẽ dùng SQLite nội bộ an toàn
+DATABASE_URL = os.getenv("DATABASE_URL")
+if not DATABASE_URL or DATABASE_URL.strip() == "":
+    DATABASE_URL = "sqlite:///./clinic.db"
+    print("ℹ️ DATABASE_URL chưa được cung cấp trong .env, sử dụng SQLite nội bộ an toàn: clinic.db")
 
 
 # ─── ENGINE ──────────────────────────────────────────────────────────────────
-engine = create_engine(
-    DATABASE_URL,
-    echo=True,          # Log câu lệnh SQL ra console
-    pool_pre_ping=True, # Tự động kiểm tra và phục hồi kết nối MySQL bị timeout
-)
+connect_args = {"check_same_thread": False} if DATABASE_URL.startswith("sqlite") else {}
+engine_kwargs = {
+    "echo": False,
+    "connect_args": connect_args
+}
+if not DATABASE_URL.startswith("sqlite"):
+    engine_kwargs["pool_pre_ping"] = True
+
+engine = create_engine(DATABASE_URL, **engine_kwargs)
 
 # ─── SESSION FACTORY ─────────────────────────────────────────────────────────
 SessionLocal = sessionmaker(

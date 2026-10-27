@@ -18,6 +18,7 @@ else:
 
 import time
 import re
+from datetime import datetime
 
 # Danh sách models ưu tiên khả dụng (hỗ trợ cả Multimodal Vision & Text)
 PREFERRED_MODELS = [
@@ -34,6 +35,7 @@ PREFERRED_MODELS = [
 
 from database import get_db
 import models
+from routers.auth import get_current_user, require_roles
 
 # Cấu hình logging
 logger = logging.getLogger(__name__)
@@ -131,7 +133,11 @@ async def call_llm_api(prompt: str) -> str:
 
 # ─── API ENDPOINT ────────────────────────────────────────────────────────
 @router.post("/summary", response_model=AISummaryResponse)
-async def generate_ai_summary(request: AISummaryRequest, db: Session = Depends(get_db)):
+async def generate_ai_summary(
+    request: AISummaryRequest,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(require_roles(["bac_si", "admin"]))
+):
     """
     API Tóm tắt hồ sơ bệnh án bằng AI.
     - Nhận ID bệnh nhân

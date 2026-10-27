@@ -45,7 +45,10 @@ class HoaDonCreateInput(BaseModel):
 # ════════════════════════════════════════════════════════════════════════════════
 
 @router.get("/", status_code=status.HTTP_200_OK)
-def get_all_hoa_dons(db: Session = Depends(get_db)):
+def get_all_hoa_dons(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(require_roles(["ke_toan", "admin", "bac_si", "le_tan"]))
+):
     """
     Lấy danh sách tất cả hóa đơn phục vụ kế toán thống kê doanh thu.
     """
@@ -75,7 +78,10 @@ def get_all_hoa_dons(db: Session = Depends(get_db)):
 
 
 @router.get("/cho-thanh-toan", status_code=status.HTTP_200_OK)
-def get_phieu_kham_cho_thanh_toan(db: Session = Depends(get_db)):
+def get_phieu_kham_cho_thanh_toan(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(require_roles(["ke_toan", "admin", "bac_si", "le_tan"]))
+):
     """
     Lấy danh sách các phiếu khám chưa tạo hóa đơn hoặc chưa thanh toán.
     Tự động tính toán chi tiết tiền khám và tiền thuốc.
@@ -136,9 +142,9 @@ def get_phieu_kham_cho_thanh_toan(db: Session = Depends(get_db)):
 
 @router.post("/", status_code=status.HTTP_201_CREATED)
 def create_or_confirm_hoa_don(
-    data: HoaDonCreateInput, 
+    data: HoaDonCreateInput,
     db: Session = Depends(get_db),
-    current_user: Optional[models.User] = Depends(get_optional_current_user)
+    current_user: models.User = Depends(require_roles(["ke_toan", "admin", "bac_si", "le_tan"]))
 ):
     """
     Tạo hoặc Xác nhận thanh toán hóa đơn cho phiếu khám (phieu_kham_id).
@@ -240,7 +246,10 @@ def create_or_confirm_hoa_don(
 # ════════════════════════════════════════════════════════════════════════════════
 
 @router.get("/don-thuoc-cho-phat", status_code=status.HTTP_200_OK)
-def get_don_thuoc_cho_phat(db: Session = Depends(get_db)):
+def get_don_thuoc_cho_phat(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(require_roles(["ke_toan", "admin", "bac_si"]))
+):
     """
     Lấy danh sách tất cả các đơn thuốc bác sĩ đã kê phục vụ Quầy Dược:
     - Quản lý đóng gói và phát thuốc cho bệnh nhân
@@ -328,7 +337,11 @@ def get_don_thuoc_cho_phat(db: Session = Depends(get_db)):
 
 
 @router.post("/xac-nhan-phat-thuoc", status_code=status.HTTP_200_OK)
-def xac_nhan_phat_thuoc(data: schemas.XacNhanPhatThuocInput, db: Session = Depends(get_db)):
+def xac_nhan_phat_thuoc(
+    data: schemas.XacNhanPhatThuocInput,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(require_roles(["ke_toan", "admin"]))
+):
     """
     Xác nhận bệnh nhân đã lấy thuốc tại Quầy Dược:
     1. Trừ tồn kho `so_luong_ton` trong bảng `thuocs` an toàn trong Transaction.
@@ -433,7 +446,11 @@ def xac_nhan_phat_thuoc(data: schemas.XacNhanPhatThuocInput, db: Session = Depen
 # ════════════════════════════════════════════════════════════════════════════════
 
 @router.get("/don-thuoc/{phieu_kham_id}", status_code=status.HTTP_200_OK)
-def get_chi_tiet_don_thuoc_in(phieu_kham_id: int, db: Session = Depends(get_db)):
+def get_chi_tiet_don_thuoc_in(
+    phieu_kham_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(require_roles(["ke_toan", "admin", "bac_si", "le_tan"]))
+):
     """
     Lấy thông tin chi tiết một đơn thuốc phục vụ In Hóa Đơn & Đơn Thuốc cho Bệnh nhân.
     """

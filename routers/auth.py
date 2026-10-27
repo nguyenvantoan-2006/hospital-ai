@@ -31,7 +31,14 @@ load_dotenv()
 router = APIRouter()
 
 # ─── CẤU HÌNH JWT ─────────────────────────────────────────────────────────────
-SECRET_KEY                 = os.getenv("SECRET_KEY", "CHANGE_ME_IN_PRODUCTION")
+_env_secret = os.getenv("SECRET_KEY")
+if not _env_secret or _env_secret.strip() == "" or _env_secret == "CHANGE_ME_IN_PRODUCTION":
+    import secrets
+    _env_secret = secrets.token_hex(32)
+    logger = logging.getLogger(__name__)
+    logger.warning("⚠️ SECRET_KEY không được cấu hình trong .env! Đã tự động tạo khóa ngẫu nhiên tạm thời để bảo vệ hệ thống.")
+
+SECRET_KEY                 = _env_secret
 ALGORITHM                  = os.getenv("ALGORITHM", "HS256")
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", 480))
 
