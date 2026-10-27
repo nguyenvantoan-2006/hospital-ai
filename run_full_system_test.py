@@ -254,16 +254,16 @@ def run_tests():
             "chan_doan": "Rối loạn tiền đình / Đau nửa đầu Migraine",
             "ai_summary": "Bệnh nhân có tiền sử dị ứng penicillin, triệu chứng đau đầu tái diễn."
         }
-        pk_res = session.post(f"{BASE_URL}/api/v1/phieu-khams/", json=pk_payload)
+        pk_res = session.post(f"{BASE_URL}/api/v1/phieu-khams/", json=pk_payload, headers=admin_headers)
         check("Tạo phiếu khám bệnh thành công (201)", pk_res.status_code == 201, f"Status: {pk_res.status_code}")
         phieu_kham_id = pk_res.json().get("phieu_kham_id") if pk_res.status_code == 201 else None
 
         # 6.1 Lấy danh sách phiếu khám
-        all_pk = session.get(f"{BASE_URL}/api/v1/phieu-khams/")
+        all_pk = session.get(f"{BASE_URL}/api/v1/phieu-khams/", headers=admin_headers)
         check("Lấy danh sách tất cả phiếu khám", all_pk.status_code == 200 and len(all_pk.json()) > 0)
 
         # 6.2 Lấy danh sách phiếu khám chờ thanh toán
-        cho_tt = session.get(f"{BASE_URL}/api/v1/phieu-khams/cho-thanh-toan")
+        cho_tt = session.get(f"{BASE_URL}/api/v1/phieu-khams/cho-thanh-toan", headers=admin_headers)
         check("Lấy danh sách phiếu khám chờ thanh toán viện phí", cho_tt.status_code == 200)
 
     # ──────────────────────────────────────────────────────────────────────────
@@ -277,11 +277,11 @@ def run_tests():
             "tong_tien": 150000.0,
             "trang_thai": "da_thanh_toan"
         }
-        hd_res = session.post(f"{BASE_URL}/api/v1/hoa-dons/", json=hd_payload)
+        hd_res = session.post(f"{BASE_URL}/api/v1/hoa-dons/", json=hd_payload, headers=admin_headers)
         check("Tạo & xác nhận thanh toán hóa đơn (201)", hd_res.status_code == 201, f"Status: {hd_res.status_code}")
 
         # 7.1 Lấy danh sách hóa đơn
-        all_hd = session.get(f"{BASE_URL}/api/v1/hoa-dons/")
+        all_hd = session.get(f"{BASE_URL}/api/v1/hoa-dons/", headers=admin_headers)
         check("Lấy danh sách tất cả hóa đơn", all_hd.status_code == 200 and len(all_hd.json()) > 0)
 
     # ──────────────────────────────────────────────────────────────────────────
@@ -337,7 +337,7 @@ def run_tests():
     
     # 9.1 Test AI Summary Endpoint (với Data Masking & Fallback)
     if patient_id:
-        ai_sum_res = session.post(f"{BASE_URL}/api/ai/summary", json={"benh_nhan_id": patient_id})
+        ai_sum_res = session.post(f"{BASE_URL}/api/ai/summary", json={"benh_nhan_id": patient_id}, headers=admin_headers)
         check("Gọi API /api/ai/summary", ai_sum_res.status_code == 200, f"Status: {ai_sum_res.status_code}")
         if ai_sum_res.status_code == 200:
             summary_text = ai_sum_res.json().get("summary", "")
