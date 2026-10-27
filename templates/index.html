@@ -589,49 +589,7 @@
   <!-- AI Chatbot Script -->
   <script src="/static/js/chatbot.js?v=2.1"></script>
 
-  <script>
-    document.addEventListener("DOMContentLoaded", () => {
-      const token = localStorage.getItem("access_token");
-      const role = localStorage.getItem("role");
-      const username = localStorage.getItem("username") || "Nhân viên";
-
-      const DEFAULT_HOME_PAGE = {
-        admin: "admin_dashboard.html",
-        bac_si: "lap_phieu_kham.html",
-        le_tan: "lich_kham.html",
-        ke_toan: "ke_toan.html"
-      };
-
-      const ROLE_BADGES = {
-        admin: "Admin",
-        bac_si: "Bác sĩ",
-        le_tan: "Lễ tân",
-        ke_toan: "Kế toán"
-      };
-
-      if (token && role && DEFAULT_HOME_PAGE[role]) {
-        const homeUrl = DEFAULT_HOME_PAGE[role];
-        const roleBadge = ROLE_BADGES[role] || "Nhân viên";
-
-        // Cập nhật Cổng nhân viên ở top bar
-        const topLink = document.querySelector(".top-bar a[href='login.html']");
-        if (topLink) {
-          topLink.innerHTML = `<i class="fa-solid fa-laptop-medical text-success me-1"></i> Bàn làm việc (${roleBadge}: ${username})`;
-          topLink.href = homeUrl;
-        }
-
-        // Cập nhật nút Đăng Nhập ở Navbar chính
-        const loginBtn = document.querySelector("a[href='login.html'].btn");
-        if (loginBtn) {
-          loginBtn.outerHTML = `
-            <a href="${homeUrl}" class="btn btn-success rounded-pill px-3 py-2 fw-bold shadow-sm" title="Quay lại phân hệ làm việc của bạn">
-              <i class="fa-solid fa-arrow-left me-1"></i> Quay lại Bàn làm việc (${roleBadge})
-            </a>
-          `;
-        }
-      }
-    });
-  </script>
+  
 
 </body>
 
