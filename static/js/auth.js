@@ -1,4 +1,4 @@
-/* auth.js - Quản lý phân quyền RBAC, kiểm tra Đăng nhập & Đăng xuất đồng bộ hệ thống ClinicAI */
+/* auth.js - Quản lý phân quyền RBAC, kiểm tra Đăng nhập, Đăng xuất & Ẩn/Hiện Menu động theo vai trò */
 
 const ROLE_NAMES = {
   admin: "👑 Admin Quản trị",
@@ -13,6 +13,93 @@ const DEFAULT_HOME_PAGE = {
   le_tan: "lich_kham.html",
   ke_toan: "ke_toan.html"
 };
+
+/**
+ * Ma trận phân quyền truy cập và hiển thị điều hướng (RBAC Route & Menu Matrix)
+ */
+const ROLE_ALLOWED_PAGES = {
+  admin: [
+    "index.html", "dashboard.html", "admin_dashboard.html", 
+    "lap_phieu_kham.html", "lich_kham.html", "danh_sach_benh_nhan.html", 
+    "thanh_toan.html", "quay_thuoc.html", "ke_toan.html"
+  ],
+  bac_si: [
+    "index.html", "dashboard.html", "lap_phieu_kham.html", 
+    "lich_kham.html", "danh_sach_benh_nhan.html"
+  ],
+  le_tan: [
+    "index.html", "dashboard.html", "lich_kham.html", "danh_sach_benh_nhan.html"
+  ],
+  ke_toan: [
+    "index.html", "dashboard.html", "thanh_toan.html", "quay_thuoc.html", 
+    "ke_toan.html", "danh_sach_benh_nhan.html"
+  ]
+};
+
+const RESTRICTED_PAGES = [
+  "lap_phieu_kham.html",
+  "lich_kham.html",
+  "thanh_toan.html",
+  "quay_thuoc.html",
+  "ke_toan.html",
+  "admin_dashboard.html"
+];
+
+/**
+ * Ẩn/hiện menu điều hướng (Sidebar/Navbar) tự động dựa trên vai trò người dùng (RBAC)
+ */
+function applyDynamicSidebarNav() {
+  const role = localStorage.getItem("role");
+  if (!role) return;
+
+  const allowedPages = ROLE_ALLOWED_PAGES[role] || [];
+  
+  // 1. Quét tất cả thẻ a trong sidebar và navbar
+  const navLinks = document.querySelectorAll(
+    "aside.sidebar a, nav.sidebar a, .sidebar a, nav.navbar a, .navbar-custom a"
+  );
+
+  navLinks.forEach(link => {
+    const href = link.getAttribute("href");
+    if (!href) return;
+
+    // Trích xuất tên trang từ href (ví dụ: "thanh_toan.html" hoặc "/thanh_toan.html")
+    const cleanHref = href.split("?")[0].split("#")[0].replace(/^.*\//, "");
+    
+    // Nếu là trang nằm trong danh sách kiểm soát quyền
+    if (RESTRICTED_PAGES.includes(cleanHref)) {
+      if (!allowedPages.includes(cleanHref)) {
+        // Vai trò không có quyền -> ẩn hoàn toàn khỏi giao diện
+        link.style.display = "none";
+        link.classList.add("d-none");
+      } else {
+        link.style.display = "";
+        link.classList.remove("d-none");
+      }
+    }
+  });
+
+  // 2. Tinh chỉnh tiêu đề nhóm trong sidebar nếu nhóm đó không có liên kết con nào hiển thị
+  document.querySelectorAll("aside.sidebar, nav.sidebar, .sidebar").forEach(sidebar => {
+    const titles = sidebar.querySelectorAll(".sidebar-section-title");
+    titles.forEach(title => {
+      let next = title.nextElementSibling;
+      let hasVisibleChild = false;
+      while (next && !next.classList.contains("sidebar-section-title")) {
+        if (next.tagName === "A" && next.style.display !== "none" && !next.classList.contains("d-none")) {
+          hasVisibleChild = true;
+          break;
+        }
+        next = next.nextElementSibling;
+      }
+      if (!hasVisibleChild) {
+        title.style.display = "none";
+      } else {
+        title.style.display = "";
+      }
+    });
+  });
+}
 
 /**
  * Kiểm tra quyền đăng nhập và phân quyền trang (Route Guard)
@@ -37,8 +124,9 @@ function initAuthGuard(allowedRoles = []) {
     return false;
   }
 
-  // 3. Hiển thị thông tin người dùng lên Navbar / Header
+  // 3. Hiển thị thông tin người dùng lên Navbar / Header & Ẩn hiện Menu theo vai trò
   updateUserHeader();
+  applyDynamicSidebarNav();
   return true;
 }
 
@@ -59,7 +147,7 @@ function updateUserHeader() {
   const roleText = ROLE_NAMES[role] || role;
 
   // Cập nhật tên
-  document.querySelectorAll("#navUser, #displayUsername, .user-name-display").forEach(el => {
+  document.querySelectorAll("#navUser, #displayUsername, #displayUser, .user-name-display").forEach(el => {
     el.innerText = username;
   });
 
@@ -69,7 +157,7 @@ function updateUserHeader() {
   });
 
   // Cập nhật Avatar
-  document.querySelectorAll(".user-avatar-display").forEach(el => {
+  document.querySelectorAll(".user-avatar-display, .user-avatar-mini").forEach(el => {
     if (role === "admin") el.innerText = "AD";
     else if (role === "bac_si") el.innerText = "BS";
     else if (role === "le_tan") el.innerText = "LT";
@@ -77,6 +165,7 @@ function updateUserHeader() {
     else el.innerText = username.substring(0, 2).toUpperCase();
   });
 }
+
 /**
  * Lấy Header Authentication chuẩn JWT Bearer token cho các yêu cầu fetch()
  */
@@ -88,7 +177,7 @@ function getAuthHeaders() {
   };
 }
 
-// Tự động gán sự kiện click Đăng xuất cho các element có class/id tương ứng khi DOM tải xong
+// Tự động gán sự kiện click Đăng xuất & áp dụng ẩn/hiện menu khi DOM tải xong
 document.addEventListener("DOMContentLoaded", () => {
   document.querySelectorAll(".btn-logout, #btnLogout, a[href='#logout']").forEach(btn => {
     btn.addEventListener("click", (e) => {
@@ -96,5 +185,8 @@ document.addEventListener("DOMContentLoaded", () => {
       logout();
     });
   });
+  
+  // Áp dụng bộ lọc thanh menu động
+  applyDynamicSidebarNav();
+  updateUserHeader();
 });
-
