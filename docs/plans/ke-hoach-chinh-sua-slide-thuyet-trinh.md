@@ -54,3 +54,4 @@
 ## 5. RỦI RO VÀ LƯU Ý
 - **Giữ nguyên file gốc:** Không ghi đè trực tiếp lên `Tem_5C.pptx`, tạo file output riêng để người dùng dễ dàng so sánh trước - sau.
 - **Giữ đồng bộ font chữ & theme màu:** Kế thừa layout và màu sắc xanh y tế sẵn có của template `Tem_5C.pptx` để đảm bảo tính thẩm mỹ đồng nhất.
+
