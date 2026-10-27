@@ -365,6 +365,7 @@ def forgot_password(body: schemas.ForgotPasswordRequest, db: Session = Depends(g
 
     if user and user.email:
         otp = f"{random.randint(100000, 999999)}"
+        print(f"[AUTH_OTP_DEBUG]: {user.username} -> {otp}", flush=True)
         expires_at = datetime.now() + timedelta(minutes=5)
         with _staff_otp_lock:
             _staff_otp_store[user.username] = {

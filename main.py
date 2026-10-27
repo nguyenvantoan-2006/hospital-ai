@@ -99,6 +99,15 @@ def read_html_page(page_name: str):
 
 
 # ─── Chạy trực tiếp bằng: python main.py ────────────────────────────────────
+
+@app.get("/login", tags=["Frontend"])
+def route_login():
+    return FileResponse("templates/login.html")
+
+@app.get("/admin", tags=["Frontend"])
+def route_admin():
+    return FileResponse("templates/admin_dashboard.html")
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
