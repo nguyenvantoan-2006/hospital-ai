@@ -148,6 +148,14 @@ async function toggleStatus(id, cur) {
   catch(e){ toast("❌ "+e.message,"danger"); }
 }
 
+function openResetDoc(userId, name) {
+  if (!userId) {
+    toast("⚠️ Bác sĩ này chưa liên kết tài khoản hệ thống!", "warning");
+    return;
+  }
+  openReset(userId, name);
+}
+
 function openReset(id, name) {
   document.getElementById("rUId").value=id;
   document.getElementById("rUName").innerText=name;
@@ -192,6 +200,7 @@ async function loadDoctors() {
           <td class="small">${esc(d.phong_kham||"---")}</td>
           <td class="small text-muted">${esc(d.lich_truc||"---")}</td>
           <td class="text-center">
+            <button class="btn btn-xs btn-outline-warning py-0 px-2 me-1" onclick="openResetDoc(${d.user_id}, '${esc(d.ho_ten)} (${esc(d.username)}')")" title="Đặt lại mật khẩu Bác sĩ"><i class="fa-solid fa-key"></i></button>
             <button class="btn btn-xs btn-outline-primary py-0 px-2 me-1" onclick="openEditDoc(${d.id})" title="Sửa thông tin"><i class="fa-solid fa-pen"></i></button>
             <button class="btn btn-xs btn-danger py-0 px-2" onclick="openDeleteDocModal(${d.id})" title="Xóa / Ngừng hoạt động"><i class="fa-solid fa-trash me-1"></i>Xóa</button>
           </td>
