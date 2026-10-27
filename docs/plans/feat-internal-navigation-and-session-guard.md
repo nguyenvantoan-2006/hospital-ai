@@ -27,3 +27,4 @@
 5. `templates/index.html`:
    - Thêm script kiểm tra `localStorage.getItem("access_token")` và `localStorage.getItem("role")`.
    - Nếu đã đăng nhập -> Hiển thị nút: `[BS/LT/KT/AD] Quay lại Bàn làm việc` kèm link về đúng `DEFAULT_HOME_PAGE[role]`.
+
