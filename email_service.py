@@ -287,3 +287,55 @@ def send_booking_confirmation_email(
     </html>
     """
     return _send_email_smtp(clean_email, subject, html_body)
+
+
+def send_password_reset_otp_email(
+    clean_email: str,
+    username: str,
+    otp_code: str
+) -> Tuple[bool, str]:
+    """
+    Gửi mã OTP khôi phục mật khẩu tài khoản nội bộ (Bác sĩ / Nhân viên).
+    """
+    subject = f"[{SENDER_NAME}] Mã Xác Thực Đặt Lại Mật Khẩu: {otp_code}"
+    html_body = f"""
+    <!DOCTYPE html>
+    <html lang="vi">
+    <head>
+      <meta charset="UTF-8">
+      <style>
+        body {{ font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f1f5f9; margin: 0; padding: 20px; }}
+        .container {{ max-width: 580px; margin: auto; background: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.06); }}
+        .header {{ background: linear-gradient(135deg, #1A73E8 0%, #0d47a1 100%); padding: 28px 24px; text-align: center; color: #ffffff; }}
+        .header h1 {{ margin: 0; font-size: 22px; font-weight: 700; }}
+        .content {{ padding: 28px; color: #334155; line-height: 1.6; }}
+        .otp-box {{ background: #eff6ff; border: 2px dashed #3b82f6; border-radius: 12px; padding: 20px; text-align: center; margin: 24px 0; }}
+        .otp-code {{ font-size: 32px; font-weight: 800; color: #1d4ed8; letter-spacing: 8px; font-family: monospace; }}
+        .footer {{ background: #f8fafc; padding: 16px; text-align: center; font-size: 12px; color: #94a3b8; border-top: 1px solid #e2e8f0; }}
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <h1>🔐 YÊU CẦU ĐẶT LẠI MẬT KHẨU</h1>
+          <p style="margin: 6px 0 0 0; opacity: 0.9; font-size: 13px;">Hệ thống Quản lý Y tế Thông minh CLINOVA</p>
+        </div>
+        <div class="content">
+          <p>Kính gửi Bác sĩ / Cán bộ nhân viên (Tài khoản: <strong>{username}</strong>),</p>
+          <p>Hệ thống nhận được yêu cầu cấp lại mật khẩu đăng nhập nội bộ cho tài khoản của bạn. Vui lòng sử dụng mã xác thực OTP dưới đây để hoàn tất:</p>
+          
+          <div class="otp-box">
+            <div style="font-size: 13px; color: #64748b; margin-bottom: 8px;">MÃ XÁC THỰC OTP (HẾT HẠN TRONG 5 PHÚT)</div>
+            <div class="otp-code">{otp_code}</div>
+          </div>
+
+          <p style="font-size: 13px; color: #dc2626;"><strong>Lưu ý an toàn:</strong> Tuyệt đối không chia sẻ mã này cho bất kỳ ai. Nếu bạn không yêu cầu hành động này, vui lòng báo ngay cho Quản trị viên IT qua Hotline 0988.123.456.</p>
+        </div>
+        <div class="footer">
+          © 2026 CLINOVA Smart Clinic — Phòng CNTT & An toàn Thông tin Y tế
+        </div>
+      </div>
+    </body>
+    </html>
+    """
+    return _send_email_smtp(clean_email, subject, html_body)
