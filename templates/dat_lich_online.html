@@ -171,6 +171,54 @@
       letter-spacing: 2px;
       font-family: 'Outfit', sans-serif;
     }
+  
+    /* Bach Mai Style Time Slot Grid */
+    .slot-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(95px, 1fr));
+      gap: 10px;
+    }
+    .btn-slot {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 9px 8px;
+      font-size: 13px;
+      font-weight: 600;
+      border-radius: 20px;
+      border: 1.5px solid #E2E8F0;
+      background-color: #FFFFFF;
+      color: #334155;
+      cursor: pointer;
+      transition: all 0.2s ease-in-out;
+      text-decoration: none;
+      user-select: none;
+    }
+    .btn-slot:hover:not(:disabled) {
+      border-color: #0284C7;
+      color: #0284C7;
+      background-color: #F0F9FF;
+      transform: translateY(-1px);
+      box-shadow: 0 2px 8px rgba(2, 132, 199, 0.15);
+    }
+    .btn-slot.active {
+      background-color: #0284C7 !important;
+      color: #FFFFFF !important;
+      border-color: #0284C7 !important;
+      font-weight: 700;
+      box-shadow: 0 4px 12px rgba(2, 132, 199, 0.35);
+      transform: scale(1.03);
+    }
+    .btn-slot:disabled, .btn-slot.disabled {
+      background-color: #F8FAFC !important;
+      color: #94A3B8 !important;
+      border-color: #E2E8F0 !important;
+      cursor: not-allowed;
+      opacity: 0.6;
+      text-decoration: line-through;
+    }
+
   </style>
 </head>
 
@@ -277,30 +325,74 @@
 
               <hr class="my-4 text-secondary opacity-25">
 
-              <!-- PHẦN 2: THỜI GIAN KHÁM -->
+              <!-- PHẦN 2: THỜI GIAN KHÁM (CHUẨN APP BỆNH VIỆN BẠCH MAI) -->
               <div class="mb-4">
-                <h6 class="fw-bold text-primary font-outfit mb-3">
-                  <i class="fa-solid fa-calendar-days me-2"></i>2. THỜI GIAN KHÁM MONG MUỐN
-                </h6>
+                <div class="d-flex align-items-center justify-content-between mb-3">
+                  <h6 class="fw-bold text-primary font-outfit mb-0">
+                    <i class="fa-solid fa-clock me-2"></i>2. CHỌN GIỜ KHÁM (CHUẨN BỆNH VIỆN BẠCH MAI)
+                  </h6>
+                  <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-3 py-1 rounded-pill small">
+                    <i class="fa-solid fa-shield-halved me-1"></i>Chống trùng lịch 1:1
+                  </span>
+                </div>
+
                 <div class="row g-3">
                   <div class="col-md-6">
-                    <label class="form-label">Ngày Khám <span class="text-danger">*</span></label>
-                    <input type="date" id="ngayKhamInput" class="form-control" required onchange="checkAndLoadDoctorCapacity()" />
+                    <label class="form-label fw-semibold">Ngày Khám <span class="text-danger">*</span></label>
+                    <input type="date" id="ngayKhamInput" class="form-control" required onchange="loadAvailableSlots()" />
                   </div>
                   <div class="col-md-6">
-                    <label class="form-label">Khung Giờ Khám <span class="text-danger">*</span></label>
-                    <select id="gioKhamSelect" class="form-select" required onchange="onSlotChange()">
-                      <option value="08:00">Ca sáng: 08:00 - 09:00</option>
-                      <option value="09:00" selected>Ca sáng: 09:00 - 10:00</option>
-                      <option value="10:00">Ca sáng: 10:00 - 11:00</option>
-                      <option value="13:30">Ca chiều: 13:30 - 14:30</option>
-                      <option value="14:30">Ca chiều: 14:30 - 15:30</option>
-                      <option value="15:30">Ca chiều: 15:30 - 16:30</option>
-                      <option value="17:00">Ca ngoài giờ: 17:00 - 18:00</option>
-                    </select>
-                    <div id="slotCapacityText" class="form-text small mt-1 text-muted"></div>
+                    <label class="form-label fw-semibold">Địa điểm & Bác sĩ phụ trách</label>
+                    <div class="p-2 px-3 rounded-3 bg-light border d-flex align-items-center justify-content-between text-truncate">
+                      <div class="text-truncate">
+                        <i class="fa-solid fa-location-dot text-danger me-1"></i>
+                        <span id="displayDocRoom" class="fw-bold text-dark">Phòng khám chuyên khoa</span>
+                        <span class="text-muted mx-1">•</span>
+                        <span id="displayDocName" class="text-primary fw-semibold">Chọn Bác sĩ ở bước 1</span>
+                      </div>
+                    </div>
                   </div>
-                  <div class="col-12" id="doctorCapacityAlertBox" style="display: none;"></div>
+
+                  <!-- Khung giờ chọn theo ca chuẩn Bạch Mai -->
+                  <div class="col-12 mt-3">
+                    <!-- Buổi sáng -->
+                    <div class="mb-3">
+                      <div class="fw-bold text-dark mb-2 small d-flex align-items-center gap-2">
+                        <span class="badge bg-warning text-dark px-2 py-1"><i class="fa-solid fa-sun me-1"></i>Buổi sáng</span>
+                        <small class="text-muted">(Từ 07:00 đến 11:45 — Mỗi slot 15 phút / 1 người)</small>
+                      </div>
+                      <div class="slot-grid" id="morningSlotsGrid">
+                        <div class="text-muted small py-2">Vui lòng chọn Bác sĩ và Ngày khám để xem các khung giờ...</div>
+                      </div>
+                    </div>
+
+                    <!-- Buổi chiều -->
+                    <div class="mb-3">
+                      <div class="fw-bold text-dark mb-2 small d-flex align-items-center gap-2">
+                        <span class="badge bg-info text-dark px-2 py-1"><i class="fa-solid fa-cloud-sun me-1"></i>Buổi chiều</span>
+                        <small class="text-muted">(Từ 13:30 đến 16:30 — Mỗi slot 15 phút / 1 người)</small>
+                      </div>
+                      <div class="slot-grid" id="afternoonSlotsGrid">
+                        <div class="text-muted small py-2">Vui lòng chọn Bác sĩ và Ngày khám để xem các khung giờ...</div>
+                      </div>
+                    </div>
+
+                    <!-- Input ẩn lưu giá trị giờ đã chọn -->
+                    <input type="hidden" id="gioKhamInput" value="" required />
+                    <input type="hidden" id="gioKhamSelect" value="" />
+
+                    <!-- Thông báo giờ đã chọn -->
+                    <div id="selectedSlotNotice" class="alert alert-success py-2 px-3 rounded-3 small d-none mt-2 d-flex align-items-center justify-content-between">
+                      <div>
+                        <i class="fa-solid fa-circle-check text-success me-2 fs-6"></i>
+                        Đã chọn khung giờ khám: <strong class="fs-6 text-dark" id="lblSelectedSlotText">--:--</strong>
+                      </div>
+                      <span class="badge bg-success">Đã giữ chỗ</span>
+                    </div>
+
+                    <div id="slotCapacityText" class="form-text small mt-1 text-muted"></div>
+                    <div id="doctorCapacityAlertBox" style="display: none;" class="mt-2"></div>
+                  </div>
                 </div>
               </div>
 
@@ -687,7 +779,7 @@
       if (docSelect.value) {
         const opt = docSelect.options[docSelect.selectedIndex];
         note.innerHTML = `Lịch trực: ${opt.getAttribute('data-shift')} | ${opt.getAttribute('data-room')}`;
-        checkAndLoadDoctorCapacity();
+        checkAndLoadDoctorCapacity(); loadAvailableSlots();
       } else {
         note.innerHTML = "";
         resetSlotDisplay();
@@ -705,7 +797,99 @@
     }
 
     // Kiểm tra sức chứa của bác sĩ theo ngày và cập nhật các khung giờ
+    
+    let selectedSlotValue = "";
+
+    function selectTimeSlot(gio, btnEl) {
+      selectedSlotValue = gio;
+      document.getElementById("gioKhamInput").value = gio;
+      document.getElementById("gioKhamSelect").value = gio;
+
+      // Xóa active tất cả các nút
+      document.querySelectorAll(".btn-slot").forEach(b => b.classList.remove("active"));
+      if (btnEl) btnEl.classList.add("active");
+
+      // Cập nhật thông báo
+      const noticeEl = document.getElementById("selectedSlotNotice");
+      const lblEl = document.getElementById("lblSelectedSlotText");
+      if (noticeEl && lblEl) {
+        lblEl.textContent = `${gio} ngày ${formatDateDMY(document.getElementById("ngayKhamInput").value)}`;
+        noticeEl.classList.remove("d-none");
+      }
+    }
+
+    async function loadAvailableSlots() {
+      const docSelect = document.getElementById("bacSiSelect");
+      const dateInput = document.getElementById("ngayKhamInput");
+      const docId = docSelect.value;
+      const ngayKham = dateInput.value;
+
+      const docOpt = docSelect.options[docSelect.selectedIndex];
+      const docName = docOpt && docOpt.value ? docOpt.getAttribute("data-name") : "Bác sĩ phụ trách";
+      const docRoom = docOpt && docOpt.getAttribute("data-phong") ? docOpt.getAttribute("data-phong") : "Phòng Khám Chuyên Khoa";
+
+      const dispName = document.getElementById("displayDocName");
+      const dispRoom = document.getElementById("displayDocRoom");
+      if (dispName) dispName.textContent = docName;
+      if (dispRoom) dispRoom.textContent = docRoom;
+
+      if (!docId || !ngayKham) return;
+
+      const mGrid = document.getElementById("morningSlotsGrid");
+      const aGrid = document.getElementById("afternoonSlotsGrid");
+      mGrid.innerHTML = '<div class="text-muted small py-2"><span class="spinner-border spinner-border-sm text-primary me-1"></span> Đang tải khung giờ ca sáng...</div>';
+      aGrid.innerHTML = '<div class="text-muted small py-2"><span class="spinner-border spinner-border-sm text-primary me-1"></span> Đang tải khung giờ ca chiều...</div>';
+
+      try {
+        const res = await fetch(`/api/v1/lich-khams/public/available-slots?bac_si_id=${docId}&ngay=${ngayKham}`);
+        if (!res.ok) throw new Error("Không thể tải khung giờ");
+        const data = await res.json();
+
+        // Render ca sáng
+        mGrid.innerHTML = data.slots_sang.map(s => `
+          <button type="button" 
+            class="btn-slot ${s.available ? '' : 'disabled'}" 
+            ${s.available ? `onclick="selectTimeSlot('${s.gio}', this)"` : 'disabled'}
+            title="${s.available ? 'Bấm để chọn khung giờ này' : (s.da_dat ? 'Khung giờ này đã có bệnh nhân đặt' : 'Khung giờ đã qua')}">
+            <i class="fa-regular fa-clock"></i>
+            <span>${s.gio}</span>
+          </button>
+        `).join("");
+
+        // Render ca chiều
+        aGrid.innerHTML = data.slots_chieu.map(s => `
+          <button type="button" 
+            class="btn-slot ${s.available ? '' : 'disabled'}" 
+            ${s.available ? `onclick="selectTimeSlot('${s.gio}', this)"` : 'disabled'}
+            title="${s.available ? 'Bấm để chọn khung giờ này' : (s.da_dat ? 'Khung giờ này đã có bệnh nhân đặt' : 'Khung giờ đã qua')}">
+            <i class="fa-regular fa-clock"></i>
+            <span>${s.gio}</span>
+          </button>
+        `).join("");
+
+        // Tự động kích hoạt slot đã chọn nếu vẫn còn
+        if (selectedSlotValue) {
+          const matchingBtn = document.querySelector(`.btn-slot:not(:disabled)[onclick*="'${selectedSlotValue}'"]`);
+          if (matchingBtn) {
+            matchingBtn.click();
+          } else {
+            selectedSlotValue = "";
+            document.getElementById("gioKhamInput").value = "";
+            document.getElementById("gioKhamSelect").value = "";
+            const noticeEl = document.getElementById("selectedSlotNotice");
+            if (noticeEl) noticeEl.classList.add("d-none");
+          }
+        }
+
+      } catch (err) {
+        console.error("Lỗi tải slots:", err);
+        mGrid.innerHTML = '<div class="text-danger small">Lỗi tải dữ liệu khung giờ!</div>';
+        aGrid.innerHTML = '<div class="text-danger small">Lỗi tải dữ liệu khung giờ!</div>';
+      }
+    }
+
     async function checkAndLoadDoctorCapacity() {
+      loadAvailableSlots();
       const docSelect = document.getElementById("bacSiSelect");
       const dateInput = document.getElementById("ngayKhamInput");
       const alertBox = document.getElementById("doctorCapacityAlertBox");
@@ -934,7 +1118,7 @@
     function selectAlternativeDate(dateYMD) {
       document.getElementById("ngayKhamInput").value = dateYMD;
       if (doctorFullModal) doctorFullModal.hide();
-      checkAndLoadDoctorCapacity();
+      checkAndLoadDoctorCapacity(); loadAvailableSlots();
       showToast(`Đã đổi sang ngày khám ${formatDateDMY(dateYMD)}!`, "info");
     }
 
@@ -955,7 +1139,13 @@
       const chuyenKhoa = document.getElementById("chuyenKhoaSelect").value;
       const bacSiId = document.getElementById("bacSiSelect").value;
       const ngayKham = document.getElementById("ngayKhamInput").value;
-      const gioKham = document.getElementById("gioKhamSelect").value;
+      const gioKham = document.getElementById("gioKhamInput").value || document.getElementById("gioKhamSelect").value;
+
+      if (!gioKham) {
+        alert("Vui lòng bấm chọn một khung giờ khám (Slot 15 phút) còn trống ở Phần 2!");
+        document.getElementById("morningSlotsGrid").scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return;
+      }
       const lyDoKham = document.getElementById("lyDoKhamInput").value.trim();
 
       const docOpt = document.getElementById("bacSiSelect").options[document.getElementById("bacSiSelect").selectedIndex];
@@ -963,6 +1153,25 @@
 
       const specOpt = document.getElementById("chuyenKhoaSelect").options[document.getElementById("chuyenKhoaSelect").selectedIndex];
       const specId = specOpt ? parseInt(specOpt.getAttribute("data-id")) : null;
+
+      // Kiểm tra chống trùng lịch 1:1 chuẩn Bạch Mai trước khi gửi OTP
+      if (bacSiId) {
+        try {
+          const slotRes = await fetch(`/api/v1/lich-khams/public/available-slots?bac_si_id=${bacSiId}&ngay=${ngayKham}`);
+          if (slotRes.ok) {
+            const slotData = await slotRes.json();
+            const allS = [...slotData.slots_sang, ...slotData.slots_chieu];
+            const targetS = allS.find(s => s.gio === gioKham);
+            if (targetS && !targetS.available) {
+              alert(`Khung giờ ${gioKham} ngày ${formatDateDMY(ngayKham)} của Bác sĩ ${escapeHtml(bacSiName)} vừa có người đặt hoặc đã kín.\nVui lòng chọn một khung giờ trống khác!`);
+              loadAvailableSlots();
+              return;
+            }
+          }
+        } catch (e) {
+          console.warn("Lỗi kiểm tra slot:", e);
+        }
+      }
 
       // Kiểm tra sức chứa bác sĩ trước
       if (bacSiId) {
