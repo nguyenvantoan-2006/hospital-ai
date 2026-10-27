@@ -874,9 +874,9 @@
 
     // Khởi chạy khi tải trang
     window.addEventListener('DOMContentLoaded', () => {
-      // Phân quyền RBAC: Quầy cấp phát trực thuộc quản lý của Kế toán/Thu ngân, Admin hoặc Lễ tân
+      // Phân quyền RBAC: Quầy cấp phát trực thuộc quản lý của Admin, Lễ tân hoặc Bác sĩ (Kế toán không có quyền can thiệp cấp thuốc)
       if (typeof initAuthGuard === 'function') {
-        if (!initAuthGuard(["ke_toan", "admin", "le_tan", "bac_si"])) return;
+        if (!initAuthGuard(["admin", "le_tan", "bac_si"])) return;
       }
       const username = localStorage.getItem('username');
       const role = localStorage.getItem('role');

@@ -511,19 +511,24 @@
                   <i class="fa-solid fa-sparkles me-1"></i> AI Gợi ý dặn dò sau khám
                 </button>
               </div>
-              <textarea id="aiSummary" class="form-control" rows="3" placeholder="Lời dặn dò chế độ sinh hoạt, dinh dưỡng và lưu ý điều trị sau khám..."></textarea>
+              <textarea id="aiGuideOutput" class="form-control" rows="3" placeholder="Lời dặn dò chế độ sinh hoạt, dinh dưỡng và lưu ý điều trị sau khám..."></textarea>
             </div>
 
             <!-- Đơn thuốc đi kèm -->
             <div class="mb-4">
-              <div class="d-flex align-items-center justify-content-between mb-2">
+              <div class="d-flex align-items-center justify-content-between mb-2 flex-wrap gap-2">
                 <div>
                   <h6 class="fw-bold mb-0 text-dark"><i class="fa-solid fa-pills text-primary me-2"></i>Kê Đơn Thuốc Điện Tử (FR-06)</h6>
                   <span class="small text-muted">Tìm kiếm thuốc từ kho dược, kiểm tra tồn kho tự động</span>
                 </div>
-                <button type="button" class="btn btn-sm btn-primary rounded-pill px-3 shadow-sm" onclick="addPrescriptionRow()">
-                  <i class="fa-solid fa-plus me-1"></i> Thêm thuốc vào đơn
-                </button>
+                <div class="d-flex gap-2">
+                  <button type="button" class="btn btn-sm btn-outline-primary rounded-pill px-3 shadow-sm" onclick="previewDonThuocLive()" title="Xem trước mẫu in đơn thuốc khổ A5 với thông tin vừa nhập">
+                    <i class="fa-solid fa-eye me-1"></i> Xem Trước Đơn Thuốc (A5)
+                  </button>
+                  <button type="button" class="btn btn-sm btn-primary rounded-pill px-3 shadow-sm" onclick="addPrescriptionRow()">
+                    <i class="fa-solid fa-plus me-1"></i> Thêm thuốc vào đơn
+                  </button>
+                </div>
               </div>
 
               <div class="table-responsive">
@@ -617,14 +622,20 @@
                     <i class="fa-solid fa-circle-check text-success fs-5"></i>
                     <div><strong>Hoàn tất khám:</strong> Lưu phiếu khám, tự động đẩy hóa đơn sang Thu Ngân và đơn thuốc sang Quầy Dược, in <strong>Đơn Thuốc Điện Tử (A5)</strong>.</div>
                   </div>
-                  <div class="d-flex justify-content-between align-items-center">
+                  <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
                     <button type="button" class="btn btn-outline-secondary px-3 rounded-3 btn-sm" onclick="resetForm()">Làm mới form</button>
-                    <div class="d-flex gap-2">
-                      <button type="button" id="btnPrintCurrentPhieu" class="btn btn-outline-primary px-3 rounded-3 btn-sm" style="display: none;" onclick="openPrintModal()">
-                        <i class="fa-solid fa-print me-1"></i> In Phiếu Khám & Đơn Thuốc
+                    <div class="d-flex gap-2 flex-wrap">
+                      <button type="button" class="btn btn-outline-primary px-3 rounded-3 btn-sm" onclick="previewDonThuocLive()">
+                        <i class="fa-solid fa-file-prescription me-1"></i> Xem Trước Đơn Thuốc (A5)
                       </button>
-                      <button type="submit" id="btnSavePhieu" class="btn btn-primary fw-semibold px-4 rounded-3 shadow-sm">
-                        <i class="fa-solid fa-print me-1"></i> Hoàn Tất Khám & Chuyển Thanh Toán
+                      <button type="button" class="btn btn-success fw-semibold px-3 rounded-3 shadow-sm" onclick="submitAndPrintDirectly()">
+                        <i class="fa-solid fa-print me-1"></i> Lưu & In Đơn Thuốc Ngay
+                      </button>
+                      <button type="button" class="btn btn-outline-success fw-semibold px-3 rounded-3 shadow-sm" onclick="openDoctorDirectPaymentModal()">
+                        <i class="fa-solid fa-qrcode me-1"></i> Thu Tiền Chuyển Khoản (VietQR)
+                      </button>
+                      <button type="submit" id="btnSavePhieu" class="btn btn-primary fw-semibold px-3 rounded-3 shadow-sm">
+                        <i class="fa-solid fa-check me-1"></i> Hoàn Tất Khám & Chuyển Thanh Toán
                       </button>
                     </div>
                   </div>
@@ -684,24 +695,80 @@
     </div>
   </div>
 
+  <!-- MODAL THU TIỀN CHUYỂN KHOẢN VIETQR TẠI PHÒNG KHÁM BÁC SĨ -->
+  <div class="modal fade" id="doctorDirectPaymentModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-md modal-dialog-centered">
+      <div class="modal-content shadow-lg border-0 rounded-4">
+        <div class="modal-header bg-success text-white py-2 px-3 rounded-top-4">
+          <h5 class="modal-title fw-bold fs-6">
+            <i class="fa-solid fa-qrcode me-2"></i>Thu Viện Phí Qua Chuyển Khoản (VietQR)
+          </h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body p-3">
+          <div class="alert alert-info py-2 px-3 small rounded-3 mb-3 border-info-subtle">
+            <i class="fa-solid fa-shield-halved me-1 text-info"></i>
+            <strong>Quy định Bác sĩ thu tiền:</strong> Bác sĩ chỉ thu viện phí qua <strong>chuyển khoản VietQR</strong> về tài khoản ngân hàng Bệnh viện Clinova. Tuyệt đối không thu tiền mặt tại phòng khám.
+          </div>
+
+          <div class="bg-light p-3 rounded-3 border mb-3 small">
+            <div class="d-flex justify-content-between mb-1">
+              <span class="text-secondary">Bệnh nhân:</span>
+              <strong class="text-dark" id="docPayPatientName">---</strong>
+            </div>
+            <div class="d-flex justify-content-between mb-1">
+              <span class="text-secondary">Tiền khám:</span>
+              <span class="fw-semibold">100.000 đ</span>
+            </div>
+            <div class="d-flex justify-content-between mb-1">
+              <span class="text-secondary">Tiền thuốc kê đơn:</span>
+              <span class="fw-semibold text-danger" id="docPayMedTotal">0 đ</span>
+            </div>
+            <div class="d-flex justify-content-between pt-2 border-top">
+              <span class="fw-bold text-dark">TỔNG VIỆN PHÍ:</span>
+              <span class="fw-bold text-success fs-6" id="docPayGrandTotal">100.000 đ</span>
+            </div>
+          </div>
+
+          <!-- Mã VietQR -->
+          <div class="text-center p-2 bg-white rounded-3 border mb-2 shadow-sm">
+            <div class="small fw-bold text-secondary mb-1"><i class="fa-solid fa-building-columns me-1 text-primary"></i>Quét mã VietQR chuyển khoản vào tài khoản Bệnh viện:</div>
+            <img id="docPayQrImg" src="" alt="VietQR Bệnh viện" class="img-fluid rounded-2" style="max-height: 220px; min-height: 160px; object-fit: contain;">
+            <div class="mt-2 small text-muted">
+              <div>Ngân hàng: <strong>MBBank</strong> | STK: <strong class="text-primary font-monospace">1234567890</strong></div>
+              <div>Chủ TK: <strong class="text-dark">PHONG KHAM DA KHOA QUOC TE CLINOVA</strong></div>
+              <div class="mt-1">Nội dung: <span id="docPayTransferContent" class="badge bg-light text-dark border font-monospace">TT PK</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer py-2 px-3 bg-light rounded-bottom-4">
+          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Đóng</button>
+          <button type="button" class="btn btn-success btn-sm px-3 fw-semibold shadow-sm" id="btnConfirmDoctorPayment" onclick="executeDoctorDirectPayment()">
+            <i class="fa-solid fa-circle-check me-1"></i> Xác Nhận Đã Nhận Tiền & In Đơn
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- MODAL IN ĐƠN THUỐC & PHIẾU KHÁM (A4/A5 PRINT PREVIEW) -->
   <div class="modal fade" id="printPrescriptionModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
       <div class="modal-content">
-        <div class="modal-header bg-light">
-          <h5 class="modal-title fw-bold"><i class="fa-solid fa-print me-2 text-primary"></i>Bản In Phiếu Khám & Đơn Thuốc Bệnh Nhân</h5>
+        <div class="modal-header bg-light py-2">
+          <h5 class="modal-title fw-bold text-primary fs-6"><i class="fa-solid fa-file-prescription me-2"></i>Bản In Đơn Thuốc Điện Tử Khổ A5</h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
         <div class="modal-body p-4" id="printArea">
           <div class="text-center border-bottom pb-3 mb-3">
-            <h4 class="fw-bold text-primary mb-1">PHÒNG KHÁM ĐA KHOA QUỐC TẾ CLINOVA</h4>
+            <h4 class="fw-bold text-primary mb-1" style="font-size: 18px;">PHÒNG KHÁM ĐA KHOA QUỐC TẾ CLINOVA</h4>
             <div class="small text-muted">Địa chỉ: 123 Đường Y Tế, Phường 1, TP. Hồ Chí Minh | Hotline: 1900 6868</div>
-            <h5 class="fw-bold mt-3 text-dark text-uppercase">PHIẾU KHÁM BỆNH & ĐƠN THUỐC</h5>
+            <h5 class="fw-bold mt-2 text-dark text-uppercase" style="letter-spacing: 0.5px;">ĐƠN THUỐC ĐIỆN TỬ</h5>
             <div class="small text-muted" id="printExamTime">Ngày khám: --/--/----</div>
           </div>
 
           <div class="row g-2 mb-3 small">
-            <div class="col-6"><b>Họ và tên bệnh nhân:</b> <span id="printPatientName">---</span></div>
+            <div class="col-6"><b>Họ và tên bệnh nhân:</b> <span id="printPatientName" class="fw-bold text-dark">---</span></div>
             <div class="col-3"><b>Giới tính:</b> <span id="printPatientGender">---</span></div>
             <div class="col-3"><b>Năm sinh:</b> <span id="printPatientDob">---</span></div>
             <div class="col-6"><b>Số điện thoại:</b> <span id="printPatientPhone">---</span></div>
@@ -709,19 +776,19 @@
             <div class="col-12"><b>Địa chỉ:</b> <span id="printPatientAddress">---</span></div>
           </div>
 
-          <div class="p-3 bg-light rounded-2 border mb-3 small">
+          <div class="p-2 bg-light rounded-2 border mb-3 small">
             <div class="mb-1"><b>Triệu chứng:</b> <span id="printTrieuChung">---</span></div>
-            <div class="mb-1"><b>Chẩn đoán:</b> <span class="fw-bold text-primary" id="printChanDoan">---</span></div>
-            <div><b>Lời dặn sau khám của bác sĩ:</b> <span class="text-dark" id="printHuongDan">---</span></div>
+            <div class="mb-1"><b>Chẩn đoán xác định:</b> <span class="fw-bold text-primary" id="printChanDoan">---</span></div>
+            <div><b>Lời dặn dò của bác sĩ:</b> <span class="text-dark fst-italic" id="printHuongDan">---</span></div>
           </div>
 
           <h6 class="fw-bold mb-2 small text-uppercase"><i class="fa-solid fa-pills me-1 text-primary"></i>Danh mục thuốc chỉ định:</h6>
-          <table class="table table-sm table-bordered small mb-4">
+          <table class="table table-sm table-bordered small mb-3 align-middle">
             <thead class="table-light">
               <tr>
                 <th style="width: 40px;" class="text-center">STT</th>
                 <th>Tên thuốc & Hàm lượng</th>
-                <th style="width: 80px;" class="text-center">Số lượng</th>
+                <th style="width: 100px;" class="text-center">Số lượng</th>
                 <th>Liều dùng & Hướng dẫn sử dụng</th>
               </tr>
             </thead>
@@ -730,25 +797,23 @@
             </tbody>
           </table>
 
-          <div class="row text-center mt-4 pt-3">
+          <div class="row text-center mt-4 pt-2">
             <div class="col-6">
               <div class="small text-muted">Bệnh nhân / Người nhà</div>
               <div class="small text-muted fst-italic">(Ký và ghi rõ họ tên)</div>
             </div>
             <div class="col-6">
-              <div class="small text-muted">Bác sĩ khám bệnh</div>
+              <div class="small text-muted">Bác sĩ điều trị</div>
               <div class="small text-muted fst-italic">(Ký và ghi rõ họ tên)</div>
-              <div class="fw-bold mt-4 pt-4 text-primary" id="printDoctorName">BS. Chuyên Khoa</div>
+              <div class="fw-bold mt-4 pt-3 text-primary" id="printDoctorName">BS. Chuyên Khoa</div>
             </div>
           </div>
         </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
-          <button type="button" class="btn btn-primary px-4" onclick="window.print()"><i class="fa-solid fa-print me-1"></i> In Ngay</button>
-        </div>
-      </div>
-    </div>
-  </div>
+        <div class="modal-footer py-2">
+          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Đóng</button>
+          <button type="button" class="btn btn-primary btn-sm px-4 fw-semibold shadow-sm" onclick="window.print()">
+            <i class="fa-solid fa-print me-1"></i> In Ngay (A5)
+          </button>
         </div>
       </div>
     </div>
@@ -1226,6 +1291,13 @@
       const tbody = document.getElementById("prescriptionTableBody");
       const notice = document.getElementById("noMedicineNotice");
       if (notice) notice.style.display = "none";
+
+      // Tự động kích hoạt Tab 2 (Kê đơn & Hoàn tất khám) nếu đang ở Tab Chuyển phòng
+      const tabB = document.getElementById("branch-b-tab");
+      if (tabB && !tabB.classList.contains("active")) {
+        const bsTab = new bootstrap.Tab(tabB);
+        bsTab.show();
+      }
 
       const tr = document.createElement("tr");
       const rowId = "med-row-" + Date.now() + "-" + Math.floor(Math.random() * 1000);
@@ -1735,8 +1807,11 @@
         lastSavedPhieuData = {
           phieu_kham_id: data.phieu_kham_id,
           patient_name: document.getElementById("currentPatientName").textContent,
-          dob: document.getElementById("currentPatientDob").textContent,
-          bhyt: document.getElementById("currentPatientBhyt").textContent,
+          dob: document.getElementById("currentPatientDob") ? document.getElementById("currentPatientDob").textContent : "",
+          gender: document.getElementById("currentPatientGender") ? document.getElementById("currentPatientGender").textContent : "",
+          phone: document.getElementById("currentPatientPhone") ? document.getElementById("currentPatientPhone").textContent : "",
+          address: document.getElementById("currentPatientAddress") ? document.getElementById("currentPatientAddress").textContent : "",
+          bhyt: document.getElementById("currentPatientBhyt") ? document.getElementById("currentPatientBhyt").textContent : "",
           trieu_chung: trieuChung,
           chan_doan: chanDoan,
           huong_dan: huongDan,
@@ -1757,6 +1832,13 @@
 
         // Tự động mở modal in phiếu khám & đơn thuốc
         openPrintModal();
+        if (autoTriggerPrintAfterSave) {
+          setTimeout(() => {
+            window.print();
+            autoTriggerPrintAfterSave = false;
+          }, 450);
+        }
+
         resetForm();
         loadQueue();
 
@@ -1764,27 +1846,125 @@
         showToast(err.message, "danger");
       } finally {
         btn.disabled = false;
-        btn.innerHTML = `<i class="fa-solid fa-print me-1"></i> Hoàn Tất Khám & In Đơn Thuốc (A5)`;
+        btn.innerHTML = `<i class="fa-solid fa-check me-1"></i> Hoàn Tất Khám & Chuyển Thanh Toán`;
+      }
+    }
+
+    let autoTriggerPrintAfterSave = false;
+
+    /**
+     * Bác sĩ bấm 1-Click: Lưu phiếu khám và tự động kích hoạt in đơn thuốc ngay
+     */
+    function submitAndPrintDirectly() {
+      const patientId = document.getElementById("selectedPatientId").value;
+      if (!patientId) {
+        showToast("Vui lòng chọn bệnh nhân từ hàng chờ bên trái trước khi lưu!", "warning");
+        return;
+      }
+      autoTriggerPrintAfterSave = true;
+      const form = document.getElementById("examinationForm");
+      if (form) {
+        if (!form.checkValidity()) {
+          form.reportValidity();
+          autoTriggerPrintAfterSave = false;
+          return;
+        }
+        form.requestSubmit();
       }
     }
 
     /**
+     * Xem trước mẫu Đơn thuốc A5 trực tiếp từ dữ liệu đang nhập trên form
+     */
+    function previewDonThuocLive() {
+      const patientId = document.getElementById("selectedPatientId").value;
+      if (!patientId) {
+        showToast("Vui lòng chọn bệnh nhân từ hàng chờ bên trái trước để xem trước đơn thuốc!", "warning");
+        return;
+      }
+
+      const trieuChung = document.getElementById("trieu_chung").value.trim();
+      const chanDoan = document.getElementById("chan_doan").value.trim();
+      const guideEl = document.getElementById("aiGuideOutput") || document.getElementById("huong_dan_sau_kham");
+      const huongDan = guideEl ? guideEl.value.trim() : "";
+
+      // Đọc danh sách thuốc đang kê trên bảng
+      const rows = document.querySelectorAll("#prescriptionTableBody tr");
+      const donThuocs = [];
+      rows.forEach(tr => {
+        const nameInput = tr.querySelector(".med-search-input");
+        const qtyInput = tr.querySelector(".med-qty-input");
+        const dosageInput = tr.querySelector(".med-dosage-input");
+        const unitSpan = tr.querySelector(".med-unit-label");
+        if (nameInput && nameInput.value.trim()) {
+          donThuocs.push({
+            ten_thuoc: nameInput.value.trim(),
+            so_luong: qtyInput ? qtyInput.value : 1,
+            don_vi: unitSpan ? unitSpan.textContent : "Viên",
+            lieu_dung: dosageInput ? dosageInput.value.trim() : "Theo hướng dẫn của bác sĩ"
+          });
+        }
+      });
+
+      const doctorUsername = localStorage.getItem("username") || "Bác sĩ Chuyên khoa";
+
+      // Điền vào modal in
+      document.getElementById("printExamTime").textContent = `Ngày khám: ${new Date().toLocaleDateString('vi-VN')} ${new Date().toLocaleTimeString('vi-VN')}`;
+      document.getElementById("printPatientName").textContent = document.getElementById("currentPatientName").textContent || "---";
+      document.getElementById("printPatientDob").textContent = document.getElementById("currentPatientDob") ? document.getElementById("currentPatientDob").textContent : "---";
+      document.getElementById("printPatientGender").textContent = document.getElementById("currentPatientGender") ? document.getElementById("currentPatientGender").textContent : "---";
+      document.getElementById("printPatientPhone").textContent = document.getElementById("currentPatientPhone") ? document.getElementById("currentPatientPhone").textContent : "---";
+      document.getElementById("printPatientBhyt").textContent = document.getElementById("currentPatientBhyt") ? document.getElementById("currentPatientBhyt").textContent : "---";
+      document.getElementById("printPatientAddress").textContent = document.getElementById("currentPatientAddress") ? document.getElementById("currentPatientAddress").textContent : "---";
+      document.getElementById("printTrieuChung").textContent = trieuChung || "Chưa ghi nhận";
+      document.getElementById("printChanDoan").textContent = chanDoan || "(Đang lập chẩn đoán...)";
+      document.getElementById("printHuongDan").textContent = huongDan || "Uống thuốc đúng liều, tái khám theo chỉ định của bác sĩ.";
+      document.getElementById("printDoctorName").textContent = `BS. ${doctorUsername}`;
+
+      const tbody = document.getElementById("printMedTableBody");
+      tbody.innerHTML = "";
+
+      if (donThuocs.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="4" class="text-center text-muted fst-italic py-3"><i class="fa-solid fa-triangle-exclamation me-1 text-warning"></i> Đơn thuốc chưa có danh mục thuốc. Bấm "+ Thêm thuốc vào đơn" để kê đơn.</td></tr>`;
+      } else {
+        donThuocs.forEach((d, idx) => {
+          const tr = document.createElement("tr");
+          tr.innerHTML = `
+            <td class="text-center">${idx + 1}</td>
+            <td class="fw-bold text-dark">${escapeHtml(d.ten_thuoc)}</td>
+            <td class="text-center fw-semibold">${d.so_luong} ${escapeHtml(d.don_vi || '')}</td>
+            <td>${escapeHtml(d.lieu_dung || 'Theo hướng dẫn của bác sĩ')}</td>
+          `;
+          tbody.appendChild(tr);
+        });
+      }
+
+      const modal = new bootstrap.Modal(document.getElementById("printPrescriptionModal"));
+      modal.show();
+    }
+
     /**
-     * Mở modal in phiếu khám & đơn thuốc
+     * Mở modal in phiếu khám & đơn thuốc sau khi lưu
      */
     function openPrintModal() {
       if (!lastSavedPhieuData) {
-        showToast("Chưa có phiếu khám nào vừa hoàn tất để in", "warning");
+        previewDonThuocLive();
         return;
       }
 
       document.getElementById("printExamTime").textContent = `Ngày khám: ${new Date().toLocaleDateString('vi-VN')} ${new Date().toLocaleTimeString('vi-VN')}`;
       document.getElementById("printPatientName").textContent = lastSavedPhieuData.patient_name || "---";
       document.getElementById("printPatientDob").textContent = lastSavedPhieuData.dob || "---";
+      document.getElementById("printPatientGender").textContent = lastSavedPhieuData.gender || "---";
+      document.getElementById("printPatientPhone").textContent = lastSavedPhieuData.phone || "---";
       document.getElementById("printPatientBhyt").textContent = lastSavedPhieuData.bhyt || "---";
+      document.getElementById("printPatientAddress").textContent = lastSavedPhieuData.address || "---";
       document.getElementById("printTrieuChung").textContent = lastSavedPhieuData.trieu_chung || "---";
       document.getElementById("printChanDoan").textContent = lastSavedPhieuData.chan_doan || "---";
       document.getElementById("printHuongDan").textContent = lastSavedPhieuData.huong_dan || "Uống thuốc đúng liều, tái khám theo chỉ định.";
+      
+      const doctorUsername = localStorage.getItem("username") || "Bác sĩ Chuyên khoa";
+      document.getElementById("printDoctorName").textContent = `BS. ${doctorUsername}`;
 
       const tbody = document.getElementById("printMedTableBody");
       tbody.innerHTML = "";
@@ -1797,7 +1977,7 @@
           tr.innerHTML = `
             <td class="text-center">${idx + 1}</td>
             <td class="fw-bold text-dark">${escapeHtml(d.ten_thuoc)}</td>
-            <td class="text-center">${d.so_luong}</td>
+            <td class="text-center fw-semibold">${d.so_luong}</td>
             <td>${escapeHtml(d.lieu_dung || 'Theo hướng dẫn của bác sĩ')}</td>
           `;
           tbody.appendChild(tr);
@@ -1806,6 +1986,150 @@
 
       const modal = new bootstrap.Modal(document.getElementById("printPrescriptionModal"));
       modal.show();
+    }
+
+    let currentDocPayTotal = 100000;
+
+    /**
+     * Mở modal thu viện phí qua chuyển khoản VietQR ngay tại phòng khám của bác sĩ
+     */
+    function openDoctorDirectPaymentModal() {
+      const patientId = document.getElementById("selectedPatientId").value;
+      if (!patientId) {
+        showToast("Vui lòng chọn bệnh nhân từ hàng chờ bên trái trước khi thu tiền!", "warning");
+        return;
+      }
+
+      const patientName = document.getElementById("currentPatientName").textContent || "Bệnh nhân";
+      const lichKhamId = document.getElementById("selectedLichKhamId").value || "0";
+
+      // Tính tiền thuốc từ các dòng đang kê
+      let tienThuoc = 0;
+      const rows = document.querySelectorAll("#prescriptionTableBody tr");
+      rows.forEach(tr => {
+        const qtyInput = tr.querySelector(".med-qty-input");
+        const qty = parseInt(qtyInput ? qtyInput.value : 0) || 0;
+        tienThuoc += qty * 15000;
+      });
+
+      const tienKham = 100000;
+      currentDocPayTotal = tienKham + tienThuoc;
+
+      document.getElementById("docPayPatientName").textContent = patientName;
+      document.getElementById("docPayMedTotal").textContent = `${tienThuoc.toLocaleString('vi-VN')} đ`;
+      document.getElementById("docPayGrandTotal").textContent = `${currentDocPayTotal.toLocaleString('vi-VN')} đ`;
+
+      const transferContent = `TT PK${lichKhamId} ${patientName}`.trim();
+      const contentBadge = document.getElementById("docPayTransferContent");
+      if (contentBadge) contentBadge.textContent = transferContent;
+
+      const qrUrl = `https://img.vietqr.io/image/970422-1234567890-compact.png?amount=${currentDocPayTotal}&addInfo=${encodeURIComponent(transferContent)}&accountName=PHONG%20KHAM%20CLINOVA`;
+      const qrImg = document.getElementById("docPayQrImg");
+      if (qrImg) qrImg.src = qrUrl;
+
+      const modal = new bootstrap.Modal(document.getElementById("doctorDirectPaymentModal"));
+      modal.show();
+    }
+
+    /**
+     * Bác sĩ xác nhận đã nhận tiền chuyển khoản về tài khoản bệnh viện
+     */
+    async function executeDoctorDirectPayment() {
+      const btn = document.getElementById("btnConfirmDoctorPayment");
+      const patientId = document.getElementById("selectedPatientId").value;
+      const lichKhamId = document.getElementById("selectedLichKhamId").value;
+
+      if (!patientId) {
+        showToast("Không tìm thấy thông tin bệnh nhân!", "danger");
+        return;
+      }
+
+      btn.disabled = true;
+      btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin me-1"></i> Đang xác nhận thanh toán...`;
+
+      try {
+        // 1. Nếu phiếu khám chưa được lưu, tự động lưu phiếu khám trước
+        let phieuKhamId = lastSavedPhieuData ? lastSavedPhieuData.phieu_kham_id : null;
+        if (!phieuKhamId) {
+          const trieuChung = document.getElementById("trieu_chung").value.trim();
+          const chanDoan = document.getElementById("chan_doan").value.trim();
+          const guideEl = document.getElementById("aiGuideOutput") || document.getElementById("huong_dan_sau_kham");
+          const huongDan = guideEl ? guideEl.value.trim() : "";
+          const aiSummary = document.getElementById("aiSummaryOutput") ? document.getElementById("aiSummaryOutput").innerText : "";
+
+          // Thu thập thuốc
+          const rows = document.querySelectorAll("#prescriptionTableBody tr");
+          const donThuocs = [];
+          rows.forEach(r => {
+            const medId = r.querySelector(".med-id-val") ? r.querySelector(".med-id-val").value : null;
+            const medQty = r.querySelector(".med-qty-input") ? r.querySelector(".med-qty-input").value : 1;
+            const medDosage = r.querySelector(".med-dosage-input") ? r.querySelector(".med-dosage-input").value : "";
+            if (medId) {
+              donThuocs.push({ thuoc_id: parseInt(medId), so_luong: parseInt(medQty) || 1, lieu_dung: medDosage });
+            }
+          });
+
+          const pkRes = await fetch("/api/v1/phieu-khams/", {
+            method: "POST",
+            headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+            body: JSON.stringify({
+              benh_nhan_id: parseInt(patientId),
+              lich_kham_id: lichKhamId ? parseInt(lichKhamId) : null,
+              trieu_chung: trieuChung || "Khám bệnh",
+              chan_doan: chanDoan || "Chẩn đoán lâm sàng",
+              ai_summary: aiSummary,
+              huong_dan_sau_kham: huongDan,
+              don_thuocs: donThuocs
+            })
+          });
+
+          if (!pkRes.ok) {
+            const errData = await pkRes.json().catch(() => ({}));
+            throw new Error(errData.detail || "Không thể lưu phiếu khám trước khi thanh toán");
+          }
+          const pkData = await pkRes.json();
+          phieuKhamId = pkData.phieu_kham_id;
+        }
+
+        // 2. Gọi API xác nhận thanh toán chuyển khoản (POST /api/v1/hoa-dons/)
+        const hdRes = await fetch("/api/v1/hoa-dons/", {
+          method: "POST",
+          headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+          body: JSON.stringify({
+            phieu_kham_id: phieuKhamId,
+            hinh_thuc_tt: "chuyen_khoan",
+            tong_tien: currentDocPayTotal,
+            trang_thai: "da_thanh_toan"
+          })
+        });
+
+        if (!hdRes.ok) {
+          const errData = await hdRes.json().catch(() => ({}));
+          throw new Error(errData.detail || "Lỗi khi xác nhận thanh toán");
+        }
+
+        // 3. Đóng modal thanh toán
+        const payModalEl = document.getElementById("doctorDirectPaymentModal");
+        const payModal = bootstrap.Modal.getInstance(payModalEl);
+        if (payModal) payModal.hide();
+
+        showToast("🎉 Đã thu tiền chuyển khoản thành công về tài khoản Bệnh viện Clinova!", "success");
+
+        // 4. Mở modal in đơn thuốc và kích hoạt in
+        openPrintModal();
+        setTimeout(() => {
+          window.print();
+        }, 500);
+
+        resetForm();
+        loadQueue();
+
+      } catch (err) {
+        showToast(err.message, "danger");
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = `<i class="fa-solid fa-circle-check me-1"></i> Xác Nhận Đã Nhận Tiền & In Đơn`;
+      }
     }
 
     function resetForm() {

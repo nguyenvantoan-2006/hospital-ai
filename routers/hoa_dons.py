@@ -1,18 +1,36 @@
-# routers/hoa_dons.py
-# Router quản lý Hóa đơn & Thanh toán viện phí, Quầy Dược (FR-07)
-
 from typing import List, Literal, Optional
 from datetime import datetime
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Header
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
+import jwt
 
 from database import get_db
 import models
 import schemas
-from routers.auth import get_current_user, require_roles
+from routers.auth import get_current_user, require_roles, SECRET_KEY, ALGORITHM
 
 router = APIRouter()
+
+def get_optional_current_user(
+    authorization: Optional[str] = Header(None),
+    db: Session = Depends(get_db)
+) -> Optional[models.User]:
+    """
+    Trích xuất thông tin người dùng từ JWT Token nếu có trong Authorization Header.
+    Phục vụ kiểm soát RBAC chặt chẽ khi có phiên đăng nhập của Bác sĩ / Kế toán / Lễ tân.
+    """
+    if not authorization or not authorization.startswith("Bearer "):
+        return None
+    token = authorization[len("Bearer "):].strip()
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        username = payload.get("sub")
+        if not username:
+            return None
+        return db.query(models.User).filter(models.User.username == username).first()
+    except Exception:
+        return None
 
 # ─── PYDANTIC SCHEMAS CHO INPUT ──────────────────────────────────────────────
 class HoaDonCreateInput(BaseModel):
@@ -117,12 +135,30 @@ def get_phieu_kham_cho_thanh_toan(db: Session = Depends(get_db)):
 # ════════════════════════════════════════════════════════════════════════════════
 
 @router.post("/", status_code=status.HTTP_201_CREATED)
-def create_or_confirm_hoa_don(data: HoaDonCreateInput, db: Session = Depends(get_db)):
+def create_or_confirm_hoa_don(
+    data: HoaDonCreateInput, 
+    db: Session = Depends(get_db),
+    current_user: Optional[models.User] = Depends(get_optional_current_user)
+):
     """
     Tạo hoặc Xác nhận thanh toán hóa đơn cho phiếu khám (phieu_kham_id).
     Bọc trong Transaction an toàn, tự động trừ kho nếu có kê đơn thuốc.
+    RBAC:
+      - Bác sĩ (bac_si) CÓ QUYỀN thu tiền NHƯNG CHỈ qua chuyển khoản / QR về ngân hàng bệnh viện.
+      - Chặn bác sĩ thu tiền mặt (tien_mat) với mã lỗi 403 Forbidden.
+      - Kế toán / Thu ngân / Lễ tân / Admin được thu cả tiền mặt và chuyển khoản.
     """
     try:
+        # 0. Kiểm tra phân quyền thu tiền của Bác sĩ (RBAC Financial Security)
+        if current_user:
+            user_role = current_user.role.value if hasattr(current_user.role, "value") else str(current_user.role)
+            if user_role == "bac_si":
+                if data.hinh_thuc_tt == "tien_mat":
+                    raise HTTPException(
+                        status_code=status.HTTP_403_FORBIDDEN,
+                        detail="Bác sĩ chỉ có quyền thu tiền qua chuyển khoản / VietQR về tài khoản ngân hàng của bệnh viện. Bác sĩ không được phép thu tiền mặt! Tiền mặt vui lòng nộp tại Quầy Thu Ngân / Kế toán."
+                    )
+
         # 1. Kiểm tra phiếu khám
         phieu_kham = db.query(models.PhieuKham).filter(models.PhieuKham.id == data.phieu_kham_id).first()
         if not phieu_kham:
@@ -163,6 +199,22 @@ def create_or_confirm_hoa_don(data: HoaDonCreateInput, db: Session = Depends(get
 
         db.commit()
         db.refresh(hoa_don)
+
+        # 5. Ghi log kiểm toán tài chính nếu có phiên đăng nhập
+        if current_user:
+            try:
+                user_role = current_user.role.value if hasattr(current_user.role, "value") else str(current_user.role)
+                audit = models.AuditLog(
+                    user_id=current_user.id,
+                    action="CONFIRM_PAYMENT",
+                    target_table="hoa_dons",
+                    target_id=hoa_don.id,
+                    mo_ta=f"Người dùng {current_user.username} ({user_role}) xác nhận thu viện phí {tong_tien:,.0f}đ (Hình thức: {data.hinh_thuc_tt}) cho Phiếu khám #{data.phieu_kham_id}"
+                )
+                db.add(audit)
+                db.commit()
+            except Exception:
+                pass
 
         return {
             "message": "Xác nhận thanh toán hóa đơn thành công!",
