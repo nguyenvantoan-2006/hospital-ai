@@ -167,6 +167,38 @@ def run_tests():
     me_res = session.get(f"{BASE_URL}/api/v1/auth/me", headers=admin_headers)
     check("Lấy thông tin tài khoản hiện tại /me", me_res.status_code == 200 and me_res.json().get("username") == "admin")
 
+    # 3.7 Quên mật khẩu: Yêu cầu OTP qua Email
+    fp_req = session.post(f"{BASE_URL}/api/v1/auth/forgot-password", json={"identity": "bacsi"})
+    check("Yêu cầu gửi mã OTP quên mật khẩu (200)", fp_req.status_code == 200, f"Status: {fp_req.status_code}")
+
+    # 3.8 Xác thực OTP sai -> nhận lỗi 400
+    vo_fail = session.post(f"{BASE_URL}/api/v1/auth/verify-otp", json={"identity": "bacsi", "otp": "000000"})
+    check("Từ chối mã OTP sai (400)", vo_fail.status_code == 400, f"Status: {vo_fail.status_code}")
+
+    # Lấy mã OTP trong bộ đệm hệ thống để test
+    from routers.auth import _staff_otp_store
+    real_otp = _staff_otp_store.get("bacsi", {}).get("otp") if "bacsi" in _staff_otp_store else None
+    
+    reset_tok = None
+    if real_otp:
+        # 3.9 Xác thực OTP đúng
+        vo_ok = session.post(f"{BASE_URL}/api/v1/auth/verify-otp", json={"identity": "bacsi", "otp": real_otp})
+        check("Xác thực OTP đúng thành công (200)", vo_ok.status_code == 200, f"Status: {vo_ok.status_code}")
+        reset_tok = vo_ok.json().get("reset_token")
+
+    if reset_tok:
+        # 3.10 Đặt lại mật khẩu mới
+        rp_res = session.post(f"{BASE_URL}/api/v1/auth/reset-password", json={"reset_token": reset_tok, "new_password": "BacSiNewPass@123"})
+        check("Đặt lại mật khẩu mới qua OTP thành công (200)", rp_res.status_code == 200, f"Status: {rp_res.status_code}")
+
+        # Đăng nhập bằng mật khẩu mới
+        login_new = session.post(f"{BASE_URL}/api/v1/auth/login", json={"username": "bacsi", "password": "BacSiNewPass@123"})
+        check("Đăng nhập với mật khẩu mới thành công (200)", login_new.status_code == 200, f"Status: {login_new.status_code}")
+
+    # 3.11 Admin đặt lại mật khẩu cho Bác sĩ (ID=404)
+    admin_reset = session.post(f"{BASE_URL}/api/v1/admin/users/404/reset-password", json={"new_password": "BacSi@2024!"}, headers=admin_headers)
+    check("Admin đặt lại mật khẩu cho bác sĩ (200)", admin_reset.status_code == 200, f"Status: {admin_reset.status_code}")
+
     # ──────────────────────────────────────────────────────────────────────────
     # 4. KIỂM TRA QUẢN LÝ BỆNH NHÂN (CRUD & SEARCH & DUPLICATE)
     # ──────────────────────────────────────────────────────────────────────────
