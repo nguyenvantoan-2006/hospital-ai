@@ -434,7 +434,7 @@
     let allPatients = [];
 
     document.addEventListener("DOMContentLoaded", () => {
-      if (initAuthGuard(["le_tan", "bac_si", "admin"])) {
+      if (initAuthGuard(["le_tan", "bac_si", "ke_toan", "admin"])) {
         patientModal = new bootstrap.Modal(document.getElementById("patientModal"));
         fetchPatients();
       }

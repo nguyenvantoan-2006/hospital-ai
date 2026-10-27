@@ -521,7 +521,7 @@
     let currentSelectedPhieu = null;
 
     document.addEventListener("DOMContentLoaded", () => {
-      if (initAuthGuard(["admin", "ke_toan", "le_tan", "bac_si"])) {
+      if (initAuthGuard(["admin", "ke_toan"])) {
         const role = localStorage.getItem("role");
         if (role === "bac_si") {
           const noticeEl = document.getElementById("doctorPaymentNotice");
