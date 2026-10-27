@@ -598,7 +598,7 @@
       if (icon) icon.classList.add('fa-spin');
 
       try {
-        const res = await fetch(`${API_BASE}/hoa-dons/don-thuoc-cho-phat`);
+        const res = await fetch(`${API_BASE}/hoa-dons/don-thuoc-cho-phat`, { headers: getAuthHeaders() });
         allPrescriptions = await res.json();
 
         // Cập nhật KPIs
@@ -809,7 +809,7 @@
       try {
         const res = await fetch(`${API_BASE}/hoa-dons/xac-nhan-phat-thuoc`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
           body: JSON.stringify(payload)
         });
 

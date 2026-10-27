@@ -557,7 +557,7 @@
       stateDiv.innerHTML = `<i class="fa-solid fa-circle-notch fa-spin fs-4 text-primary mb-2 d-block"></i><span>Đang tải danh sách chờ thanh toán...</span>`;
 
       try {
-        const response = await fetch(`${API_HOA_DON_URL}cho-thanh-toan`);
+        const response = await fetch(`${API_HOA_DON_URL}cho-thanh-toan`, { headers: getAuthHeaders() });
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
         const data = await response.json();
@@ -607,7 +607,7 @@
       tbody.innerHTML = "";
 
       try {
-        const response = await fetch(API_HOA_DON_URL);
+        const response = await fetch(API_HOA_DON_URL, { headers: getAuthHeaders() });
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
         const invoices = await response.json();

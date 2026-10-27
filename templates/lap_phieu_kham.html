@@ -1201,7 +1201,7 @@
       try {
         const res = await fetch("/api/ai/summary", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
           body: JSON.stringify({ benh_nhan_id: parseInt(patientId) })
         });
 
@@ -1792,7 +1792,7 @@
 
         const res = await fetch("/api/v1/phieu-khams/", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
           body: JSON.stringify(payload)
         });
 
