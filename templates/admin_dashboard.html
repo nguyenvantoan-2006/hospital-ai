@@ -225,7 +225,15 @@
   <div class="modal-header bg-primary text-white border-0"><h5 class="modal-title fw-bold"><i class="fa-solid fa-user-plus me-2"></i>Thêm Tài khoản</h5><button class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
   <div class="modal-body p-4"><form id="fAddUser" onsubmit="handleAddUser(event)">
     <div class="mb-3"><label class="form-label small fw-bold">Username *</label><input id="uName" class="form-control" required placeholder="vd: bacsi02"></div>
-    <div class="mb-3"><label class="form-label small fw-bold">Mật khẩu *</label><input id="uPass" type="password" class="form-control" required placeholder="Tối thiểu 6 ký tự"></div>
+    <div class="mb-3">
+      <label class="form-label small fw-bold">Mật khẩu *</label>
+      <div class="input-group">
+        <input id="uPass" type="password" class="form-control" required placeholder="Tối thiểu 6 ký tự" autocomplete="new-password">
+        <button class="btn btn-outline-secondary" type="button" onclick="togglePasswordVisibility('uPass', this)" title="Xem/Ẩn mật khẩu">
+          <i class="fa-solid fa-eye"></i>
+        </button>
+      </div>
+    </div>
     <div class="mb-3"><label class="form-label small fw-bold">Vai trò *</label><select id="uRole" class="form-select"><option value="le_tan">📋 Lễ tân</option><option value="bac_si">🩺 Bác sĩ</option><option value="ke_toan">💰 Kế toán</option><option value="admin">👑 Admin</option></select></div>
     <div class="mb-3"><label class="form-label small fw-bold">Email</label><input id="uEmail" type="email" class="form-control" placeholder="email@clinic.com"></div>
     <button id="btnAddUser" type="submit" class="btn w-100 text-white fw-bold py-2" style="background:linear-gradient(135deg,#1A73E8,#1557B0)"><i class="fa-solid fa-floppy-disk me-2"></i>Lưu Tài khoản</button>
@@ -237,7 +245,12 @@
   <div class="modal-header bg-warning text-dark border-0"><h5 class="modal-title fw-bold"><i class="fa-solid fa-key me-2"></i>Đặt lại MK</h5><button class="btn-close" data-bs-dismiss="modal"></button></div>
   <div class="modal-body p-4">
     <input type="hidden" id="rUId"><p class="small text-muted mb-2">Tài khoản: <strong id="rUName"></strong></p>
-    <input id="rPwd" type="password" class="form-control mb-3" placeholder="Mật khẩu mới...">
+    <div class="input-group mb-3">
+      <input id="rPwd" type="password" class="form-control" placeholder="Mật khẩu mới..." autocomplete="new-password">
+      <button class="btn btn-outline-secondary" type="button" onclick="togglePasswordVisibility('rPwd', this)" title="Xem/Ẩn mật khẩu">
+        <i class="fa-solid fa-eye"></i>
+      </button>
+    </div>
     <button class="btn btn-warning w-100 fw-bold" onclick="submitReset()"><i class="fa-solid fa-rotate me-1"></i>Xác nhận</button>
   </div>
 </div></div></div>
@@ -251,7 +264,15 @@
       <div class="col-6"><label class="form-label small fw-bold">Tên đăng nhập (Username) *</label><input id="dUsername" class="form-control" placeholder="vd: Nguyenvantoan" required></div>
     </div>
     <div class="row g-2 mb-2">
-      <div class="col-6"><label class="form-label small fw-bold">Mật khẩu khởi tạo *</label><input id="dPassword" type="password" class="form-control" placeholder="Mật khẩu tài khoản..." required></div>
+      <div class="col-6">
+        <label class="form-label small fw-bold">Mật khẩu khởi tạo *</label>
+        <div class="input-group">
+          <input id="dPassword" type="password" class="form-control" placeholder="Mật khẩu tài khoản..." value="BacSi@2024!" autocomplete="new-password" required>
+          <button class="btn btn-outline-secondary" type="button" onclick="togglePasswordVisibility('dPassword', this)" title="Xem/Ẩn mật khẩu">
+            <i class="fa-solid fa-eye"></i>
+          </button>
+        </div>
+      </div>
       <div class="col-6"><label class="form-label small fw-bold">Học vị</label><input id="dHocVi" class="form-control" value="BS." placeholder="BS. / TS."></div>
     </div>
     <div class="mb-2"><label class="form-label small fw-bold">Họ và tên Bác sĩ *</label><input id="dHoTen" class="form-control" required placeholder="Nguyễn Văn Toàn"></div>
@@ -278,7 +299,15 @@
     <div class="mb-2"><label class="form-label small fw-bold">Họ và tên Bác sĩ *</label><input id="eHoTen" class="form-control" required></div>
     <div class="row g-2 mb-2">
       <div class="col-6"><label class="form-label small fw-bold">Chuyên khoa</label><input id="eChuyenKhoa" class="form-control"></div>
-      <div class="col-6"><label class="form-label small fw-bold">Mật khẩu mới (Tuỳ chọn)</label><input id="ePassword" type="password" class="form-control" placeholder="Để trống nếu không đổi"></div>
+      <div class="col-6">
+        <label class="form-label small fw-bold">Mật khẩu mới (Tuỳ chọn)</label>
+        <div class="input-group">
+          <input id="ePassword" type="password" class="form-control" placeholder="Để trống nếu không đổi" autocomplete="new-password">
+          <button class="btn btn-outline-secondary" type="button" onclick="togglePasswordVisibility('ePassword', this)" title="Xem/Ẩn mật khẩu">
+            <i class="fa-solid fa-eye"></i>
+          </button>
+        </div>
+      </div>
     </div>
     <div class="row g-2 mb-2">
       <div class="col-6"><label class="form-label small fw-bold">Phòng khám</label><input id="ePhong" class="form-control"></div>
