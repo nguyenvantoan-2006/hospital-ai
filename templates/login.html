@@ -206,6 +206,35 @@
       }
     }
 
+    // Hàm xem / ẩn mật khẩu dùng chung cho các input password
+    function togglePasswordVisibility(inputId, btnEl) {
+      try {
+        if (window.event) {
+          window.event.preventDefault();
+          window.event.stopPropagation();
+        }
+        const input = document.getElementById(inputId);
+        if (!input) return;
+        const btn = btnEl || (window.event ? (window.event.currentTarget || window.event.target.closest('button')) : null);
+        const icon = btn ? btn.querySelector('i') : null;
+        
+        if (input.type === 'password') {
+          input.type = 'text';
+          if (icon) {
+            icon.className = 'fa-solid fa-eye-slash text-primary';
+          }
+        } else {
+          input.type = 'password';
+          if (icon) {
+            icon.className = 'fa-solid fa-eye text-secondary';
+          }
+        }
+        input.focus();
+      } catch (err) {
+        console.error('Lỗi toggle mật khẩu:', err);
+      }
+    }
+
     // Bật/tắt hiển thị mật khẩu
     document.getElementById('togglePassword')?.addEventListener('click', function (e) {
       const passwordInput = document.getElementById('password');
@@ -279,11 +308,21 @@
             </p>
             <div class="mb-3">
               <label class="form-label small fw-bold text-secondary">Mật khẩu mới</label>
-              <input type="password" id="fpNewPass" class="form-control" placeholder="Nhập mật khẩu mới">
+              <div class="input-group">
+                <input type="password" id="fpNewPass" class="form-control" placeholder="Nhập mật khẩu mới" autocomplete="new-password">
+                <button class="btn btn-outline-secondary" type="button" onclick="togglePasswordVisibility('fpNewPass', this)" title="Xem/Ẩn mật khẩu">
+                  <i class="fa-solid fa-eye" style="pointer-events: none;"></i>
+                </button>
+              </div>
             </div>
             <div class="mb-3">
               <label class="form-label small fw-bold text-secondary">Xác nhận mật khẩu mới</label>
-              <input type="password" id="fpConfirmPass" class="form-control" placeholder="Nhập lại mật khẩu mới">
+              <div class="input-group">
+                <input type="password" id="fpConfirmPass" class="form-control" placeholder="Nhập lại mật khẩu mới" autocomplete="new-password">
+                <button class="btn btn-outline-secondary" type="button" onclick="togglePasswordVisibility('fpConfirmPass', this)" title="Xem/Ẩn mật khẩu">
+                  <i class="fa-solid fa-eye" style="pointer-events: none;"></i>
+                </button>
+              </div>
             </div>
             <button type="button" id="btnSaveNewPass" onclick="handleSaveNewPass()" class="btn btn-primary w-100 fw-bold py-2 rounded-3">
               <i class="fa-solid fa-lock me-2"></i> Cập Nhật Mật Khẩu
