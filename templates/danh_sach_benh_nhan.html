@@ -308,7 +308,7 @@
       <div class="p-3 bg-light border-bottom d-flex align-items-center justify-content-between gap-3 flex-wrap">
         <div class="input-group style-search style-input" style="max-width: 420px;">
           <span class="input-group-text bg-white border-end-0"><i class="fa-solid fa-magnifying-glass text-muted"></i></span>
-          <input type="text" id="searchInput" class="form-control border-start-0 ps-0" placeholder="Tìm tên, Số điện thoại, CCCD hoặc BHYT..." onkeyup="handleSearchKeyup(event)" />
+          <input type="text" id="searchInput" class="form-control border-start-0 ps-0" placeholder="Tìm theo ID (#77), Họ tên, Số điện thoại, CCCD hoặc BHYT..." onkeyup="handleSearchKeyup(event)" />
           <button class="btn btn-primary" onclick="fetchPatients()">Tìm kiếm</button>
         </div>
         <div class="text-muted small fw-medium">
@@ -465,7 +465,14 @@
         document.getElementById("totalPatientCount").textContent = data.length;
 
         if (data.length === 0) {
-          loadingState.innerHTML = `<span class="text-muted">Chưa có bệnh nhân nào phù hợp trong hệ thống</span>`;
+          loadingState.innerHTML = `
+            <div class="py-5 text-center">
+              <i class="fa-solid fa-user-slash fs-2 text-secondary mb-2 d-block"></i>
+              <strong class="text-danger fs-6">Không tìm thấy bệnh nhân nào!</strong>
+              <div class="small text-muted mt-1">Không có hồ sơ nào khớp với mã số hoặc từ khóa: "<span class="fw-bold text-dark">${escapeHtml(q)}</span>". Vui lòng kiểm tra lại ID bệnh nhân.</div>
+            </div>
+          `;
+          loadingState.style.display = "block";
           return;
         }
 
