@@ -1,21 +1,30 @@
 
 // Chức năng bật/tắt hiển thị mật khẩu bằng con mắt
 function togglePasswordVisibility(inputId, btnEl) {
-  const input = document.getElementById(inputId);
-  if (!input) return;
-  const icon = btnEl ? btnEl.querySelector("i") : null;
-  if (input.type === "password") {
-    input.type = "text";
-    if (icon) {
-      icon.classList.remove("fa-eye");
-      icon.classList.add("fa-eye-slash");
+  try {
+    if (window.event) {
+      window.event.preventDefault();
+      window.event.stopPropagation();
     }
-  } else {
-    input.type = "password";
-    if (icon) {
-      icon.classList.remove("fa-eye-slash");
-      icon.classList.add("fa-eye");
+    const input = document.getElementById(inputId);
+    if (!input) return;
+    const btn = btnEl || (window.event ? (window.event.currentTarget || window.event.target.closest('button')) : null);
+    const icon = btn ? btn.querySelector('i') : null;
+    
+    if (input.type === 'password') {
+      input.type = 'text';
+      if (icon) {
+        icon.className = 'fa-solid fa-eye-slash text-primary';
+      }
+    } else {
+      input.type = 'password';
+      if (icon) {
+        icon.className = 'fa-solid fa-eye text-secondary';
+      }
     }
+    input.focus();
+  } catch (err) {
+    console.error('Lỗi toggle mật khẩu:', err);
   }
 }
 
