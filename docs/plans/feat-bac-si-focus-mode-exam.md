@@ -60,3 +60,4 @@
 
 ## 3. Rủi ro & Lưu ý
 - Đảm bảo khi mở rộng `col-12`, các bảng thuốc, bảng dịch vụ cận lâm sàng và khung AI thích ứng tốt với độ rộng mới (responsive).
+
