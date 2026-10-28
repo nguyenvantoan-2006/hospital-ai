@@ -1,3 +1,33 @@
+
+// Chức năng bật/tắt hiển thị mật khẩu bằng con mắt
+function togglePasswordVisibility(inputId, btnEl) {
+  try {
+    if (window.event) {
+      window.event.preventDefault();
+      window.event.stopPropagation();
+    }
+    const input = document.getElementById(inputId);
+    if (!input) return;
+    const btn = btnEl || (window.event ? (window.event.currentTarget || window.event.target.closest('button')) : null);
+    const icon = btn ? btn.querySelector('i') : null;
+    
+    if (input.type === 'password') {
+      input.type = 'text';
+      if (icon) {
+        icon.className = 'fa-solid fa-eye-slash text-primary';
+      }
+    } else {
+      input.type = 'password';
+      if (icon) {
+        icon.className = 'fa-solid fa-eye text-secondary';
+      }
+    }
+    input.focus();
+  } catch (err) {
+    console.error('Lỗi toggle mật khẩu:', err);
+  }
+}
+
 /* admin.js - Logic cho Admin Dashboard */
 const B = "http://localhost:8000/api/v1/admin";
 const RL = { admin:"👑 Admin", le_tan:"📋 Lễ tân", bac_si:"🩺 Bác sĩ", ke_toan:"💰 Kế toán" };
@@ -148,6 +178,14 @@ async function toggleStatus(id, cur) {
   catch(e){ toast("❌ "+e.message,"danger"); }
 }
 
+function openResetDoc(userId, name) {
+  if (!userId) {
+    toast("⚠️ Bác sĩ này chưa liên kết tài khoản hệ thống!", "warning");
+    return;
+  }
+  openReset(userId, name);
+}
+
 function openReset(id, name) {
   document.getElementById("rUId").value=id;
   document.getElementById("rUName").innerText=name;
@@ -192,6 +230,7 @@ async function loadDoctors() {
           <td class="small">${esc(d.phong_kham||"---")}</td>
           <td class="small text-muted">${esc(d.lich_truc||"---")}</td>
           <td class="text-center">
+            <button class="btn btn-xs btn-outline-warning py-0 px-2 me-1" onclick="openResetDoc(${d.user_id}, '${esc(d.ho_ten)} (${esc(d.username)}')")" title="Đặt lại mật khẩu Bác sĩ"><i class="fa-solid fa-key"></i></button>
             <button class="btn btn-xs btn-outline-primary py-0 px-2 me-1" onclick="openEditDoc(${d.id})" title="Sửa thông tin"><i class="fa-solid fa-pen"></i></button>
             <button class="btn btn-xs btn-danger py-0 px-2" onclick="openDeleteDocModal(${d.id})" title="Xóa / Ngừng hoạt động"><i class="fa-solid fa-trash me-1"></i>Xóa</button>
           </td>

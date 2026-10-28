@@ -33,7 +33,17 @@ def read_benh_nhans(
     query = db.query(models.BenhNhan)
 
     if q and q.strip():
-        search_str = f"%{q.strip()}%"
+        val = q.strip()
+        clean_num = val.lstrip("#").upper().replace("BN", "").strip()
+        # Nếu nhập ID/Mã số thuần túy (như 77, #77, BN77, BN0077 hoặc số <= 6 ký tự):
+        # PHẢI tìm CHÍNH XÁC theo ID. Nếu không có ID đó -> Trả về rỗng [] (không hiển thị bừa SĐT chứa số)
+        if clean_num.isdigit() and (val.startswith("#") or val.upper().startswith("BN") or len(val) <= 6):
+            target_id = int(clean_num)
+            benh_nhans = query.filter(models.BenhNhan.id == target_id).all()
+            return benh_nhans
+
+        # Ngược lại, nếu là số điện thoại đầy đủ (>= 7 số), CCCD, BHYT hoặc Họ tên
+        search_str = f"%{val}%"
         query = query.filter(
             or_(
                 models.BenhNhan.ho_ten.ilike(search_str),

@@ -167,6 +167,38 @@ def run_tests():
     me_res = session.get(f"{BASE_URL}/api/v1/auth/me", headers=admin_headers)
     check("Lấy thông tin tài khoản hiện tại /me", me_res.status_code == 200 and me_res.json().get("username") == "admin")
 
+    # 3.7 Quên mật khẩu: Yêu cầu OTP qua Email
+    fp_req = session.post(f"{BASE_URL}/api/v1/auth/forgot-password", json={"identity": "bacsi"})
+    check("Yêu cầu gửi mã OTP quên mật khẩu (200)", fp_req.status_code == 200, f"Status: {fp_req.status_code}")
+
+    # 3.8 Xác thực OTP sai -> nhận lỗi 400
+    vo_fail = session.post(f"{BASE_URL}/api/v1/auth/verify-otp", json={"identity": "bacsi", "otp": "000000"})
+    check("Từ chối mã OTP sai (400)", vo_fail.status_code == 400, f"Status: {vo_fail.status_code}")
+
+    # Lấy mã OTP trong bộ đệm hệ thống để test
+    from routers.auth import _staff_otp_store
+    real_otp = _staff_otp_store.get("bacsi", {}).get("otp") if "bacsi" in _staff_otp_store else None
+    
+    reset_tok = None
+    if real_otp:
+        # 3.9 Xác thực OTP đúng
+        vo_ok = session.post(f"{BASE_URL}/api/v1/auth/verify-otp", json={"identity": "bacsi", "otp": real_otp})
+        check("Xác thực OTP đúng thành công (200)", vo_ok.status_code == 200, f"Status: {vo_ok.status_code}")
+        reset_tok = vo_ok.json().get("reset_token")
+
+    if reset_tok:
+        # 3.10 Đặt lại mật khẩu mới
+        rp_res = session.post(f"{BASE_URL}/api/v1/auth/reset-password", json={"reset_token": reset_tok, "new_password": "BacSiNewPass@123"})
+        check("Đặt lại mật khẩu mới qua OTP thành công (200)", rp_res.status_code == 200, f"Status: {rp_res.status_code}")
+
+        # Đăng nhập bằng mật khẩu mới
+        login_new = session.post(f"{BASE_URL}/api/v1/auth/login", json={"username": "bacsi", "password": "BacSiNewPass@123"})
+        check("Đăng nhập với mật khẩu mới thành công (200)", login_new.status_code == 200, f"Status: {login_new.status_code}")
+
+    # 3.11 Admin đặt lại mật khẩu cho Bác sĩ (ID=404)
+    admin_reset = session.post(f"{BASE_URL}/api/v1/admin/users/404/reset-password", json={"new_password": "BacSi@2024!"}, headers=admin_headers)
+    check("Admin đặt lại mật khẩu cho bác sĩ (200)", admin_reset.status_code == 200, f"Status: {admin_reset.status_code}")
+
     # ──────────────────────────────────────────────────────────────────────────
     # 4. KIỂM TRA QUẢN LÝ BỆNH NHÂN (CRUD & SEARCH & DUPLICATE)
     # ──────────────────────────────────────────────────────────────────────────
@@ -254,16 +286,16 @@ def run_tests():
             "chan_doan": "Rối loạn tiền đình / Đau nửa đầu Migraine",
             "ai_summary": "Bệnh nhân có tiền sử dị ứng penicillin, triệu chứng đau đầu tái diễn."
         }
-        pk_res = session.post(f"{BASE_URL}/api/v1/phieu-khams/", json=pk_payload)
+        pk_res = session.post(f"{BASE_URL}/api/v1/phieu-khams/", json=pk_payload, headers=admin_headers)
         check("Tạo phiếu khám bệnh thành công (201)", pk_res.status_code == 201, f"Status: {pk_res.status_code}")
         phieu_kham_id = pk_res.json().get("phieu_kham_id") if pk_res.status_code == 201 else None
 
         # 6.1 Lấy danh sách phiếu khám
-        all_pk = session.get(f"{BASE_URL}/api/v1/phieu-khams/")
+        all_pk = session.get(f"{BASE_URL}/api/v1/phieu-khams/", headers=admin_headers)
         check("Lấy danh sách tất cả phiếu khám", all_pk.status_code == 200 and len(all_pk.json()) > 0)
 
         # 6.2 Lấy danh sách phiếu khám chờ thanh toán
-        cho_tt = session.get(f"{BASE_URL}/api/v1/phieu-khams/cho-thanh-toan")
+        cho_tt = session.get(f"{BASE_URL}/api/v1/phieu-khams/cho-thanh-toan", headers=admin_headers)
         check("Lấy danh sách phiếu khám chờ thanh toán viện phí", cho_tt.status_code == 200)
 
     # ──────────────────────────────────────────────────────────────────────────
@@ -277,11 +309,11 @@ def run_tests():
             "tong_tien": 150000.0,
             "trang_thai": "da_thanh_toan"
         }
-        hd_res = session.post(f"{BASE_URL}/api/v1/hoa-dons/", json=hd_payload)
+        hd_res = session.post(f"{BASE_URL}/api/v1/hoa-dons/", json=hd_payload, headers=admin_headers)
         check("Tạo & xác nhận thanh toán hóa đơn (201)", hd_res.status_code == 201, f"Status: {hd_res.status_code}")
 
         # 7.1 Lấy danh sách hóa đơn
-        all_hd = session.get(f"{BASE_URL}/api/v1/hoa-dons/")
+        all_hd = session.get(f"{BASE_URL}/api/v1/hoa-dons/", headers=admin_headers)
         check("Lấy danh sách tất cả hóa đơn", all_hd.status_code == 200 and len(all_hd.json()) > 0)
 
     # ──────────────────────────────────────────────────────────────────────────
@@ -337,7 +369,7 @@ def run_tests():
     
     # 9.1 Test AI Summary Endpoint (với Data Masking & Fallback)
     if patient_id:
-        ai_sum_res = session.post(f"{BASE_URL}/api/ai/summary", json={"benh_nhan_id": patient_id})
+        ai_sum_res = session.post(f"{BASE_URL}/api/ai/summary", json={"benh_nhan_id": patient_id}, headers=admin_headers)
         check("Gọi API /api/ai/summary", ai_sum_res.status_code == 200, f"Status: {ai_sum_res.status_code}")
         if ai_sum_res.status_code == 200:
             summary_text = ai_sum_res.json().get("summary", "")

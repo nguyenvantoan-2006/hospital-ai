@@ -1,3 +1,6 @@
+import random
+import threading
+import email_service
 # routers/auth.py
 # Router Xác thực & Phân quyền RBAC cho FastAPI
 #
@@ -31,7 +34,14 @@ load_dotenv()
 router = APIRouter()
 
 # ─── CẤU HÌNH JWT ─────────────────────────────────────────────────────────────
-SECRET_KEY                 = os.getenv("SECRET_KEY", "CHANGE_ME_IN_PRODUCTION")
+_env_secret = os.getenv("SECRET_KEY")
+if not _env_secret or _env_secret.strip() == "" or _env_secret == "CHANGE_ME_IN_PRODUCTION":
+    import secrets
+    _env_secret = secrets.token_hex(32)
+    logger = logging.getLogger(__name__)
+    logger.warning("⚠️ SECRET_KEY không được cấu hình trong .env! Đã tự động tạo khóa ngẫu nhiên tạm thời để bảo vệ hệ thống.")
+
+SECRET_KEY                 = _env_secret
 ALGORITHM                  = os.getenv("ALGORITHM", "HS256")
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", 480))
 
@@ -128,8 +138,15 @@ def seed_default_users(db: Session):
     ]
 
     for u in default_users:
-        existing = db.query(models.User).filter(models.User.username == u["username"]).first()
-        if not existing:
+        # Kiểm tra cả username VÀ email để tránh IntegrityError (Duplicate entry)
+        existing_by_username = db.query(models.User).filter(
+            models.User.username == u["username"]
+        ).first()
+        existing_by_email = db.query(models.User).filter(
+            models.User.email == u["email"]
+        ).first()
+
+        if not existing_by_username and not existing_by_email:
             new_user = models.User(
                 username      = u["username"],
                 password_hash = hash_password(u["password"]),  # ← bcrypt hash
@@ -139,7 +156,10 @@ def seed_default_users(db: Session):
             )
             db.add(new_user)
 
-    db.commit()
+    try:
+        db.commit()
+    except Exception:
+        db.rollback()  # Không crash server nếu đã có dữ liệu
 
     # Seed mẫu hồ sơ Bác sĩ vào bảng bac_si (nếu chưa có)
     try:
@@ -317,3 +337,159 @@ def get_me(current_user: models.User = Depends(get_current_user)):
     }
 
 
+
+
+# ════════════════════════════════════════════════════════════════════════════════
+#  QUÊN MẬT KHẨU & TỰ PHỤC HỒI QUA EMAIL OTP (STAFF SELF-SERVICE)
+# ════════════════════════════════════════════════════════════════════════════════
+
+_staff_otp_lock = threading.Lock()
+# Lưu trữ bộ đệm: { username: { "otp": "123456", "expires_at": datetime, "attempts": 0, "email": "..." } }
+_staff_otp_store: dict = {}
+
+
+@router.post("/forgot-password", summary="Yêu cầu gửi mã OTP quên mật khẩu qua Email")
+def forgot_password(body: schemas.ForgotPasswordRequest, db: Session = Depends(get_db)):
+    """
+    Tiếp nhận yêu cầu khôi phục mật khẩu từ Bác sĩ / Nhân viên y tế.
+    Tự động tra cứu email và gửi mã OTP 6 số (hạn 5 phút).
+    Tuân thủ bảo mật OWASP: Không tiết lộ tài khoản có tồn tại hay không.
+    """
+    identity = body.identity.strip()
+    if not identity:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Vui lòng nhập Username hoặc Email.")
+
+    user = db.query(models.User).filter(
+        (models.User.username == identity) | (models.User.email == identity)
+    ).first()
+
+    if user and user.email:
+        otp = f"{random.randint(100000, 999999)}"
+        print(f"[AUTH_OTP_DEBUG]: {user.username} -> {otp}", flush=True)
+        expires_at = datetime.now() + timedelta(minutes=5)
+        with _staff_otp_lock:
+            _staff_otp_store[user.username] = {
+                "otp": otp,
+                "expires_at": expires_at,
+                "attempts": 0,
+                "username": user.username,
+                "email": user.email
+            }
+        
+        # Gửi email thật ngầm (daemon thread)
+        threading.Thread(
+            target=email_service.send_password_reset_otp_email,
+            args=(user.email, user.username, otp),
+            daemon=True
+        ).start()
+
+    return {
+        "success": True,
+        "message": "Nếu thông tin chính xác, mã xác thực OTP đã được gửi về email công vụ của bạn. Vui lòng kiểm tra hộp thư (bao gồm cả hòm thư Rác/Spam)."
+    }
+
+
+@router.post("/verify-otp", summary="Xác thực mã OTP khôi phục mật khẩu")
+def verify_forgot_password_otp(body: schemas.VerifyOtpRequest, db: Session = Depends(get_db)):
+    """
+    Xác minh mã OTP 6 số do nhân viên cung cấp.
+    Nếu hợp lệ, sinh reset_token ngắn hạn (10 phút) để mở quyền đặt mật khẩu mới.
+    """
+    identity = body.identity.strip()
+    otp_input = body.otp.strip()
+
+    user = db.query(models.User).filter(
+        (models.User.username == identity) | (models.User.email == identity)
+    ).first()
+
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Thông tin tài khoản hoặc mã OTP không chính xác."
+        )
+
+    with _staff_otp_lock:
+        record = _staff_otp_store.get(user.username)
+        if not record:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Yêu cầu OTP không tồn tại hoặc đã hết hạn. Vui lòng gửi lại yêu cầu."
+            )
+
+        if datetime.now() > record["expires_at"]:
+            _staff_otp_store.pop(user.username, None)
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Mã OTP đã hết hạn (chỉ có hiệu lực trong 5 phút). Vui lòng yêu cầu mã mới."
+            )
+
+        if record["otp"] != otp_input:
+            record["attempts"] += 1
+            if record["attempts"] >= 3:
+                _staff_otp_store.pop(user.username, None)
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Bạn đã nhập sai OTP quá 3 lần. Mã đã bị hủy vì lý do an toàn."
+                )
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Mã OTP không chính xác. Bạn còn {3 - record['attempts']} lần thử."
+            )
+
+        # Xác thực thành công -> Hủy OTP và cấp reset_token 10 phút
+        _staff_otp_store.pop(user.username, None)
+        reset_token = create_access_token(
+            data={"sub": user.username, "purpose": "password_reset"},
+            expires_delta=timedelta(minutes=10)
+        )
+        return {
+            "success": True,
+            "reset_token": reset_token,
+            "message": "Xác thực OTP thành công. Vui lòng tạo mật khẩu mới."
+        }
+
+
+@router.post("/reset-password", summary="Đặt lại mật khẩu mới với reset_token")
+def reset_password_with_token(body: schemas.ResetPasswordRequest, db: Session = Depends(get_db)):
+    """
+    Cập nhật mật khẩu mới cho người dùng sau khi xác thực OTP thành công.
+    Mật khẩu mới được băm bằng bcrypt trước khi lưu CSDL.
+    """
+    try:
+        payload = jwt.decode(body.reset_token, SECRET_KEY, algorithms=[ALGORITHM])
+        username: str = payload.get("sub")
+        purpose: str = payload.get("purpose")
+        if not username or purpose != "password_reset":
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Token đặt lại mật khẩu không hợp lệ."
+            )
+    except jwt.PyJWTError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Phiên làm việc đặt lại mật khẩu đã hết hạn. Vui lòng thực hiện lại từ đầu."
+        )
+
+    user = db.query(models.User).filter(models.User.username == username).first()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Người dùng không tồn tại.")
+
+    user.password_hash = hash_password(body.new_password)
+    db.commit()
+
+    # Ghi nhận audit log nếu bảng AuditLog tồn tại
+    try:
+        audit = models.AuditLog(
+            user_id=user.id,
+            action="RESET_PASSWORD_SELF",
+            chi_tiet=f"Tài khoản {user.username} ({user.role}) đã tự đặt lại mật khẩu thành công qua Email OTP."
+        )
+        db.add(audit)
+        db.commit()
+    except Exception:
+        db.rollback()
+
+    return {
+        "success": True,
+        "message": "Đặt lại mật khẩu thành công! Bạn có thể đăng nhập ngay với mật khẩu mới."
+    }

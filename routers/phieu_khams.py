@@ -45,7 +45,8 @@ def search_thuocs_for_prescription(
 @router.get("/", status_code=status.HTTP_200_OK)
 def get_all_phieu_khams(
     limit: int = Query(50, ge=1, le=200),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(require_roles(["bac_si", "admin", "ke_toan"]))
 ):
     """
     Lấy danh sách tất cả phiếu khám kèm thông tin bệnh nhân và bác sĩ.
@@ -73,7 +74,10 @@ def get_all_phieu_khams(
 
 
 @router.get("/cho-thanh-toan", status_code=status.HTTP_200_OK)
-def get_phieu_khams_cho_thanh_toan(db: Session = Depends(get_db)):
+def get_phieu_khams_cho_thanh_toan(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(require_roles(["bac_si", "admin", "ke_toan", "le_tan"]))
+):
     """
     Lấy danh sách các phiếu khám đã hoàn tất bởi bác sĩ nhưng chưa thanh toán viện phí.
     """
@@ -125,7 +129,11 @@ def get_phieu_khams_cho_thanh_toan(db: Session = Depends(get_db)):
 
 
 @router.get("/{id}", status_code=status.HTTP_200_OK)
-def get_phieu_kham_by_id(id: int, db: Session = Depends(get_db)):
+def get_phieu_kham_by_id(
+    id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(require_roles(["bac_si", "admin", "ke_toan", "le_tan"]))
+):
     """
     Xem chi tiết 1 phiếu khám theo ID (kèm thông tin đơn thuốc, hướng dẫn sau khám).
     """
@@ -181,7 +189,11 @@ def get_phieu_kham_by_id(id: int, db: Session = Depends(get_db)):
 # ════════════════════════════════════════════════════════════════════════════════
 
 @router.post("/", status_code=status.HTTP_201_CREATED)
-def create_phieu_kham(data: schemas.PhieuKhamCreateInput, db: Session = Depends(get_db)):
+def create_phieu_kham(
+    data: schemas.PhieuKhamCreateInput,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(require_roles(["bac_si", "admin"]))
+):
     """
     Tạo mới phiếu khám bệnh kèm kê đơn thuốc điện tử (FR-05, FR-06).
     - Hỗ trợ truyền mảng don_thuocs: [{thuoc_id, so_luong, lieu_dung}].
@@ -321,7 +333,12 @@ def create_phieu_kham(data: schemas.PhieuKhamCreateInput, db: Session = Depends(
 # ════════════════════════════════════════════════════════════════════════════════
 
 @router.put("/{id}", status_code=status.HTTP_200_OK)
-def update_phieu_kham(id: int, data: schemas.PhieuKhamUpdate, db: Session = Depends(get_db)):
+def update_phieu_kham(
+    id: int,
+    data: schemas.PhieuKhamUpdate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(require_roles(["bac_si", "admin"]))
+):
     """
     Cập nhật thông tin phiếu khám (triệu chứng, chẩn đoán, lời dặn sau khám).
     """
@@ -352,7 +369,11 @@ def update_phieu_kham(id: int, data: schemas.PhieuKhamUpdate, db: Session = Depe
 
 
 @router.delete("/{id}", status_code=status.HTTP_200_OK)
-def delete_phieu_kham(id: int, db: Session = Depends(get_db)):
+def delete_phieu_kham(
+    id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(require_roles(["admin"]))
+):
     """
     Xóa phiếu khám (Chỉ được phép khi hóa đơn chưa thanh toán).
     """

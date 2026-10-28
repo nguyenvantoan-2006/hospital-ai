@@ -1,3 +1,4 @@
+from routers.auth import require_roles
 # routers/admin.py — Phân hệ Quản trị viên (Admin) — FastAPI Router
 # Bao gồm: Quản lý Bác sĩ, Chuyên khoa, Tài khoản, Báo cáo, Nhật ký hệ thống
 
@@ -35,7 +36,7 @@ class AdminUserUpdateStatus(BaseModel):
     trang_thai: bool
 
 class AdminResetPassword(BaseModel):
-    new_password: str
+    new_password: Optional[str] = None
 
 # ── Chuyên khoa ───────────────────────────────────────────────────────────────
 class SpecialtyCreate(BaseModel):
@@ -169,14 +170,30 @@ def toggle_user_status(user_id: int, data: AdminUserUpdateStatus, db: Session = 
 
 
 @router.post("/users/{user_id}/reset-password", status_code=status.HTTP_200_OK)
-def reset_user_password(user_id: int, data: AdminResetPassword, db: Session = Depends(get_db)):
+def reset_user_password(
+    user_id: int,
+    data: Optional[AdminResetPassword] = None,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(require_roles(["admin"]))
+):
     user = db.query(models.User).filter(models.User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail=f"Không tìm thấy tài khoản ID={user_id}")
-    user.password_hash = hash_password(data.new_password)
+    
+    new_pass = (data.new_password if data and data.new_password else "").strip()
+    if not new_pass:
+        import secrets
+        new_pass = f"Clinova@{secrets.token_hex(3)}"
+
+    user.password_hash = hash_password(new_pass)
     db.commit()
-    _write_audit(db, "UPDATE", "users", user_id, f"Đặt lại mật khẩu cho '{user.username}'")
-    return {"message": f"Đã đặt lại mật khẩu tài khoản '{user.username}'."}
+    _write_audit(db, "UPDATE", "users", user_id, f"Admin {current_user.username} đặt lại mật khẩu cho '{user.username}'")
+    return {
+        "success": True,
+        "message": f"Đã đặt lại mật khẩu thành công cho tài khoản '{user.username}'.",
+        "username": user.username,
+        "new_password": new_pass
+    }
 
 
 @router.get("/users/{user_id}/profile", status_code=status.HTTP_200_OK, response_model=schemas.UserProfileResponse)

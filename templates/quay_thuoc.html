@@ -185,7 +185,7 @@
   <!-- Navbar -->
   <nav class="navbar navbar-expand-lg navbar-dark navbar-custom px-4 py-2">
     <div class="container-fluid">
-      <a class="navbar-brand d-flex align-items-center gap-2" href="index.html">
+      <a class="navbar-brand d-flex align-items-center gap-2" href="ke_toan.html">
         <div class="bg-white bg-opacity-25 rounded-3 p-2 d-flex align-items-center justify-content-center" style="width:40px; height:40px;">
           <i class="fa-solid fa-prescription-bottle-medical text-white fs-5"></i>
         </div>
@@ -598,7 +598,7 @@
       if (icon) icon.classList.add('fa-spin');
 
       try {
-        const res = await fetch(`${API_BASE}/hoa-dons/don-thuoc-cho-phat`);
+        const res = await fetch(`${API_BASE}/hoa-dons/don-thuoc-cho-phat`, { headers: getAuthHeaders() });
         allPrescriptions = await res.json();
 
         // Cập nhật KPIs
@@ -809,7 +809,7 @@
       try {
         const res = await fetch(`${API_BASE}/hoa-dons/xac-nhan-phat-thuoc`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
           body: JSON.stringify(payload)
         });
 
@@ -874,9 +874,9 @@
 
     // Khởi chạy khi tải trang
     window.addEventListener('DOMContentLoaded', () => {
-      // Phân quyền RBAC: Quầy cấp phát trực thuộc quản lý của Kế toán/Thu ngân, Admin hoặc Lễ tân
+      // Phân quyền RBAC: Quầy cấp phát trực thuộc quản lý của Admin, Lễ tân hoặc Bác sĩ (Kế toán không có quyền can thiệp cấp thuốc)
       if (typeof initAuthGuard === 'function') {
-        if (!initAuthGuard(["ke_toan", "admin", "le_tan", "bac_si"])) return;
+        if (!initAuthGuard(["admin", "ke_toan"])) return;
       }
       const username = localStorage.getItem('username');
       const role = localStorage.getItem('role');

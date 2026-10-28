@@ -37,7 +37,7 @@
 
 <!-- TOP BAR -->
 <div class="topbar">
-  <a href="index.html" class="brand">
+  <a href="admin_dashboard.html" class="brand">
     <img src="/static/img/clinic_avatar.png" alt="Clinova Logo" style="width:38px; height:38px; border-radius:50%; object-fit:contain; background:#ffffff; padding:2px;">
     Clinova <span style="font-weight:400;font-size:12px;opacity:.7;margin-left:4px">Admin</span>
   </a>
@@ -57,7 +57,7 @@
   <a class="nav-link" href="ke_toan.html"><i class="fa-solid fa-coins"></i>Kế toán & Kho</a>
   <a class="nav-link" onclick="showSection('logs',this)" href="#"><i class="fa-solid fa-clipboard-list"></i>Nhật ký</a>
   <hr>
-  <a class="nav-link text-muted" href="index.html"><i class="fa-solid fa-arrow-left"></i>Trang chính</a>
+  <a class="nav-link text-muted" href="index.html" target="_blank"><i class="fa-solid fa-arrow-up-right-from-square me-2"></i>Cổng Bệnh nhân (Tab mới)</a>
 </nav>
 
 <!-- MAIN CONTENT -->
@@ -225,7 +225,15 @@
   <div class="modal-header bg-primary text-white border-0"><h5 class="modal-title fw-bold"><i class="fa-solid fa-user-plus me-2"></i>Thêm Tài khoản</h5><button class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
   <div class="modal-body p-4"><form id="fAddUser" onsubmit="handleAddUser(event)">
     <div class="mb-3"><label class="form-label small fw-bold">Username *</label><input id="uName" class="form-control" required placeholder="vd: bacsi02"></div>
-    <div class="mb-3"><label class="form-label small fw-bold">Mật khẩu *</label><input id="uPass" type="password" class="form-control" required placeholder="Tối thiểu 6 ký tự"></div>
+    <div class="mb-3">
+      <label class="form-label small fw-bold">Mật khẩu *</label>
+      <div class="input-group">
+        <input id="uPass" type="password" class="form-control" required placeholder="Tối thiểu 6 ký tự" autocomplete="new-password">
+        <button class="btn btn-outline-secondary" type="button" onclick="togglePasswordVisibility('uPass', this)" title="Xem/Ẩn mật khẩu">
+          <i class="fa-solid fa-eye" style="pointer-events: none;"></i>
+        </button>
+      </div>
+    </div>
     <div class="mb-3"><label class="form-label small fw-bold">Vai trò *</label><select id="uRole" class="form-select"><option value="le_tan">📋 Lễ tân</option><option value="bac_si">🩺 Bác sĩ</option><option value="ke_toan">💰 Kế toán</option><option value="admin">👑 Admin</option></select></div>
     <div class="mb-3"><label class="form-label small fw-bold">Email</label><input id="uEmail" type="email" class="form-control" placeholder="email@clinic.com"></div>
     <button id="btnAddUser" type="submit" class="btn w-100 text-white fw-bold py-2" style="background:linear-gradient(135deg,#1A73E8,#1557B0)"><i class="fa-solid fa-floppy-disk me-2"></i>Lưu Tài khoản</button>
@@ -237,7 +245,12 @@
   <div class="modal-header bg-warning text-dark border-0"><h5 class="modal-title fw-bold"><i class="fa-solid fa-key me-2"></i>Đặt lại MK</h5><button class="btn-close" data-bs-dismiss="modal"></button></div>
   <div class="modal-body p-4">
     <input type="hidden" id="rUId"><p class="small text-muted mb-2">Tài khoản: <strong id="rUName"></strong></p>
-    <input id="rPwd" type="password" class="form-control mb-3" placeholder="Mật khẩu mới...">
+    <div class="input-group mb-3">
+      <input id="rPwd" type="password" class="form-control" placeholder="Mật khẩu mới..." autocomplete="new-password">
+      <button class="btn btn-outline-secondary" type="button" onclick="togglePasswordVisibility('rPwd', this)" title="Xem/Ẩn mật khẩu">
+        <i class="fa-solid fa-eye" style="pointer-events: none;"></i>
+      </button>
+    </div>
     <button class="btn btn-warning w-100 fw-bold" onclick="submitReset()"><i class="fa-solid fa-rotate me-1"></i>Xác nhận</button>
   </div>
 </div></div></div>
@@ -251,7 +264,15 @@
       <div class="col-6"><label class="form-label small fw-bold">Tên đăng nhập (Username) *</label><input id="dUsername" class="form-control" placeholder="vd: Nguyenvantoan" required></div>
     </div>
     <div class="row g-2 mb-2">
-      <div class="col-6"><label class="form-label small fw-bold">Mật khẩu khởi tạo *</label><input id="dPassword" type="password" class="form-control" placeholder="Mật khẩu tài khoản..." required></div>
+      <div class="col-6">
+        <label class="form-label small fw-bold">Mật khẩu khởi tạo *</label>
+        <div class="input-group">
+          <input id="dPassword" type="password" class="form-control" placeholder="Mật khẩu tài khoản..." value="BacSi@2024!" autocomplete="new-password" required>
+          <button class="btn btn-outline-secondary" type="button" onclick="togglePasswordVisibility('dPassword', this)" title="Xem/Ẩn mật khẩu">
+            <i class="fa-solid fa-eye" style="pointer-events: none;"></i>
+          </button>
+        </div>
+      </div>
       <div class="col-6"><label class="form-label small fw-bold">Học vị</label><input id="dHocVi" class="form-control" value="BS." placeholder="BS. / TS."></div>
     </div>
     <div class="mb-2"><label class="form-label small fw-bold">Họ và tên Bác sĩ *</label><input id="dHoTen" class="form-control" required placeholder="Nguyễn Văn Toàn"></div>
@@ -278,7 +299,15 @@
     <div class="mb-2"><label class="form-label small fw-bold">Họ và tên Bác sĩ *</label><input id="eHoTen" class="form-control" required></div>
     <div class="row g-2 mb-2">
       <div class="col-6"><label class="form-label small fw-bold">Chuyên khoa</label><input id="eChuyenKhoa" class="form-control"></div>
-      <div class="col-6"><label class="form-label small fw-bold">Mật khẩu mới (Tuỳ chọn)</label><input id="ePassword" type="password" class="form-control" placeholder="Để trống nếu không đổi"></div>
+      <div class="col-6">
+        <label class="form-label small fw-bold">Mật khẩu mới (Tuỳ chọn)</label>
+        <div class="input-group">
+          <input id="ePassword" type="password" class="form-control" placeholder="Để trống nếu không đổi" autocomplete="new-password">
+          <button class="btn btn-outline-secondary" type="button" onclick="togglePasswordVisibility('ePassword', this)" title="Xem/Ẩn mật khẩu">
+            <i class="fa-solid fa-eye" style="pointer-events: none;"></i>
+          </button>
+        </div>
+      </div>
     </div>
     <div class="row g-2 mb-2">
       <div class="col-6"><label class="form-label small fw-bold">Phòng khám</label><input id="ePhong" class="form-control"></div>
@@ -395,7 +424,37 @@
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
-<script src="/static/js/auth.js"></script>
-<script src="/static/js/admin.js"></script>
+<script>
+// Hàm xem / ẩn mật khẩu trực tiếp trong HTML để không bao giờ bị ảnh hưởng bởi cache file JS bên ngoài
+function togglePasswordVisibility(inputId, btnEl) {
+  try {
+    if (window.event) {
+      window.event.preventDefault();
+      window.event.stopPropagation();
+    }
+    const input = document.getElementById(inputId);
+    if (!input) return;
+    const btn = btnEl || (window.event ? (window.event.currentTarget || window.event.target.closest('button')) : null);
+    const icon = btn ? btn.querySelector('i') : null;
+    
+    if (input.type === 'password') {
+      input.type = 'text';
+      if (icon) {
+        icon.className = 'fa-solid fa-eye-slash text-primary';
+      }
+    } else {
+      input.type = 'password';
+      if (icon) {
+        icon.className = 'fa-solid fa-eye text-secondary';
+      }
+    }
+    input.focus();
+  } catch (err) {
+    console.error('Lỗi toggle mật khẩu:', err);
+  }
+}
+</script>
+<script src="/static/js/auth.js?v=20261028_1001"></script>
+<script src="/static/js/admin.js?v=20261028_1001"></script>
 </body>
 </html>

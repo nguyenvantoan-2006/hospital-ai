@@ -453,13 +453,10 @@
       color: #E2E8F0;
     }
 
-    /* AUDIO CONTROLLER MODAL / FLOATING BAR */
-    .audio-control-btn {
-      position: fixed;
-      top: 18px;
-      right: 320px;
-      background: rgba(255, 255, 255, 0.15);
-      border: 1px solid rgba(255, 255, 255, 0.25);
+    /* KIOSK ACTION BUTTONS & TOOLBAR */
+    .kiosk-action-btn {
+      background: rgba(255, 255, 255, 0.12);
+      border: 1px solid rgba(255, 255, 255, 0.22);
       color: #ffffff;
       padding: 8px 16px;
       border-radius: 30px;
@@ -469,39 +466,42 @@
       display: flex;
       align-items: center;
       gap: 8px;
-      z-index: 1000;
-      transition: all 0.2s;
+      transition: all 0.2s ease;
+      backdrop-filter: blur(8px);
+      white-space: nowrap;
     }
 
-    .audio-control-btn.active {
+    .kiosk-action-btn:hover {
+      background: rgba(255, 255, 255, 0.2);
+      transform: translateY(-1px);
+    }
+
+    .kiosk-action-btn.active {
       background: #10B981;
       border-color: #10B981;
       box-shadow: 0 0 15px rgba(16, 185, 129, 0.5);
     }
 
-    /* ROOM SELECTOR BOX */
-    .room-selector-box {
-      position: fixed;
-      top: 18px;
-      right: 560px;
-      background: rgba(255, 255, 255, 0.12);
-      border: 1px solid rgba(255, 255, 255, 0.25);
-      border-radius: 30px;
-      padding: 4px 14px;
+    /* ROOM SELECTOR SLIDEBAR (CÓ THỂ ẨN LÊN TRÊN) */
+    .room-selector-slidebar {
+      background: #101B38;
+      border-bottom: 2px solid rgba(58, 134, 255, 0.3);
+      padding: 10px 32px;
       display: flex;
       align-items: center;
-      gap: 8px;
-      z-index: 1000;
-      backdrop-filter: blur(8px);
-      color: #E2E8F0;
-      font-size: 13px;
-      font-weight: 600;
+      justify-content: space-between;
+      gap: 16px;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+      z-index: 99;
     }
 
     .room-select-dropdown {
-      background: transparent;
+      background: #0B132B;
       color: #00F5D4;
-      border: none;
+      border: 1px solid rgba(0, 245, 212, 0.4);
+      border-radius: 8px;
+      padding: 6px 12px;
       font-weight: 700;
       font-size: 13px;
       outline: none;
@@ -519,6 +519,7 @@
 <body>
 
   <!-- HEADER -->
+    <!-- HEADER -->
   <header class="kiosk-header">
     <div class="brand-group">
       <div class="hospital-logo">
@@ -530,35 +531,55 @@
       </div>
     </div>
 
-    <!-- BANNER PHÒNG KHÁM -->
+    <!-- BANNER PHÒNG KHÁM (Ở GIỮA, KHÔNG BỊ ĐÈ NỮA) -->
     <div class="room-badge-banner">
       <h2 id="displayRoomName">PHÒNG KHÁM 101</h2>
       <span id="displaySpecialty">CHUYÊN KHOA TIM MẠCH</span>
     </div>
 
-    <!-- ĐỒNG HỒ & BÁC SĨ -->
-    <div class="clock-doctor-group">
-      <div>
-        <div class="digital-clock" id="clockTime">--:--:--</div>
-        <div class="current-date" id="clockDate">Đang tải thời gian...</div>
+    <!-- CỤM CÔNG CỤ & ĐỒNG HỒ BÊN PHẢI -->
+    <div class="d-flex align-items-center gap-3 flex-wrap justify-content-end">
+      <!-- Nút Tìm kiếm & Tra cứu STT -->
+      <button class="kiosk-action-btn" onclick="openSearchModal()" title="Tìm kiếm & Tra cứu số thứ tự">
+        <i class="fa-solid fa-magnifying-glass text-warning"></i>
+        <span>Tìm kiếm</span>
+      </button>
+
+      <!-- Nút Ẩn/Hiện thanh chọn phòng -->
+      <button id="btnToggleRoomBar" class="kiosk-action-btn" onclick="toggleRoomSelector()" title="Ẩn/Hiện thanh đổi phòng khám">
+        <i class="fa-solid fa-door-open text-info" id="iconRoomBar"></i>
+        <span id="textRoomBar">Đổi phòng</span>
+      </button>
+
+      <!-- Nút Loa gọi số -->
+      <button id="btnAudioToggle" class="kiosk-action-btn" onclick="toggleAudio()" title="Bật/Tắt âm thanh loa gọi số">
+        <i class="fa-solid fa-volume-xmark" id="audioIcon"></i>
+        <span id="audioText">Loa: Tắt</span>
+      </button>
+
+      <!-- Đồng hồ kỹ thuật số -->
+      <div class="clock-doctor-group">
+        <div>
+          <div class="digital-clock" id="clockTime">--:--:--</div>
+          <div class="current-date" id="clockDate">Đang tải thời gian...</div>
+        </div>
       </div>
     </div>
   </header>
 
-  <!-- CHỌN PHÒNG KHÁM TRỰC TIẾP -->
-  <div class="room-selector-box">
-    <i class="fa-solid fa-door-open text-info"></i>
-    <span>Phòng:</span>
-    <select id="roomSelect" class="room-select-dropdown" onchange="onRoomSelectChanged(this.value)">
-      <option value="Phòng 101">Phòng 101 - Khám Đa Khoa</option>
-    </select>
+  <!-- THANH CHỌN PHÒNG KHÁM CÓ THỂ ẨN LÊN TRÊN -->
+  <div id="roomSelectorBar" class="room-selector-slidebar" style="display: none;">
+    <div class="d-flex align-items-center gap-3 flex-wrap">
+      <span class="text-info fw-bold small"><i class="fa-solid fa-sliders me-1"></i>Chọn Phòng Khám Hiển Thị:</span>
+      <select id="roomSelect" class="room-select-dropdown" style="min-width: 280px;" onchange="onRoomSelectChanged(this.value)">
+        <option value="Phòng 101">Phòng 101 - Khám Đa Khoa</option>
+      </select>
+      <input type="text" id="filterRoomInput" class="form-control form-control-sm bg-dark text-white border-secondary rounded-pill px-3" placeholder="Gõ tìm nhanh phòng..." oninput="filterRoomsDropdown(this.value)" style="max-width: 200px; font-size: 13px;">
+    </div>
+    <button class="btn btn-sm btn-outline-light rounded-pill px-3 py-1" onclick="toggleRoomSelector()" title="Ẩn thanh này lên trên">
+      <i class="fa-solid fa-chevron-up me-1"></i> Ẩn thanh phòng lên
+    </button>
   </div>
-
-  <!-- NÚT BẬT ÂM THANH LOA (AUDIO TOGGLE) -->
-  <button id="btnAudioToggle" class="audio-control-btn" onclick="toggleAudio()">
-    <i class="fa-solid fa-volume-xmark" id="audioIcon"></i>
-    <span id="audioText">Bật Loa Gọi Số (Muted)</span>
-  </button>
 
   <!-- MAIN VIEW -->
   <main class="kiosk-main">
@@ -641,6 +662,29 @@
 
   </main>
 
+  
+  <!-- MODAL TÌM KIẾM TRA CỨU SỐ THỨ TỰ (KIOSK SEARCH MODAL) -->
+  <div class="modal fade" id="kioskSearchModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+      <div class="modal-content border-0 rounded-4 shadow-lg" style="background:#1C2541;color:#fff;border:1px solid rgba(255,255,255,0.2);">
+        <div class="modal-header border-0 pb-0">
+          <h5 class="modal-title fw-bold text-info"><i class="fa-solid fa-magnifying-glass me-2 text-warning"></i>Tra Cứu Số Thứ Tự & Bệnh Nhân</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body p-4">
+          <div class="input-group input-group-lg mb-3">
+            <span class="input-group-text bg-dark border-secondary text-info"><i class="fa-solid fa-search"></i></span>
+            <input type="text" id="searchKioskInput" class="form-control bg-dark border-secondary text-white" placeholder="Nhập Số thứ tự (vd: 1, 30, 66) hoặc Tên bệnh nhân..." oninput="doSearchKiosk(this.value)">
+          </div>
+          <div class="small text-muted mb-3"><i class="fa-solid fa-circle-info text-warning me-1"></i>Tìm nhanh xem bạn đang ở vị trí số mấy trong hàng đợi hôm nay.</div>
+          <div id="searchKioskResults" style="max-height: 380px; overflow-y: auto;">
+            <!-- Danh sách kết quả tìm kiếm -->
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- FOOTER TICKER -->
   <footer class="kiosk-footer">
     <div class="ticker-tag"><i class="fa-solid fa-bullhorn me-1"></i> THÔNG BÁO</div>
@@ -650,6 +694,9 @@
       </marquee>
     </div>
   </footer>
+
+  <!-- Bootstrap 5 Bundle JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 
   <!-- JAVASCRIPT: LOGIC POLLING & WEB SPEECH API -->
   <script>
@@ -668,6 +715,7 @@
         const res = await fetch("/api/v1/lich-khams/public/phong-khams");
         if (!res.ok) return;
         const rooms = await res.json();
+        rawRoomsList = rooms;
         const sel = document.getElementById("roomSelect");
         if (!sel || rooms.length === 0) return;
 
@@ -688,6 +736,119 @@
       } catch (e) {
         console.warn("Không thể tải danh sách phòng khám:", e);
       }
+    }
+
+    
+    let rawRoomsList = [];
+    let latestQueueData = null;
+    let _kioskSearchModalInstance = null;
+
+    // Toggle Ẩn / Hiện thanh chọn phòng khám lên trên
+    function toggleRoomSelector() {
+      const bar = document.getElementById("roomSelectorBar");
+      const textEl = document.getElementById("textRoomBar");
+      const iconEl = document.getElementById("iconRoomBar");
+      if (!bar) return;
+
+      const isHidden = (bar.style.display === "none");
+      if (isHidden) {
+        bar.style.display = "flex";
+        if (textEl) textEl.textContent = "Ẩn phòng";
+        if (iconEl) iconEl.className = "fa-solid fa-chevron-up text-warning";
+        localStorage.setItem("kiosk_room_bar_hidden", "false");
+      } else {
+        bar.style.display = "none";
+        if (textEl) textEl.textContent = "Đổi phòng";
+        if (iconEl) iconEl.className = "fa-solid fa-door-open text-info";
+        localStorage.setItem("kiosk_room_bar_hidden", "true");
+      }
+    }
+
+    // Lọc nhanh phòng khám trong dropdown
+    function filterRoomsDropdown(val) {
+      const sel = document.getElementById("roomSelect");
+      if (!sel || !rawRoomsList) return;
+      const q = val.toLowerCase().trim();
+      const filtered = q ? rawRoomsList.filter(r => `${r.phong_kham} ${r.chuyen_khoa}`.toLowerCase().includes(q)) : rawRoomsList;
+      sel.innerHTML = filtered.map(r => `
+        <option value="${escapeHtml(r.phong_kham)}" ${r.phong_kham === currentRoom ? "selected" : ""}>
+          ${escapeHtml(r.phong_kham)} (${escapeHtml(r.chuyen_khoa)})
+        </option>
+      `).join("");
+    }
+
+    // Mở Modal Tìm kiếm STT
+    function openSearchModal() {
+      const modalEl = document.getElementById("kioskSearchModal");
+      if (!_kioskSearchModalInstance) {
+        _kioskSearchModalInstance = new bootstrap.Modal(modalEl);
+      }
+      document.getElementById("searchKioskInput").value = "";
+      doSearchKiosk("");
+      _kioskSearchModalInstance.show();
+      setTimeout(() => document.getElementById("searchKioskInput").focus(), 300);
+    }
+
+    // Tìm kiếm bệnh nhân theo STT hoặc Tên
+    function doSearchKiosk(query) {
+      const resContainer = document.getElementById("searchKioskResults");
+      if (!resContainer) return;
+      const q = query.toLowerCase().trim();
+
+      let items = [];
+      if (latestQueueData) {
+        if (latestQueueData.dang_kham) {
+          items.push({ ...latestQueueData.dang_kham, isCurrent: true });
+        }
+        if (latestQueueData.danh_sach_cho) {
+          items.push(...latestQueueData.danh_sach_cho);
+        }
+      }
+
+      if (q) {
+        items = items.filter(i => {
+          const sttMatch = String(i.stt || "").includes(q);
+          const nameMatch = (i.ho_ten || "").toLowerCase().includes(q);
+          const codeMatch = (i.ma_lich || "").toLowerCase().includes(q);
+          return sttMatch || nameMatch || codeMatch;
+        });
+      }
+
+      if (items.length === 0) {
+        resContainer.innerHTML = `
+          <div class="text-center py-4 text-muted">
+            <i class="fa-solid fa-circle-question fs-2 mb-2 text-secondary d-block"></i>
+            <div>Không tìm thấy số thứ tự hoặc bệnh nhân nào khớp với "<strong>${escapeHtml(query)}</strong>"</div>
+          </div>
+        `;
+        return;
+      }
+
+      resContainer.innerHTML = items.map((item, idx) => {
+        const isCurrent = item.isCurrent || (item.trang_thai === "dang_kham");
+        const isDaCoKQ = item.trang_thai === "da_co_ket_qua";
+        let statusBadge = '';
+        if (isCurrent) {
+          statusBadge = '<span class="badge bg-success"><i class="fa-solid fa-spinner fa-spin me-1"></i>ĐANG TRONG PHÒNG KHÁM</span>';
+        } else if (isDaCoKQ) {
+          statusBadge = '<span class="badge bg-danger"><i class="fa-solid fa-star me-1 text-warning"></i>ƯU TIÊN KẾT LUẬN CLS</span>';
+        } else {
+          statusBadge = `<span class="badge bg-primary">Vị trí chờ: #${idx + 1}</span>`;
+        }
+
+        return `
+          <div class="p-3 mb-2 rounded-3 border d-flex align-items-center justify-content-between" style="background: rgba(255,255,255,0.06); border-color: rgba(255,255,255,0.15) !important;">
+            <div class="d-flex align-items-center gap-3">
+              <div class="fs-4 fw-bold text-warning font-monospace" style="min-width: 50px;">#${String(item.stt || "--").padStart(2, "0")}</div>
+              <div>
+                <div class="fw-bold fs-6 text-white">${escapeHtml(item.ho_ten || "Bệnh nhân")}</div>
+                <div class="small text-muted">Mã lịch: <strong class="text-info">${escapeHtml(item.ma_lich || "--")}</strong> • Năm sinh: ${item.nam_sinh || item.ngay_sinh || "Chưa rõ"}</div>
+              </div>
+            </div>
+            <div>${statusBadge}</div>
+          </div>
+        `;
+      }).join("");
     }
 
     function onRoomSelectChanged(newRoom) {
@@ -773,6 +934,7 @@
 
     // 5. Render dữ liệu lên màn hình
     function renderQueue(data) {
+      latestQueueData = data;
       // Header thông tin phòng & bác sĩ
       document.getElementById("displayRoomName").textContent = (data.phong_kham || roomParam).toUpperCase();
       document.getElementById("displaySpecialty").textContent = (data.chuyen_khoa || "CHUYÊN KHOA ĐA KHOA").toUpperCase();

@@ -107,23 +107,172 @@ class TiepDonTaiQuayInput(BaseModel):
     trang_thai: Optional[str] = "cho_kham"
 
 
+MORNING_SLOTS = [
+    "07:00", "07:15", "07:30", "07:45",
+    "08:00", "08:15", "08:30", "08:45",
+    "09:00", "09:15", "09:30", "09:45",
+    "10:00", "10:15", "10:30", "10:45",
+    "11:00", "11:15", "11:30", "11:45"
+]
+
+AFTERNOON_SLOTS = [
+    "13:30", "13:45",
+    "14:00", "14:15", "14:30", "14:45",
+    "15:00", "15:15", "15:30", "15:45",
+    "16:00", "16:15", "16:30"
+]
+
+STANDARD_SLOTS = MORNING_SLOTS + AFTERNOON_SLOTS
+
+
+def check_doctor_slot_conflict(
+    db: Session,
+    bac_si_id: int,
+    thoi_gian: datetime,
+    exclude_lich_kham_id: Optional[int] = None
+):
+    """
+    Kiểm tra chống trùng lịch khám của Bác sĩ (Quy tắc độc quyền 1:1 theo chuẩn Bạch Mai):
+    Mỗi slot 15 phút (+- 7 phút) của cùng một Bác sĩ chỉ phục vụ tối đa 01 bệnh nhân.
+    """
+    doc = db.query(models.BacSi).filter(
+        or_(models.BacSi.id == bac_si_id, models.BacSi.user_id == bac_si_id)
+    ).first()
+    if not doc:
+        return False, "Không tìm thấy thông tin Bác sĩ!"
+
+    doc_user_id = doc.user_id or doc.id
+    slot_start = thoi_gian - timedelta(minutes=7)
+    slot_end = thoi_gian + timedelta(minutes=7)
+
+    query = db.query(models.LichKham).filter(
+        models.LichKham.bac_si_id == doc_user_id,
+        models.LichKham.thoi_gian >= slot_start,
+        models.LichKham.thoi_gian <= slot_end,
+        models.LichKham.trang_thai != "huy"
+    )
+    if exclude_lich_kham_id:
+        query = query.filter(models.LichKham.id != exclude_lich_kham_id)
+
+    existing = query.first()
+    if existing:
+        gio_str = existing.thoi_gian.strftime("%H:%M")
+        ngay_str = existing.thoi_gian.strftime("%d/%m/%Y")
+        doc_title = f"{doc.hoc_vi or 'BS.'} {doc.ho_ten}"
+        return False, f"Khung giờ {gio_str} ngày {ngay_str} của Bác sĩ {doc_title} đã có bệnh nhân đặt trước. Vui lòng chọn khung giờ trống tiếp theo!"
+
+    return True, None
+
+
+
 def calculate_gio_du_kien(stt: Optional[int], thoi_gian: Optional[datetime]) -> Optional[str]:
     """
-    Tính khung giờ dự kiến vào khám cụ thể theo slot 15 phút dựa trên STT:
-    - Ca sáng: bắt đầu từ 08:00
-    - Ca chiều: bắt đầu từ 13:30
+    Giữ nguyên chính xác giờ hẹn của bệnh nhân (RULE 8, 9, 10 trong Yêu cầu đồng bộ).
+    Tuyệt đối không tự động trượt giờ làm sai lệch so với giờ bệnh nhân đã đặt.
+    Appointment Time = Queue Time = Reception Ticket Time.
     """
     if not thoi_gian:
         return None
-    if not stt:
-        return thoi_gian.strftime("%H:%M")
-    if thoi_gian.hour < 12:
-        session_start = thoi_gian.replace(hour=8, minute=0, second=0, microsecond=0)
-    else:
-        session_start = thoi_gian.replace(hour=13, minute=30, second=0, microsecond=0)
-    est_start = session_start + timedelta(minutes=(stt - 1) * 15)
-    est_end = est_start + timedelta(minutes=15)
-    return f"{est_start.strftime('%H:%M')} - {est_end.strftime('%H:%M')}"
+    return thoi_gian.strftime("%H:%M")
+
+
+def get_doctor_capacity_limits(db: Session, bac_si_id: int):
+    """
+    Lấy thông tin Bác sĩ kèm giới hạn tiếp nhận tối đa trong ngày và từng khung giờ.
+    """
+    doc = db.query(models.BacSi).filter(
+        or_(models.BacSi.id == bac_si_id, models.BacSi.user_id == bac_si_id)
+    ).first()
+    if not doc:
+        return None, 200, 20
+    max_day = getattr(doc, "so_benh_nhan_toi_da_ngay", None) or 200
+    max_slot = getattr(doc, "so_benh_nhan_toi_da_khung_gio", None) or 20
+    return doc, max_day, max_slot
+
+
+def check_doctor_capacity(
+    db: Session,
+    bac_si_id: int,
+    thoi_gian: datetime,
+    exclude_lich_kham_id: Optional[int] = None
+):
+    """
+    Kiểm tra nghiêm ngặt sức chứa của Bác sĩ (Backend & Database Transaction):
+    1. Kiểm tra Bác sĩ có đang active không.
+    2. Kiểm tra giới hạn số lượng bệnh nhân TOÀN NGÀY (mặc định tối đa 200 người).
+    3. Kiểm tra giới hạn số lượng bệnh nhân KHUNG GIỜ (mặc định tối đa 20 người).
+    Trả về: (is_valid: bool, error_type: Optional[str], message: Optional[str], details: dict)
+    """
+    doc, max_day, max_slot = get_doctor_capacity_limits(db, bac_si_id)
+    if not doc:
+        return False, "DOCTOR_NOT_FOUND", "Không tìm thấy thông tin Bác sĩ!", {}
+    if not doc.trang_thai:
+        return False, "DOCTOR_INACTIVE", f"Bác sĩ {doc.ho_ten} hiện đang tạm nghỉ tiếp nhận bệnh nhân!", {}
+
+    target_date = thoi_gian.date()
+    doc_user_id = doc.user_id or doc.id
+
+    # 1. Đếm tổng số ca khám của bác sĩ trong ngày (ngoại trừ trạng thái 'huy')
+    day_query = db.query(func.count(models.LichKham.id)).filter(
+        models.LichKham.bac_si_id == doc_user_id,
+        func.date(models.LichKham.thoi_gian) == target_date,
+        models.LichKham.trang_thai != "huy"
+    )
+    if exclude_lich_kham_id:
+        day_query = day_query.filter(models.LichKham.id != exclude_lich_kham_id)
+    
+    current_day_count = day_query.scalar() or 0
+
+    if current_day_count >= max_day:
+        msg = f"Bác sĩ {doc.hoc_vi or 'BS.'} {doc.ho_ten} đã đủ số lượng bệnh nhân trong ngày {target_date.strftime('%d/%m/%Y')} ({current_day_count}/{max_day} người). Vui lòng chọn khung giờ khác, ngày khác hoặc bác sĩ khác."
+        return False, "DOCTOR_DAY_FULL", msg, {
+            "bac_si_id": doc.id,
+            "ho_ten": doc.ho_ten,
+            "chuyen_khoa": doc.chuyen_khoa,
+            "ngay_kham": target_date.strftime("%Y-%m-%d"),
+            "current_day": current_day_count,
+            "max_day": max_day,
+            "is_full_day": True
+        }
+
+    # 2. Đếm số ca khám của bác sĩ trong cùng khung giờ (+- 29 phút của slot)
+    slot_start = thoi_gian - timedelta(minutes=29)
+    slot_end = thoi_gian + timedelta(minutes=29)
+
+    slot_query = db.query(func.count(models.LichKham.id)).filter(
+        models.LichKham.bac_si_id == doc_user_id,
+        models.LichKham.thoi_gian >= slot_start,
+        models.LichKham.thoi_gian <= slot_end,
+        models.LichKham.trang_thai != "huy"
+    )
+    if exclude_lich_kham_id:
+        slot_query = slot_query.filter(models.LichKham.id != exclude_lich_kham_id)
+
+    current_slot_count = slot_query.scalar() or 0
+
+    if current_slot_count >= max_slot:
+        msg = f"Khung giờ {thoi_gian.strftime('%H:%M')} của Bác sĩ {doc.hoc_vi or 'BS.'} {doc.ho_ten} ngày {target_date.strftime('%d/%m/%Y')} đã đủ giới hạn ({current_slot_count}/{max_slot} người). Vui lòng chọn khung giờ khác hoặc ngày khác."
+        return False, "DOCTOR_SLOT_FULL", msg, {
+            "bac_si_id": doc.id,
+            "ho_ten": doc.ho_ten,
+            "chuyen_khoa": doc.chuyen_khoa,
+            "ngay_kham": target_date.strftime("%Y-%m-%d"),
+            "gio_kham": thoi_gian.strftime("%H:%M"),
+            "current_slot": current_slot_count,
+            "max_slot": max_slot,
+            "is_full_slot": True
+        }
+
+    return True, None, None, {
+        "bac_si_id": doc.id,
+        "ho_ten": doc.ho_ten,
+        "chuyen_khoa": doc.chuyen_khoa,
+        "current_day": current_day_count,
+        "max_day": max_day,
+        "current_slot": current_slot_count,
+        "max_slot": max_slot
+    }
+
 
 
 def resolve_appointment_doctor_and_room(db: Session, bac_si_id: Optional[int], chuyen_khoa_id: Optional[int]):
@@ -218,6 +367,275 @@ def get_public_doctors(
         }
         for d in docs
     ]
+
+
+
+@router.get("/public/available-slots", status_code=status.HTTP_200_OK)
+def get_public_available_slots(
+    bac_si_id: int = Query(..., description="ID hoặc user_id của bác sĩ"),
+    ngay: str = Query(..., description="Ngày khám YYYY-MM-DD"),
+    db: Session = Depends(get_db)
+):
+    """
+    API Công khai: Lấy danh sách khung giờ (Time-Slots 15 phút) ca sáng & ca chiều
+    chuẩn App Bệnh viện Bạch Mai kèm trạng thái còn trống/đã kín.
+    """
+    from datetime import time as dt_time
+    try:
+        target_date = datetime.strptime(ngay.strip(), "%Y-%m-%d").date()
+    except Exception:
+        target_date = date.today()
+
+    doc = db.query(models.BacSi).filter(
+        or_(models.BacSi.id == bac_si_id, models.BacSi.user_id == bac_si_id)
+    ).first()
+    if not doc:
+        raise HTTPException(status_code=404, detail="Không tìm thấy bác sĩ!")
+
+    doc_user_id = doc.user_id or doc.id
+
+    existing_lks = db.query(models.LichKham).filter(
+        models.LichKham.bac_si_id == doc_user_id,
+        func.date(models.LichKham.thoi_gian) == target_date,
+        models.LichKham.trang_thai != "huy"
+    ).all()
+
+    booked_times = {lk.thoi_gian.strftime("%H:%M") for lk in existing_lks}
+
+    now = datetime.now()
+    is_today = (target_date == now.date())
+
+    def build_slots(slot_list):
+        result = []
+        for s in slot_list:
+            is_booked = s in booked_times
+            is_past = False
+            if is_today:
+                h, m = map(int, s.split(":"))
+                slot_dt = datetime.combine(now.date(), dt_time(h, m))
+                if slot_dt < now:
+                    is_past = True
+            
+            available = (not is_booked) and (not is_past)
+            result.append({
+                "gio": s,
+                "da_dat": is_booked,
+                "da_qua": is_past,
+                "available": available,
+                "trang_thai_text": "Đã kín" if is_booked else ("Đã qua" if is_past else "Còn trống")
+            })
+        return result
+
+    slots_sang = build_slots(MORNING_SLOTS)
+    slots_chieu = build_slots(AFTERNOON_SLOTS)
+
+    tong_slot_trong = sum(1 for s in slots_sang + slots_chieu if s["available"])
+    tong_slot_da_dat = sum(1 for s in slots_sang + slots_chieu if s["da_dat"])
+
+    return {
+        "bac_si_id": doc.id,
+        "ho_ten": f"{doc.hoc_vi or 'BS.'} {doc.ho_ten}",
+        "chuyen_khoa": doc.chuyen_khoa or "Khám Tổng Quát",
+        "phong_kham": doc.phong_kham or "Phòng Khám Đa Khoa",
+        "ngay": target_date.strftime("%Y-%m-%d"),
+        "ngay_dinh_dang": target_date.strftime("%d/%m/%Y"),
+        "slots_sang": slots_sang,
+        "slots_chieu": slots_chieu,
+        "tong_slot_trong": tong_slot_trong,
+        "tong_slot_da_dat": tong_slot_da_dat
+    }
+
+
+@router.get("/public/doctor-availability", status_code=status.HTTP_200_OK)
+def get_doctor_availability(
+    bac_si_id: int = Query(..., description="ID hoặc user_id của bác sĩ"),
+    ngay_kham: str = Query(..., description="Ngày khám YYYY-MM-DD"),
+    db: Session = Depends(get_db)
+):
+    """
+    Kiểm tra tình trạng sức chứa (Capacity) theo ngày và chi tiết từng khung giờ của Bác sĩ.
+    """
+    try:
+        target_date = datetime.strptime(ngay_kham.strip(), "%Y-%m-%d").date()
+    except Exception:
+        target_date = date.today()
+
+    doc, max_day, max_slot = get_doctor_capacity_limits(db, bac_si_id)
+    if not doc:
+        raise HTTPException(status_code=404, detail="Không tìm thấy bác sĩ yêu cầu!")
+
+    doc_user_id = doc.user_id or doc.id
+
+    # 1. Đếm tổng số ca khám của bác sĩ trong ngày
+    da_dat_ngay = db.query(func.count(models.LichKham.id)).filter(
+        models.LichKham.bac_si_id == doc_user_id,
+        func.date(models.LichKham.thoi_gian) == target_date,
+        models.LichKham.trang_thai != "huy"
+    ).scalar() or 0
+
+    con_lai_ngay = max(0, max_day - da_dat_ngay)
+    is_full_ngay = da_dat_ngay >= max_day
+
+    # 2. Chi tiết từng khung giờ
+    slot_details = []
+    for slot_str in STANDARD_SLOTS:
+        hour, minute = map(int, slot_str.split(":"))
+        slot_dt = datetime.combine(target_date, datetime.min.time()).replace(hour=hour, minute=minute)
+        slot_start = slot_dt - timedelta(minutes=29)
+        slot_end = slot_dt + timedelta(minutes=29)
+
+        da_dat_slot = db.query(func.count(models.LichKham.id)).filter(
+            models.LichKham.bac_si_id == doc_user_id,
+            models.LichKham.thoi_gian >= slot_start,
+            models.LichKham.thoi_gian <= slot_end,
+            models.LichKham.trang_thai != "huy"
+        ).scalar() or 0
+
+        con_lai_slot = max(0, max_slot - da_dat_slot) if not is_full_ngay else 0
+        is_full_slot = (da_dat_slot >= max_slot) or is_full_ngay
+
+        gio_end = (slot_dt + timedelta(hours=1)).strftime("%H:%M")
+        gio_hien_thi = f"{slot_str} - {gio_end}"
+
+        slot_details.append({
+            "gio": slot_str,
+            "gio_hien_thi": gio_hien_thi,
+            "toi_da": max_slot,
+            "da_dat": da_dat_slot,
+            "con_lai": con_lai_slot,
+            "is_full": is_full_slot
+        })
+
+    return {
+        "bac_si_id": doc.id,
+        "ho_ten": f"{doc.hoc_vi or 'BS.'} {doc.ho_ten}",
+        "chuyen_khoa": doc.chuyen_khoa,
+        "phong_kham": doc.phong_kham,
+        "ngay_kham": target_date.strftime("%Y-%m-%d"),
+        "toi_da_ngay": max_day,
+        "da_dat_ngay": da_dat_ngay,
+        "con_lai_ngay": con_lai_ngay,
+        "is_full_ngay": is_full_ngay,
+        "khung_gio": slot_details
+    }
+
+
+@router.get("/public/doctor-alternative-dates", status_code=status.HTTP_200_OK)
+def get_doctor_alternative_dates(
+    bac_si_id: int = Query(..., description="ID bác sĩ"),
+    from_date: Optional[str] = Query(None, description="Ngày bắt đầu tìm kiếm YYYY-MM-DD"),
+    db: Session = Depends(get_db)
+):
+    """
+    Khi ngày khám đã đầy, API trả về 7 ngày tiếp theo của đúng bác sĩ này và sức chứa còn lại.
+    """
+    doc, max_day, _ = get_doctor_capacity_limits(db, bac_si_id)
+    if not doc:
+        raise HTTPException(status_code=404, detail="Không tìm thấy bác sĩ!")
+
+    doc_user_id = doc.user_id or doc.id
+    try:
+        start_d = datetime.strptime(from_date.strip(), "%Y-%m-%d").date() if from_date else date.today()
+    except Exception:
+        start_d = date.today()
+
+    day_names = ["Thứ Hai", "Thứ Ba", "Thứ Tư", "Thứ Năm", "Thứ Sáu", "Thứ Bảy", "Chủ Nhật"]
+    results = []
+    for i in range(1, 8):
+        cur_date = start_d + timedelta(days=i)
+        da_dat = db.query(func.count(models.LichKham.id)).filter(
+            models.LichKham.bac_si_id == doc_user_id,
+            func.date(models.LichKham.thoi_gian) == cur_date,
+            models.LichKham.trang_thai != "huy"
+        ).scalar() or 0
+
+        con_lai = max(0, max_day - da_dat)
+        results.append({
+            "ngay": cur_date.strftime("%Y-%m-%d"),
+            "ngay_dinh_dang": cur_date.strftime("%d/%m/%Y"),
+            "thu": day_names[cur_date.weekday()],
+            "da_dat": da_dat,
+            "toi_da": max_day,
+            "con_lai": con_lai,
+            "is_full": da_dat >= max_day
+        })
+
+    return {
+        "bac_si_id": doc.id,
+        "ho_ten": f"{doc.hoc_vi or 'BS.'} {doc.ho_ten}",
+        "ngay_goi_y": results
+    }
+
+
+@router.get("/public/specialty-alternative-doctors", status_code=status.HTTP_200_OK)
+def get_specialty_alternative_doctors(
+    ngay_kham: str = Query(..., description="Ngày khám YYYY-MM-DD"),
+    chuyen_khoa_id: Optional[int] = Query(None),
+    chuyen_khoa: Optional[str] = Query(None),
+    exclude_bac_si_id: Optional[int] = Query(None),
+    db: Session = Depends(get_db)
+):
+    """
+    Khi bác sĩ đã chọn bị đầy lịch, tìm các bác sĩ khác cùng chuyên khoa còn chỗ trong ngày đó.
+    """
+    try:
+        target_date = datetime.strptime(ngay_kham.strip(), "%Y-%m-%d").date()
+    except Exception:
+        target_date = date.today()
+
+    spec_name = None
+    if chuyen_khoa_id:
+        ck = db.query(models.ChuyenKhoa).filter(models.ChuyenKhoa.id == chuyen_khoa_id).first()
+        if ck:
+            spec_name = ck.ten_chuyen_khoa
+    elif chuyen_khoa:
+        spec_name = chuyen_khoa
+
+    query = db.query(models.BacSi).filter(models.BacSi.trang_thai == True)
+    if spec_name:
+        clean_name = spec_name.strip().lower()
+        base_clean = clean_name.split("(")[0].strip()
+        all_docs = query.all()
+        matched = []
+        for d in all_docs:
+            d_spec = (d.chuyen_khoa or "").strip().lower()
+            d_base = d_spec.split("(")[0].strip()
+            if d_spec == clean_name or d_base == base_clean or clean_name in d_spec or d_spec in clean_name:
+                matched.append(d)
+        docs = matched
+    else:
+        docs = query.all()
+
+    results = []
+    for d in docs:
+        if exclude_bac_si_id and (d.id == exclude_bac_si_id or d.user_id == exclude_bac_si_id):
+            continue
+        
+        d_user_id = d.user_id or d.id
+        max_day = getattr(d, "so_benh_nhan_toi_da_ngay", None) or 200
+        da_dat = db.query(func.count(models.LichKham.id)).filter(
+            models.LichKham.bac_si_id == d_user_id,
+            func.date(models.LichKham.thoi_gian) == target_date,
+            models.LichKham.trang_thai != "huy"
+        ).scalar() or 0
+
+        con_lai = max(0, max_day - da_dat)
+        results.append({
+            "bac_si_id": d.id,
+            "user_id": d.user_id,
+            "ho_ten": d.ho_ten,
+            "hoc_vi": d.hoc_vi or "BS.",
+            "chuyen_khoa": d.chuyen_khoa,
+            "phong_kham": d.phong_kham or "Phòng Khám Chuyên Khoa",
+            "da_dat": da_dat,
+            "toi_da": max_day,
+            "con_lai": con_lai,
+            "is_full": da_dat >= max_day
+        })
+
+    # Ưu tiên bác sĩ còn nhiều chỗ trống nhất lên đầu
+    results.sort(key=lambda x: x["con_lai"], reverse=True)
+    return results
 
 
 @router.get("/public/phong-khams", status_code=status.HTTP_200_OK)
@@ -585,7 +1003,7 @@ def verify_otp_and_book(data: PatientVerifyOtpAndBookInput, db: Session = Depend
             doc_name = f"{auto_doc.hoc_vi or 'BS.'} {auto_doc.ho_ten}"
             room_name = auto_doc.phong_kham or room_name
 
-    # 4. Parse thời gian khám
+    # 4. Parse thời gian khám chính xác do bệnh nhân chọn
     try:
         if "T" in data.thoi_gian:
             dt_kham = datetime.fromisoformat(data.thoi_gian)
@@ -594,20 +1012,68 @@ def verify_otp_and_book(data: PatientVerifyOtpAndBookInput, db: Session = Depend
     except Exception:
         dt_kham = datetime.now() + timedelta(days=1)
 
-    # 5. Lưu lịch khám (LichKham)
-    new_lich = models.LichKham(
-        benh_nhan_id=benh_nhan.id,
-        bac_si_id=target_user_id,
-        chuyen_khoa_id=target_spec_id,
-        thoi_gian=dt_kham,
-        trang_thai="cho_xac_nhan",
-        ly_do_kham=data.ly_do_kham or "Đặt lịch online qua Cổng Bệnh nhân"
-    )
-    db.add(new_lich)
-    db.commit()
-    db.refresh(new_lich)
+    # 5. Kiểm tra sức chứa & Chống trùng lịch Bác sĩ (Quy tắc 1:1 chuẩn Bạch Mai)
+    if target_user_id:
+        # Kiểm tra trùng slot 15 phút
+        slot_ok, slot_err = check_doctor_slot_conflict(db, target_user_id, dt_kham)
+        if not slot_ok:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail={
+                    "error_code": "DOCTOR_SLOT_CONFLICT",
+                    "message": slot_err
+                }
+            )
 
-    # 6. Gửi Email thông báo Xác nhận đặt lịch thành công qua Gmail
+        is_valid, err_code, err_msg, err_details = check_doctor_capacity(db, target_user_id, dt_kham)
+        if not is_valid:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={
+                    "error_code": err_code,
+                    "message": err_msg,
+                    "details": err_details
+                }
+            )
+
+    # 6. Kiểm tra trùng khung giờ của Bệnh nhân
+    patient_conflict = db.query(models.LichKham).filter(
+        models.LichKham.benh_nhan_id == benh_nhan.id,
+        models.LichKham.thoi_gian >= dt_kham - timedelta(minutes=29),
+        models.LichKham.thoi_gian <= dt_kham + timedelta(minutes=29),
+        models.LichKham.trang_thai != "huy"
+    ).first()
+    if patient_conflict:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={
+                "error_code": "PATIENT_TIME_CONFLICT",
+                "message": f"Bệnh nhân đã có lịch hẹn vào lúc {patient_conflict.thoi_gian.strftime('%H:%M %d/%m/%Y')}. Vui lòng chọn khung giờ khác!",
+                "details": {}
+            }
+        )
+
+    # 7. Transaction tạo lịch hẹn (Appointment & Queue)
+    try:
+        new_lich = models.LichKham(
+            benh_nhan_id=benh_nhan.id,
+            bac_si_id=target_user_id,
+            chuyen_khoa_id=target_spec_id,
+            thoi_gian=dt_kham,
+            trang_thai="cho_xac_nhan",
+            ly_do_kham=data.ly_do_kham or "Đặt lịch online qua Cổng Bệnh nhân"
+        )
+        db.add(new_lich)
+        db.commit()
+        db.refresh(new_lich)
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Lỗi transaction khi lưu lịch khám: {str(e)}"
+        )
+
+    # 8. Gửi Email thông báo Xác nhận đặt lịch thành công qua Gmail
     confirm_info = {
         "ma_lich": f"LK{new_lich.id:04d}",
         "chuyen_khoa": spec_name,
@@ -796,22 +1262,13 @@ def create_lich_kham(
             detail=f"Không tìm thấy Bệnh nhân có ID: {data.benh_nhan_id}"
         )
 
-    # 2. Conflict Check: Kiểm tra Bác sĩ có bị trùng lịch hẹn trong khoảng +- 15 phút không
+    # 2. Kiểm tra sức chứa (Capacity) Bác sĩ (Toàn ngày & Khung giờ)
     if data.bac_si_id:
-        start_range = data.thoi_gian - timedelta(minutes=15)
-        end_range = data.thoi_gian + timedelta(minutes=15)
-
-        doctor_conflict = db.query(models.LichKham).filter(
-            models.LichKham.bac_si_id == data.bac_si_id,
-            models.LichKham.thoi_gian >= start_range,
-            models.LichKham.thoi_gian <= end_range,
-            models.LichKham.trang_thai.in_(["da_dat_lich", "cho_kham", "dang_kham"])
-        ).first()
-
-        if doctor_conflict:
+        is_valid, err_code, err_msg, details = check_doctor_capacity(db, data.bac_si_id, data.thoi_gian)
+        if not is_valid:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Xung đột lịch khám: Bác sĩ đã có lịch hẹn lúc {doctor_conflict.thoi_gian.strftime('%H:%M %d/%m/%Y')}. Vui lòng chọn khung giờ khác!"
+                detail=err_msg
             )
 
     # 3. Trùng lịch của Bệnh nhân
@@ -974,6 +1431,15 @@ def tiep_don_tai_quay(
         if active_doc:
             assigned_doc_id = active_doc.user_id or active_doc.id
 
+    # 3.5. Kiểm tra sức chứa bác sĩ tiếp nhận
+    if assigned_doc_id:
+        is_valid, err_code, err_msg, details = check_doctor_capacity(db, assigned_doc_id, exam_time)
+        if not is_valid:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=err_msg
+            )
+
     # 4. Sinh STT nếu tiếp nhận khám ngay ('cho_kham')
     assigned_stt = None
     target_status = data.trang_thai or "cho_kham"
@@ -1048,6 +1514,27 @@ def update_trang_thai_lich_kham(
         raise HTTPException(status_code=404, detail="Không tìm thấy lịch khám!")
 
     new_status = data.trang_thai
+
+    # ── Phân quyền nghiệp vụ RBAC ──────────────────────────────────────────
+    # Bác sĩ chỉ có quyền tiếp nhận bệnh nhân vào phòng khám (cho_kham -> dang_kham) hoặc hoàn thành khám.
+    # Bác sĩ KHÔNG có quyền cấp số thứ tự (STT) tại quầy tiếp đón (chuyển sang cho_kham).
+    user_role = current_user.role.value if hasattr(current_user.role, "value") else str(current_user.role)
+    if new_status == "cho_kham" and user_role == "bac_si":
+        raise HTTPException(
+            status_code=403,
+            detail="Bác sĩ chỉ có quyền tiếp nhận bệnh nhân vào phòng khám, không có quyền cấp số thứ tự (STT) tại quầy. Nghiệp vụ cấp STT thuộc về Lễ tân!"
+        )
+    if new_status == "da_dat_lich" and user_role == "bac_si":
+        raise HTTPException(
+            status_code=403,
+            detail="Bác sĩ không có quyền xác nhận lịch hẹn tại quầy. Nghiệp vụ này thuộc về Lễ tân!"
+        )
+    if new_status == "dang_kham" and user_role == "bac_si":
+        if not lich_kham.stt or lich_kham.trang_thai not in ["cho_kham", "da_co_ket_qua"]:
+            raise HTTPException(
+                status_code=400,
+                detail="Bác sĩ chỉ có thể tiếp nhận bệnh nhân đã được Lễ tân cấp số thứ tự (trạng thái Chờ khám)!"
+            )
     
     # Nếu chuyển sang "cho_kham" (Lễ tân tiếp nhận bệnh nhân có mặt tại phòng khám)
     # Tự động tính Số thứ tự (Queue STT) lớn nhất trong ngày của phòng khám
@@ -1199,7 +1686,13 @@ def goi_vao_kham(
         raise HTTPException(status_code=404, detail="Không tìm thấy lịch khám!")
 
     today_date = date.today()
+    user_role = current_user.role.value if hasattr(current_user.role, "value") else str(current_user.role)
     if not lich_kham.stt:
+        if user_role == "bac_si":
+            raise HTTPException(
+                status_code=400,
+                detail="Bệnh nhân chưa được Lễ tân cấp số thứ tự (STT). Bác sĩ không có quyền cấp STT tại quầy, vui lòng hướng dẫn bệnh nhân qua quầy Lễ tân tiếp đón!"
+            )
         max_stt = db.query(func.max(models.LichKham.stt)).filter(
             func.date(models.LichKham.thoi_gian) == today_date
         ).scalar() or 0

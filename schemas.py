@@ -81,6 +81,35 @@ class UserProfileResponse(OrmBase):
     lich_lam_viec:   Optional[str] = None
 
 
+class ForgotPasswordRequest(BaseModel):
+    """Yêu cầu gửi OTP quên mật khẩu (nhận username hoặc email)."""
+    identity: str
+
+
+class VerifyOtpRequest(BaseModel):
+    """Xác thực mã OTP quên mật khẩu."""
+    identity: str
+    otp: str
+
+
+class ResetPasswordRequest(BaseModel):
+    """Đặt lại mật khẩu mới sau khi xác thực OTP thành công."""
+    reset_token: str
+    new_password: str
+
+    @field_validator("new_password")
+    @classmethod
+    def validate_password_len(cls, v: str) -> str:
+        if len(v.strip()) < 6:
+            raise ValueError("Mật khẩu mới phải có ít nhất 6 ký tự.")
+        return v.strip()
+
+
+class AdminResetPasswordRequest(BaseModel):
+    """Yêu cầu Admin đặt lại mật khẩu cho nhân sự."""
+    new_password: Optional[str] = None
+
+
 # ════════════════════════════════════════════════════════════════════════════════
 #  2. BENH NHAN SCHEMAS
 # ════════════════════════════════════════════════════════════════════════════════
@@ -449,6 +478,51 @@ class PhieuNhapKhoCreate(BaseModel):
     nguoi_nhap:   Optional[str] = None
     ghi_chu:      Optional[str] = None
     chi_tiets:    List[ChiTietNhapKhoInput]
+
+
+# ════════════════════════════════════════════════════════════════════════════════
+#  10. CAPACITY & SCHEDULING SCHEMAS
+# ════════════════════════════════════════════════════════════════════════════════
+class KhungGioAvailability(BaseModel):
+    gio: str
+    gio_hien_thi: str
+    toi_da: int
+    da_dat: int
+    con_lai: int
+    is_full: bool
+
+
+class BacSiAvailabilityResponse(BaseModel):
+    bac_si_id: int
+    ho_ten: str
+    chuyen_khoa: Optional[str] = None
+    phong_kham: Optional[str] = None
+    ngay_kham: str
+    toi_da_ngay: int
+    da_dat_ngay: int
+    con_lai_ngay: int
+    is_full_ngay: bool
+    khung_gio: List[KhungGioAvailability]
+
+
+class AlternativeDateOption(BaseModel):
+    ngay: str
+    ngay_dinh_dang: str
+    thu: str
+    con_lai: int
+    toi_da: int
+    is_full: bool
+
+
+class AlternativeDoctorOption(BaseModel):
+    bac_si_id: int
+    ho_ten: str
+    hoc_vi: str
+    chuyen_khoa: str
+    phong_kham: str
+    con_lai: int
+    toi_da: int
+    is_full: bool
 
 
 # ════════════════════════════════════════════════════════════════════════════════
