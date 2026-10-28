@@ -380,15 +380,18 @@
         <a href="/man_hinh_phong_kham.html" target="_blank" class="btn btn-sm btn-outline-primary rounded-3 px-3 fw-semibold">
           <i class="fa-solid fa-tv me-1"></i> Kiosk TV
         </a>
+        <button id="btnToggleQueue" class="btn btn-outline-secondary rounded-3 btn-sm px-3 fw-semibold" onclick="toggleQueuePanel()">
+          <i class="fa-solid fa-table-columns me-1"></i> <span id="lblToggleQueue">Ẩn Hàng chờ</span>
+        </button>
         <button class="btn btn-outline-secondary rounded-3 btn-sm px-3" onclick="loadQueue()">
           <i class="fa-solid fa-arrows-rotate me-1" id="reloadQueueIcon"></i> Làm mới
         </button>
       </div>
     </div>
 
-    <div class="row g-4">
+    <div class="row g-4" id="mainExamRow">
       <!-- Cột Trái: Hàng chờ khám -->
-      <div class="col-lg-4">
+      <div class="col-lg-4" id="colQueue">
         <div class="card-custom p-3 h-100">
           <div class="d-flex align-items-center justify-content-between pb-2 mb-3 border-bottom">
             <h6 class="fw-bold mb-0"><i class="fa-solid fa-list-ol text-primary me-2"></i>Hàng Chờ Khám Hôm Nay</h6>
@@ -407,10 +410,24 @@
       </div>
 
       <!-- Cột Phải: Form Khám bệnh & Kê đơn thuốc & AI Box -->
-      <div class="col-lg-8">
+      <div class="col-lg-8" id="colExam">
         <div class="card-custom p-4">
           <!-- Card Tổng Quan Lâm Sàng Bệnh Nhân (Đồng bộ từ Lễ tân & Đặt lịch online) -->
           <div class="bg-light p-3 rounded-3 mb-3 border position-relative" id="patientOverviewCard">
+            <!-- Thanh điều hướng Focus Mode: Quay lại hàng chờ khi đang khám -->
+            <div class="d-flex align-items-center justify-content-between pb-2 mb-2 border-bottom" id="examFocusToolbar" style="display: none !important;">
+              <button type="button" class="btn btn-primary btn-sm rounded-pill px-3 fw-bold shadow-sm" onclick="enableExamFocusMode(false)">
+                <i class="fa-solid fa-arrow-left me-1"></i> Quay lại Hàng chờ khám (<span id="backQueueCount">0</span> ca)
+              </button>
+              <div class="d-flex align-items-center gap-2">
+                <span class="badge bg-success text-white px-2 py-1 shadow-sm">
+                  <i class="fa-solid fa-expand me-1"></i> Chế độ Khám Toàn Màn Hình
+                </span>
+                <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-2" title="Hiện lại danh sách chờ bên cạnh" onclick="enableExamFocusMode(false)">
+                  <i class="fa-solid fa-table-columns me-1"></i> Hiện hàng chờ
+                </button>
+              </div>
+            </div>
             <div class="d-flex align-items-start justify-content-between flex-wrap gap-2 mb-2">
               <div>
                 <div class="d-flex align-items-center gap-2 flex-wrap">
@@ -1115,7 +1132,52 @@
     /**
      * Chọn bệnh nhân để khám và đồng bộ toàn bộ dữ liệu lâm sàng
      */
+    
+    // ════════════════════════════════════════════════════════════════════════════
+    // CHẾ ĐỘ KHÁM TOÀN MÀN HÌNH (FOCUS MODE): TỰ ĐỘNG ẨN HÀNG CHỜ KHI GỌI BỆNH NHÂN
+    // ════════════════════════════════════════════════════════════════════════════
+    let isExamFocusMode = false;
+
+    function enableExamFocusMode(enabled) {
+      isExamFocusMode = enabled;
+      const colQueue = document.getElementById("colQueue");
+      const colExam = document.getElementById("colExam");
+      const focusToolbar = document.getElementById("examFocusToolbar");
+      const lblToggle = document.getElementById("lblToggleQueue");
+      const backCount = document.getElementById("backQueueCount");
+      const queueCount = document.getElementById("queueCount");
+
+      if (backCount && queueCount) {
+        backCount.textContent = queueCount.textContent;
+      }
+
+      if (enabled) {
+        // Ẩn cột hàng chờ bên trái, mở rộng form khám thành col-12 full-width
+        if (colQueue) colQueue.classList.add("d-none");
+        if (colExam) {
+          colExam.classList.remove("col-lg-8");
+          colExam.classList.add("col-12");
+        }
+        if (focusToolbar) focusToolbar.style.setProperty("display", "flex", "important");
+        if (lblToggle) lblToggle.textContent = "Hiện Hàng chờ";
+      } else {
+        // Hiện lại cột hàng chờ bên trái, form khám về col-lg-8
+        if (colQueue) colQueue.classList.remove("d-none");
+        if (colExam) {
+          colExam.classList.remove("col-12");
+          colExam.classList.add("col-lg-8");
+        }
+        if (focusToolbar) focusToolbar.style.setProperty("display", "none", "important");
+        if (lblToggle) lblToggle.textContent = "Ẩn Hàng chờ";
+      }
+    }
+
+    function toggleQueuePanel() {
+      enableExamFocusMode(!isExamFocusMode);
+    }
+
     function selectPatientForExam(item) {
+      enableExamFocusMode(true);
       document.querySelectorAll(".queue-item").forEach(el => el.classList.remove("active"));
       const targetEl = document.getElementById(`queue-item-${item.id}`);
       if (targetEl) targetEl.classList.add("active");
