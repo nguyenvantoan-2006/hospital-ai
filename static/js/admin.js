@@ -1,3 +1,24 @@
+
+// Chức năng bật/tắt hiển thị mật khẩu bằng con mắt
+function togglePasswordVisibility(inputId, btnEl) {
+  const input = document.getElementById(inputId);
+  if (!input) return;
+  const icon = btnEl ? btnEl.querySelector("i") : null;
+  if (input.type === "password") {
+    input.type = "text";
+    if (icon) {
+      icon.classList.remove("fa-eye");
+      icon.classList.add("fa-eye-slash");
+    }
+  } else {
+    input.type = "password";
+    if (icon) {
+      icon.classList.remove("fa-eye-slash");
+      icon.classList.add("fa-eye");
+    }
+  }
+}
+
 /* admin.js - Logic cho Admin Dashboard */
 const B = "http://localhost:8000/api/v1/admin";
 const RL = { admin:"👑 Admin", le_tan:"📋 Lễ tân", bac_si:"🩺 Bác sĩ", ke_toan:"💰 Kế toán" };
