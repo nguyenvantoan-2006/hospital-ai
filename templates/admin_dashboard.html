@@ -230,7 +230,7 @@
       <div class="input-group">
         <input id="uPass" type="password" class="form-control" required placeholder="Tối thiểu 6 ký tự" autocomplete="new-password">
         <button class="btn btn-outline-secondary" type="button" onclick="togglePasswordVisibility('uPass', this)" title="Xem/Ẩn mật khẩu">
-          <i class="fa-solid fa-eye"></i>
+          <i class="fa-solid fa-eye" style="pointer-events: none;"></i>
         </button>
       </div>
     </div>
@@ -248,7 +248,7 @@
     <div class="input-group mb-3">
       <input id="rPwd" type="password" class="form-control" placeholder="Mật khẩu mới..." autocomplete="new-password">
       <button class="btn btn-outline-secondary" type="button" onclick="togglePasswordVisibility('rPwd', this)" title="Xem/Ẩn mật khẩu">
-        <i class="fa-solid fa-eye"></i>
+        <i class="fa-solid fa-eye" style="pointer-events: none;"></i>
       </button>
     </div>
     <button class="btn btn-warning w-100 fw-bold" onclick="submitReset()"><i class="fa-solid fa-rotate me-1"></i>Xác nhận</button>
@@ -269,7 +269,7 @@
         <div class="input-group">
           <input id="dPassword" type="password" class="form-control" placeholder="Mật khẩu tài khoản..." value="BacSi@2024!" autocomplete="new-password" required>
           <button class="btn btn-outline-secondary" type="button" onclick="togglePasswordVisibility('dPassword', this)" title="Xem/Ẩn mật khẩu">
-            <i class="fa-solid fa-eye"></i>
+            <i class="fa-solid fa-eye" style="pointer-events: none;"></i>
           </button>
         </div>
       </div>
@@ -304,7 +304,7 @@
         <div class="input-group">
           <input id="ePassword" type="password" class="form-control" placeholder="Để trống nếu không đổi" autocomplete="new-password">
           <button class="btn btn-outline-secondary" type="button" onclick="togglePasswordVisibility('ePassword', this)" title="Xem/Ẩn mật khẩu">
-            <i class="fa-solid fa-eye"></i>
+            <i class="fa-solid fa-eye" style="pointer-events: none;"></i>
           </button>
         </div>
       </div>
@@ -424,7 +424,37 @@
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
-<script src="/static/js/auth.js"></script>
-<script src="/static/js/admin.js"></script>
+<script>
+// Hàm xem / ẩn mật khẩu trực tiếp trong HTML để không bao giờ bị ảnh hưởng bởi cache file JS bên ngoài
+function togglePasswordVisibility(inputId, btnEl) {
+  try {
+    if (window.event) {
+      window.event.preventDefault();
+      window.event.stopPropagation();
+    }
+    const input = document.getElementById(inputId);
+    if (!input) return;
+    const btn = btnEl || (window.event ? (window.event.currentTarget || window.event.target.closest('button')) : null);
+    const icon = btn ? btn.querySelector('i') : null;
+    
+    if (input.type === 'password') {
+      input.type = 'text';
+      if (icon) {
+        icon.className = 'fa-solid fa-eye-slash text-primary';
+      }
+    } else {
+      input.type = 'password';
+      if (icon) {
+        icon.className = 'fa-solid fa-eye text-secondary';
+      }
+    }
+    input.focus();
+  } catch (err) {
+    console.error('Lỗi toggle mật khẩu:', err);
+  }
+}
+</script>
+<script src="/static/js/auth.js?v=20261028_1001"></script>
+<script src="/static/js/admin.js?v=20261028_1001"></script>
 </body>
 </html>
