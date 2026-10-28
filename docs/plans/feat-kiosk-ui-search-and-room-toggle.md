@@ -34,3 +34,13 @@
 ### Bước 3: Đồng bộ vào Docker & Kiểm thử Playwright
 - Đồng bộ `templates/man_hinh_phong_kham.html` vào container `clinova_fastapi_app`.
 - Kiểm thử hiển thị không còn đè chữ, test nút ẩn/hiện thanh phòng và nút tìm kiếm.
+
+---
+
+## 3. Kết quả hoàn thành
+- [x] Đã khắc phục 100% hiện tượng đè chữ giữa thanh chọn phòng và banner tiêu đề phòng trên màn hình Kiosk TV.
+- [x] Đã bổ sung nút "Đổi phòng" dạng toggle cho phép thu gọn/mở rộng thanh chọn phòng mượt mà.
+- [x] Đã bổ sung nút "Tìm kiếm" mở modal tra cứu số thứ tự và tình trạng hàng đợi cho bệnh nhân/người nhà.
+- [x] Đã kiểm thử hiển thị trên Playwright và kiểm thử trên môi trường Docker container.
+- [x] Đã tài liệu hóa chi tiết kèm hình ảnh minh chứng trong báo cáo đồ án `NHOM_03_HOAN_CHINH_.docx`.
+
