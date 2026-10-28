@@ -16,3 +16,4 @@ __pycache__/
 test_*.py
 run_e2e_*.py
 clean_test_data.py
+scratch/
